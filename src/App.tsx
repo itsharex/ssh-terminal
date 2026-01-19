@@ -1,8 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Dashboard } from "@/pages/Dashboard";
-import { Features } from "@/pages/Features";
-import { Components } from "@/pages/Components";
+import { Terminal } from "@/pages/Terminal";
+import { SessionManager } from "@/pages/SessionManager";
+import { Settings } from "@/pages/Settings";
 import { ThemeProvider } from "@/components/theme-provider";
 
 function App() {
@@ -11,10 +11,10 @@ function App() {
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <MainLayout>
           <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/components" element={<Components />} />
-          <Route path="/layout" element={<Dashboard />} />
+            <Route path="/" element={<Terminal />} />
+            <Route path="/terminal" element={<Terminal />} />
+            <Route path="/sessions" element={<SessionManager />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </MainLayout>
       </ThemeProvider>

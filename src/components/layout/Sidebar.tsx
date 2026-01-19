@@ -1,13 +1,10 @@
 import { NavLink } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Home, 
-  Star, 
-  Palette, 
-  Layout, 
-  CheckCircle2, 
-  Zap,
+import {
+  Terminal,
+  FolderOpen,
+  Settings,
   LucideIcon
 } from "lucide-react";
 
@@ -24,41 +21,35 @@ interface NavigationSection {
 
 const navigationItems: NavigationSection[] = [
   {
-    title: "Overview",
+    title: "连接",
     items: [
-      { name: "Dashboard", path: "/", icon: Home },
-      { name: "Features", path: "/features", icon: Star },
+      { name: "终端", path: "/terminal", icon: Terminal },
+      { name: "会话管理", path: "/sessions", icon: FolderOpen },
     ]
   },
   {
-    title: "Components",
+    title: "配置",
     items: [
-      { name: "UI Components", path: "/components", icon: Palette },
-      { name: "Layout", path: "/layout", icon: Layout },
-      // Removed: Forms, Navigation
+      { name: "设置", path: "/settings", icon: Settings },
     ]
   },
-  // Removed: Development and Resources sections per request
 ];
 
 export function Sidebar() {
   return (
-    <aside className="w-64 bg-card border-r border-border h-screen overflow-y-auto sticky top-0 custom-scrollbar">
+    <aside className="w-64 bg-card border-r border-border h-screen flex flex-col">
       {/* Logo Section */}
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-xl">T</span>
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Terminal className="h-5 w-5 text-primary" />
           </div>
-          <div>
-            <h1 className="font-bold text-lg">Tauri Template</h1>
-            <Badge variant="secondary" className="text-xs">v2.0.0</Badge>
-          </div>
+          <h1 className="font-bold text-lg">SSH Terminal</h1>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="p-4 space-y-6">
+      <nav className="flex-1 p-4 space-y-6 overflow-y-auto custom-scrollbar">
         {navigationItems.map((section, sectionIndex) => (
           <div key={sectionIndex}>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
@@ -70,14 +61,14 @@ export function Sidebar() {
                   <NavLink
                     to={item.path}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                         isActive
-                          ? "border-2 border-black text-foreground"
-                          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       }`
                     }
                                      >
-                     <item.icon className="w-5 h-5" />
+                     <item.icon className="w-4 h-4" />
                      {item.name}
                    </NavLink>
                 </li>
@@ -91,16 +82,9 @@ export function Sidebar() {
       </nav>
 
              {/* Status Section */}
-       <div className="p-4 border-t border-border mt-auto">
-         <div className="space-y-3">
-           <div className="flex items-center gap-2 text-sm">
-             <CheckCircle2 className="w-4 h-4 text-green-500" />
-             <span className="text-muted-foreground">Ready for Development</span>
-           </div>
-           <div className="flex items-center gap-2 text-sm">
-             <Zap className="w-4 h-4 text-blue-500" />
-             <span className="text-muted-foreground">Hot Reload Active</span>
-           </div>
+       <div className="p-4 border-t border-border">
+         <div className="text-xs text-muted-foreground text-center">
+           SSH Ready
          </div>
        </div>
     </aside>

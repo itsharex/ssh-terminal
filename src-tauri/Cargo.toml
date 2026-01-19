@@ -23,4 +23,22 @@ tauri-plugin-opener = "2.5.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# SSH相关 - 直接使用系统SSH命令，无需外部库
+
+# 异步运行时
+tokio = { version = "1.35", features = ["full", "net", "io-util"] }
+
+# PTY支持（跨平台）
+portable-pty = "0.8"
+
+# 工具库
+anyhow = "1.0"
+thiserror = "1.0"
+dirs = "5.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+secrecy = "0.8"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
 

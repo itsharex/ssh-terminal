@@ -77,6 +77,26 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* SSH 状态颜色 */
+  --ssh-connected: oklch(0.65 0.15 145);      /* 绿色 - 已连接 */
+  --ssh-connecting: oklch(0.75 0.12 85);      /* 黄色 - 连接中 */
+  --ssh-error: oklch(0.60 0.20 25);           /* 红色 - 错误 */
+  --ssh-disconnected: oklch(0.70 0.05 250);   /* 灰蓝 - 已断开 */
+
+  /* 品牌颜色 */
+  --brand-primary: oklch(0.55 0.20 250);      /* 蓝色 - 主色 */
+  --brand-secondary: oklch(0.60 0.18 190);    /* 青色 - 次要色 */
+
+  /* SSH 徽章样式 */
+  --badge-connected-bg: oklch(0.65 0.15 145 / 0.15);
+  --badge-connected-text: oklch(0.65 0.15 145);
+  --badge-connecting-bg: oklch(0.75 0.12 85 / 0.15);
+  --badge-connecting-text: oklch(0.75 0.12 85);
+  --badge-error-bg: oklch(0.60 0.20 25 / 0.15);
+  --badge-error-text: oklch(0.60 0.20 25);
+  --badge-disconnected-bg: oklch(0.70 0.05 250 / 0.15);
+  --badge-disconnected-text: oklch(0.70 0.05 250);
 }
 
 .dark {
@@ -112,6 +132,22 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* SSH 状态颜色 - 深色模式 */
+  --ssh-connected: oklch(0.70 0.15 145);
+  --ssh-connecting: oklch(0.80 0.12 85);
+  --ssh-error: oklch(0.65 0.20 25);
+  --ssh-disconnected: oklch(0.75 0.05 250);
+
+  /* 徽章样式 - 深色模式 */
+  --badge-connected-bg: oklch(0.70 0.15 145 / 0.20);
+  --badge-connected-text: oklch(0.70 0.15 145);
+  --badge-connecting-bg: oklch(0.80 0.12 85 / 0.20);
+  --badge-connecting-text: oklch(0.80 0.12 85);
+  --badge-error-bg: oklch(0.65 0.20 25 / 0.20);
+  --badge-error-text: oklch(0.65 0.20 25);
+  --badge-disconnected-bg: oklch(0.75 0.05 250 / 0.20);
+  --badge-disconnected-text: oklch(0.75 0.05 250);
 }
 
 @layer base {
@@ -311,4 +347,29 @@
   .dark .scrollbar-minimal::-webkit-scrollbar-thumb:hover {
     background: #e0e0e0;
   }
+}
+
+/* SSH 状态徽章样式 */
+.badge-connected {
+  background-color: var(--badge-connected-bg);
+  color: var(--badge-connected-text);
+  border-color: var(--badge-connected-text);
+}
+
+.badge-connecting {
+  background-color: var(--badge-connecting-bg);
+  color: var(--badge-connecting-text);
+  border-color: var(--badge-connecting-text);
+}
+
+.badge-error {
+  background-color: var(--badge-error-bg);
+  color: var(--badge-error-text);
+  border-color: var(--badge-error-text);
+}
+
+.badge-disconnected {
+  background-color: var(--badge-disconnected-bg);
+  color: var(--badge-disconnected-text);
+  border-color: var(--badge-disconnected-text);
 }

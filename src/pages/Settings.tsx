@@ -1,0 +1,304 @@
+import { useState } from 'react';
+import {
+  Settings as SettingsIcon,
+  Palette,
+  Terminal,
+  Bell,
+  Keyboard,
+  Info
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ModeToggle } from '@/components/mode-toggle';
+
+export function Settings() {
+  const [settings, setSettings] = useState({
+    // 终端设置
+    terminalFont: 'monospace',
+    terminalFontSize: 14,
+    terminalScrollback: 1000,
+    cursorBlink: true,
+    copyOnSelect: false,
+
+    // 外观设置
+    theme: 'system',
+
+    // 通知设置
+    notifications: true,
+    soundEffects: false,
+
+    // 会话设置
+    autoSaveSessions: true,
+    keepAliveInterval: 30,
+  });
+
+  const handleSwitchChange = (key: string, value: boolean) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      {/* 页面标题 */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold flex items-center gap-3">
+          <SettingsIcon className="h-8 w-8" />
+          设置
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          配置应用偏好和终端选项
+        </p>
+      </div>
+
+      {/* 设置选项卡 */}
+      <Tabs defaultValue="appearance" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="appearance" className="gap-2">
+            <Palette className="h-4 w-4" />
+            外观
+          </TabsTrigger>
+          <TabsTrigger value="terminal" className="gap-2">
+            <Terminal className="h-4 w-4" />
+            终端
+          </TabsTrigger>
+          <TabsTrigger value="session" className="gap-2">
+            <Keyboard className="h-4 w-4" />
+            会话
+          </TabsTrigger>
+          <TabsTrigger value="about" className="gap-2">
+            <Info className="h-4 w-4" />
+            关于
+          </TabsTrigger>
+        </TabsList>
+
+        {/* 外观设置 */}
+        <TabsContent value="appearance" className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="theme">主题模式</Label>
+                <p className="text-sm text-muted-foreground">
+                  选择应用的主题外观
+                </p>
+              </div>
+              <ModeToggle />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notifications">通知</Label>
+                <p className="text-sm text-muted-foreground">
+                  接收连接状态和错误通知
+                </p>
+              </div>
+              <Switch
+                id="notifications"
+                checked={settings.notifications}
+                onCheckedChange={(checked) => handleSwitchChange('notifications', checked)}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="sound">音效</Label>
+                <p className="text-sm text-muted-foreground">
+                  播放操作反馈音效
+                </p>
+              </div>
+              <Switch
+                id="sound"
+                checked={settings.soundEffects}
+                onCheckedChange={(checked) => handleSwitchChange('soundEffects', checked)}
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* 终端设置 */}
+        <TabsContent value="terminal" className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="cursor-blink">光标闪烁</Label>
+                <p className="text-sm text-muted-foreground">
+                  启用终端光标闪烁动画
+                </p>
+              </div>
+              <Switch
+                id="cursor-blink"
+                checked={settings.cursorBlink}
+                onCheckedChange={(checked) => handleSwitchChange('cursorBlink', checked)}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="copy-on-select">选择即复制</Label>
+                <p className="text-sm text-muted-foreground">
+                  自动复制选中的文本到剪贴板
+                </p>
+              </div>
+              <Switch
+                id="copy-on-select"
+                checked={settings.copyOnSelect}
+                onCheckedChange={(checked) => handleSwitchChange('copyOnSelect', checked)}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label htmlFor="scrollback">滚动缓冲区大小</Label>
+              <p className="text-sm text-muted-foreground">
+                终端保留的历史行数: {settings.terminalScrollback}
+              </p>
+              <div className="flex gap-2 mt-2">
+                {[500, 1000, 2000, 5000].map((value) => (
+                  <Button
+                    key={value}
+                    variant={settings.terminalScrollback === value ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSettings(prev => ({ ...prev, terminalScrollback: value }))}
+                  >
+                    {value}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label>终端字体大小</Label>
+              <p className="text-sm text-muted-foreground">
+                当前大小: {settings.terminalFontSize}px
+              </p>
+              <div className="flex gap-2 mt-2">
+                {[12, 14, 16, 18].map((value) => (
+                  <Button
+                    key={value}
+                    variant={settings.terminalFontSize === value ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSettings(prev => ({ ...prev, terminalFontSize: value }))}
+                  >
+                    {value}px
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* 会话设置 */}
+        <TabsContent value="session" className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="auto-save">自动保存会话</Label>
+                <p className="text-sm text-muted-foreground">
+                  自动保存会话配置到本地存储
+                </p>
+              </div>
+              <Switch
+                id="auto-save"
+                checked={settings.autoSaveSessions}
+                onCheckedChange={(checked) => handleSwitchChange('autoSaveSessions', checked)}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label htmlFor="keepalive">心跳间隔</Label>
+              <p className="text-sm text-muted-foreground">
+                保持 SSH 连接活跃的间隔秒数: {settings.keepAliveInterval}s
+              </p>
+              <div className="flex gap-2 mt-2">
+                {[15, 30, 60, 120].map((value) => (
+                  <Button
+                    key={value}
+                    variant={settings.keepAliveInterval === value ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSettings(prev => ({ ...prev, keepAliveInterval: value }))}
+                  >
+                    {value}s
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="rounded-lg border p-4 bg-muted/20">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                连接提示
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                启用心跳功能可以防止长时间空闲导致 SSH 连接断开。
+                建议设置为 30-60 秒以平衡性能和连接稳定性。
+              </p>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* 关于 */}
+        <TabsContent value="about" className="space-y-6">
+          <div className="space-y-4">
+            <div className="rounded-lg border p-6 bg-muted/20 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Terminal className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold">SSH Terminal</h2>
+              <p className="text-muted-foreground mt-1">版本 1.0.0</p>
+              <p className="text-sm text-muted-foreground mt-4 max-w-md mx-auto">
+                基于 Tauri 2.0 和 React 19 构建的现代化 SSH 终端管理工具
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <h3 className="font-semibold">技术栈</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded border p-3 bg-muted/20">
+                  <p className="font-medium">前端</p>
+                  <p className="text-muted-foreground">React 19</p>
+                </div>
+                <div className="rounded border p-3 bg-muted/20">
+                  <p className="font-medium">后端</p>
+                  <p className="text-muted-foreground">Tauri 2.0</p>
+                </div>
+                <div className="rounded border p-3 bg-muted/20">
+                  <p className="font-medium">UI 库</p>
+                  <p className="text-muted-foreground">shadcn/ui</p>
+                </div>
+                <div className="rounded border p-3 bg-muted/20">
+                  <p className="font-medium">终端</p>
+                  <p className="text-muted-foreground">xterm.js</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="text-center text-sm text-muted-foreground">
+              <p>© 2025 SSH Terminal. All rights reserved.</p>
+              <p className="mt-1">
+                Made with ❤️ using Tauri and React
+              </p>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
