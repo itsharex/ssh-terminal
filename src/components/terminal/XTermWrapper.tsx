@@ -3,10 +3,12 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
+import { SearchAddon } from '@xterm/addon-search';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import { HostKeyConfirmDialog } from '@/components/ssh/HostKeyConfirmDialog';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuLabel, ContextMenuSeparator } from '@/components/ui/context-menu';
 import '@xterm/xterm/css/xterm.css';
 
 interface XTermWrapperProps {
@@ -20,9 +22,12 @@ export function XTermWrapper({ sessionId, onData }: XTermWrapperProps) {
   const terminalRefInstance = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const webglAddonRef = useRef<WebglAddon | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
   const isInitializedRef = useRef(false);
   const dialogShownRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
+  const [tempFontSize, setTempFontSize] = useState<number | null>(null);
 
   // 主机密钥确认对话框状态
   const [hostKeyDialog, setHostKeyDialog] = useState({
@@ -86,17 +91,15 @@ export function XTermWrapper({ sessionId, onData }: XTermWrapperProps) {
     terminal.loadAddon(webLinksAddon);
     terminal.open(terminalRef.current);
 
-    // 禁用右键菜单，并实现右键复制功能
-    terminalRef.current.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      // 如果有选中的文本，复制到剪贴板
-      if (terminal.hasSelection()) {
-        const selection = terminal.getSelection();
-        navigator.clipboard.writeText(selection).catch(err => {
-          console.error('Failed to copy:', err);
-        });
-      }
+    // 监听选中状态变化
+    terminal.onSelectionChange(() => {
+      setHasSelection(terminal.hasSelection());
     });
+
+    // 加载搜索插件
+    const searchAddon = new SearchAddon();
+    terminal.loadAddon(searchAddon);
+    searchAddonRef.current = searchAddon;
 
     // 尝试加载 WebGL 渲染器
     try {
@@ -266,16 +269,203 @@ export function XTermWrapper({ sessionId, onData }: XTermWrapperProps) {
     }
   }, [config, theme, isReady]);
 
+  // 处理复制操作
+  const handleCopy = async () => {
+    if (terminalRefInstance.current && terminalRefInstance.current.hasSelection()) {
+      const selection = terminalRefInstance.current.getSelection();
+      try {
+        await navigator.clipboard.writeText(selection);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
+  // 处理粘贴操作
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && terminalRefInstance.current) {
+        await invoke('ssh_write', {
+          sessionId,
+          data: new TextEncoder().encode(text),
+        });
+        onData?.(text);
+      }
+    } catch (err) {
+      console.error('Failed to paste:', err);
+    }
+  };
+
+  // 清屏功能
+  const handleClear = () => {
+    if (terminalRefInstance.current) {
+      terminalRefInstance.current.clear();
+    }
+  };
+
+  // 重置终端功能
+  const handleReset = () => {
+    if (terminalRefInstance.current) {
+      terminalRefInstance.current.reset();
+    }
+  };
+
+  // 增大字号
+  const handleZoomIn = () => {
+    if (terminalRefInstance.current) {
+      const currentSize = tempFontSize || config.fontSize;
+      const newSize = Math.min(currentSize + 2, 32);
+      setTempFontSize(newSize);
+      terminalRefInstance.current.options.fontSize = newSize;
+    }
+  };
+
+  // 减小字号
+  const handleZoomOut = () => {
+    if (terminalRefInstance.current) {
+      const currentSize = tempFontSize || config.fontSize;
+      const newSize = Math.max(currentSize - 2, 8);
+      setTempFontSize(newSize);
+      terminalRefInstance.current.options.fontSize = newSize;
+    }
+  };
+
+  // 查找功能
+  const handleFind = () => {
+    if (searchAddonRef.current) {
+      const searchTerm = prompt('请输入要查找的文本:');
+      if (searchTerm) {
+        searchAddonRef.current.findNext(searchTerm);
+      }
+    }
+  };
+
+  // 重启会话功能
+  const handleRestartSession = async () => {
+    try {
+      // 先断开连接
+      await invoke('ssh_disconnect', { sessionId });
+      // 短暂延迟后重新连接
+      setTimeout(async () => {
+        await invoke('ssh_connect', { sessionId });
+      }, 500);
+    } catch (err) {
+      console.error('Failed to restart session:', err);
+    }
+  };
+
+  // 导出日志功能
+  const handleExportLog = async () => {
+    if (terminalRefInstance.current) {
+      try {
+        const lines: string[] = [];
+        for (let i = 0; i < terminalRefInstance.current.buffer.active.length; i++) {
+          const line = terminalRefInstance.current.buffer.active.getLine(i);
+          if (line) {
+            lines.push(line.translateToString(true));
+          }
+        }
+        const content = lines.join('\n');
+
+        // 使用 Tauri 的文件对话框 API
+        const { save } = await import('@tauri-apps/plugin-dialog');
+        const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+        const { join } = await import('@tauri-apps/api/path');
+
+        const filePath = await save({
+          filters: [
+            {
+              name: 'Log Files',
+              extensions: ['log', 'txt']
+            }
+          ],
+          defaultPath: `terminal-log-${new Date().toISOString().slice(0, 10)}.log`
+        });
+
+        if (filePath) {
+          await writeTextFile(filePath, content);
+        }
+      } catch (err) {
+        console.error('Failed to export log:', err);
+        // 如果 Tauri API 不可用，回退到浏览器方式
+        try {
+          const lines: string[] = [];
+          for (let i = 0; i < terminalRefInstance.current.buffer.active.length; i++) {
+            const line = terminalRefInstance.current.buffer.active.getLine(i);
+            if (line) {
+              lines.push(line.translateToString(true));
+            }
+          }
+          const content = lines.join('\n');
+          const blob = new Blob([content], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `terminal-log-${new Date().toISOString().slice(0, 10)}.log`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch (fallbackErr) {
+          console.error('Fallback export also failed:', fallbackErr);
+        }
+      }
+    }
+  };
+
   // 使用动态样式，支持 padding
   return (
     <>
-      <div
-        ref={terminalRef}
-        className="w-full h-full"
-        style={{
-          padding: `${config.padding}px`,
-        }}
-      />
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            ref={terminalRef}
+            className="w-full h-full"
+            style={{
+              padding: `${config.padding}px`,
+            }}
+          />
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem disabled={!hasSelection} onClick={handleCopy}>
+            复制
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handlePaste}>
+            粘贴
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleFind}>
+            查找...
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          <ContextMenuItem onClick={handleClear}>
+            清屏
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleReset}>
+            重置终端
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleZoomIn}>
+            放大
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleZoomOut}>
+            缩小
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          <ContextMenuItem onClick={handleRestartSession}>
+            重启会话
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          <ContextMenuItem onClick={handleExportLog}>
+            导出日志
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
 
       {/* 主机密钥确认对话框 */}
       <HostKeyConfirmDialog
