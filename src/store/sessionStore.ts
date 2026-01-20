@@ -63,6 +63,8 @@ export const useSessionStore = create<SessionStore>()(
           rows: config.rows,
           persist: false, // 标记为临时连接，不持久化
           strict_host_key_checking: config.strict_host_key_checking ?? true, // 默认启用严格验证
+          group: config.group || '默认分组', // 默认分组
+          keep_alive_interval: config.keepAliveInterval ?? 30, // 默认30秒
         };
 
         const sessionId = await invoke<string>('ssh_create_session', {
@@ -80,6 +82,7 @@ export const useSessionStore = create<SessionStore>()(
           port: config.port,
           username: config.username,
           status: 'disconnected',
+          group: config.group || '默认分组',
         };
 
         set((state) => {
@@ -107,6 +110,8 @@ export const useSessionStore = create<SessionStore>()(
           rows: config.rows,
           persist: true, // 标记为需要持久化保存
           strict_host_key_checking: config.strict_host_key_checking ?? true, // 默认启用严格验证
+          group: config.group || '默认分组', // 默认分组
+          keep_alive_interval: config.keepAliveInterval ?? 30, // 默认30秒
         };
 
         const sessionId = await invoke<string>('ssh_create_session', {
@@ -128,6 +133,7 @@ export const useSessionStore = create<SessionStore>()(
           port: config.port,
           username: config.username,
           status: 'disconnected',
+          group: config.group || '默认分组',
         };
 
         set((state) => ({
@@ -248,6 +254,7 @@ export const useSessionStore = create<SessionStore>()(
                   columns: config.columns,
                   rows: config.rows,
                   persist: true, // 从存储加载的会话都是持久化的
+                  group: config.group || '默认分组', // 添加分组字段
                 },
               });
             } catch (error) {

@@ -6,6 +6,7 @@ import { SessionCard } from '@/components/session/SessionCard';
 import { SessionToolbar } from '@/components/session/SessionToolbar';
 import { SaveSessionDialog } from '@/components/session/SaveSessionDialog';
 import { useSessionStore } from '@/store/sessionStore';
+import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
@@ -17,6 +18,7 @@ export function SessionManager() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sessions, loadSessions, loadSessionsFromStorage, saveSessions, createSession, isStorageLoaded } = useSessionStore();
+  const { config: terminalConfig } = useTerminalConfigStore();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
@@ -43,7 +45,10 @@ export function SessionManager() {
   };
 
   const handleSaveSession = async (config: SessionConfig) => {
-    await createSession(config);
+    await createSession({
+      ...config,
+      keepAliveInterval: terminalConfig.keepAliveInterval,
+    });
     await loadSessions();
   };
 
@@ -100,6 +105,24 @@ export function SessionManager() {
   const hasRecentSessions = sessions.some(s =>
     s.connectedAt && new Date(s.connectedAt) > new Date(Date.now() - ONE_DAY_MS)
   );
+
+  // 按分组分组会话
+  const getSessionsByGroup = () => {
+    const grouped: Record<string, typeof filteredSessions> = {};
+    
+    filteredSessions.forEach(session => {
+      const group = session.group || '默认分组';
+      if (!grouped[group]) {
+        grouped[group] = [];
+      }
+      grouped[group].push(session);
+    });
+    
+    return grouped;
+  };
+
+  const sessionsByGroup = getSessionsByGroup();
+  const groups = Object.keys(sessionsByGroup);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -169,11 +192,23 @@ export function SessionManager() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredSessions.map((session) => (
-                <SessionCard key={session.id} sessionId={session.id} />
-              ))}
-            </div>
+            // 按分组显示会话
+            groups.map(group => (
+              <div key={group} className="space-y-3">
+                <h3 className="text-lg font-semibold text-muted-foreground flex items-center gap-2">
+                  <span className="w-1 h-6 bg-primary rounded-full"></span>
+                  {group}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    ({sessionsByGroup[group].length})
+                  </span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {sessionsByGroup[group].map((session) => (
+                    <SessionCard key={session.id} sessionId={session.id} />
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </TabsContent>
 

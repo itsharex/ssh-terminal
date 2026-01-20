@@ -33,6 +33,12 @@ pub struct SavedSession {
     pub rows: Option<u16>,
     pub created_at: String,
     pub last_connected: Option<String>,
+    #[serde(default = "default_group")]
+    pub group: String,
+}
+
+fn default_group() -> String {
+    "默认分组".to_string()
 }
 
 /// 存储管理器
@@ -197,6 +203,7 @@ impl Storage {
             rows: session.rows,
             created_at: chrono::Utc::now().to_rfc3339(),
             last_connected: None,
+            group: session.group,
         })
     }
 
@@ -279,6 +286,8 @@ impl Storage {
             rows: saved.rows,
             persist: true, // 从存储加载的会话都是持久化的
             strict_host_key_checking: true, // 默认启用严格的主机密钥验证
+            group: saved.group,
+            keep_alive_interval: 30, // 默认30秒
         })
     }
 

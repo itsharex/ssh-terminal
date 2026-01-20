@@ -16,8 +16,10 @@ import { ModeToggle } from '@/components/mode-toggle';
 import { TerminalSettings } from '@/components/settings/TerminalSettings';
 import { soundManager, playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
+import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 
 export function Settings() {
+  const { config, setConfig } = useTerminalConfigStore();
   const [settings, setSettings] = useState({
     // 终端设置
     terminalFont: 'monospace',
@@ -35,7 +37,6 @@ export function Settings() {
 
     // 会话设置
     autoSaveSessions: true,
-    keepAliveInterval: 30,
   });
 
   const handleSwitchChange = (key: string, value: boolean) => {
@@ -142,36 +143,22 @@ export function Settings() {
         {/* 会话设置 */}
         <TabsContent value="session" className="space-y-6">
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="auto-save">自动保存会话</Label>
-                <p className="text-sm text-muted-foreground">
-                  自动保存会话配置到本地存储
-                </p>
-              </div>
-              <Switch
-                id="auto-save"
-                checked={settings.autoSaveSessions}
-                onCheckedChange={(checked) => handleSwitchChange('autoSaveSessions', checked)}
-              />
-            </div>
-
             <Separator />
 
             <div className="space-y-2">
               <Label htmlFor="keepalive">心跳间隔</Label>
               <p className="text-sm text-muted-foreground">
-                保持 SSH 连接活跃的间隔秒数: {settings.keepAliveInterval}s
+                保持 SSH 连接活跃的间隔秒数: {config.keepAliveInterval}s
               </p>
               <div className="flex gap-2 mt-2">
-                {[15, 30, 60, 120].map((value) => (
+                {[0, 15, 30, 60, 120].map((value) => (
                   <Button
                     key={value}
-                    variant={settings.keepAliveInterval === value ? 'default' : 'outline'}
+                    variant={config.keepAliveInterval === value ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSettings(prev => ({ ...prev, keepAliveInterval: value }))}
+                    onClick={() => setConfig({ keepAliveInterval: value })}
                   >
-                    {value}s
+                    {value === 0 ? '禁用' : `${value}s`}
                   </Button>
                 ))}
               </div>
@@ -187,6 +174,7 @@ export function Settings() {
               <p className="text-sm text-muted-foreground">
                 启用心跳功能可以防止长时间空闲导致 SSH 连接断开。
                 建议设置为 30-60 秒以平衡性能和连接稳定性。
+                设置为 0 可以禁用心跳功能。
               </p>
             </div>
           </div>

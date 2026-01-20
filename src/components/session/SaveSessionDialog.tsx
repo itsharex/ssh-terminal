@@ -33,6 +33,7 @@ interface SaveSessionDialogProps {
     privateKeyPath?: string;
     passphrase?: string;
     terminal_type?: string;
+    group?: string;
   }) => Promise<void>;
 }
 
@@ -48,6 +49,7 @@ export function SaveSessionDialog({
     host: '',
     port: '22',
     username: '',
+    group: '默认分组',
     authMethod: 'password',
     password: '',
     privateKeyPath: '',
@@ -106,6 +108,7 @@ export function SaveSessionDialog({
         privateKeyPath: formData.authMethod === 'publicKey' ? formData.privateKeyPath : undefined,
         passphrase: formData.authMethod === 'publicKey' ? formData.passphrase : undefined,
         terminal_type: formData.terminalType,
+        group: formData.group || '默认分组',
       });
 
       // 保存成功后关闭对话框并重置表单
@@ -163,6 +166,20 @@ export function SaveSessionDialog({
                 />
                 <p className="text-xs text-muted-foreground">
                   为此连接配置指定一个易记的名称
+                </p>
+              </div>
+
+              {/* 分组 */}
+              <div className="space-y-2">
+                <Label htmlFor="save-group">分组</Label>
+                <Input
+                  id="save-group"
+                  placeholder="例如: 生产环境、测试环境"
+                  value={formData.group}
+                  onChange={(e) => setFormData({ ...formData, group: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  将会话分组管理，方便查找（默认：默认分组）
                 </p>
               </div>
 

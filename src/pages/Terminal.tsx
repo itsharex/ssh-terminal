@@ -10,6 +10,7 @@ import { QuickConnectDialog } from '@/components/session/QuickConnectDialog';
 import { ConnectionStatusBadge } from '@/components/ssh/ConnectionStatusBadge';
 import { useSessionStore } from '@/store/sessionStore';
 import { useTerminalStore } from '@/store/terminalStore';
+import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
 
@@ -20,6 +21,7 @@ export function Terminal() {
   const [isLoading, setIsLoading] = useState(true);
   const { sessions, activeSessionId, loadSessions, loadSessionsFromStorage, addSession, isStorageLoaded } = useSessionStore();
   const { tabs, addTab, getActiveTab } = useTerminalStore();
+  const { config: terminalConfig } = useTerminalConfigStore();
 
   useEffect(() => {
     const initializeSessions = async () => {
@@ -69,6 +71,7 @@ export function Terminal() {
       password: config.password,
       privateKeyPath: config.privateKeyPath,
       passphrase: config.passphrase,
+      keepAliveInterval: terminalConfig.keepAliveInterval, // 使用设置的心跳间隔
     };
 
     // 添加临时会话并创建标签页

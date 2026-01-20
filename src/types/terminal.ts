@@ -38,4 +38,6 @@ export interface TerminalConfig {
   letterSpacing: number;
   padding: number;
   scrollback: number;
+  /** 心跳间隔（秒），0表示禁用（默认30秒） */
+  keepAliveInterval: number;
 }

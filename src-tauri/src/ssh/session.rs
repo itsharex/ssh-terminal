@@ -24,10 +24,24 @@ pub struct SessionConfig {
     /// 是否启用严格的主机密钥验证
     #[serde(default = "default_strict_host_key_checking")]
     pub strict_host_key_checking: bool,
+    /// 会话分组
+    #[serde(default = "default_group")]
+    pub group: String,
+    /// 心跳间隔（秒），0表示禁用
+    #[serde(default = "default_keep_alive_interval")]
+    pub keep_alive_interval: u64,
 }
 
 fn default_strict_host_key_checking() -> bool {
     true // 默认启用严格的主机密钥验证
+}
+
+fn default_group() -> String {
+    "默认分组".to_string()
+}
+
+fn default_keep_alive_interval() -> u64 {
+    30 // 默认30秒
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -54,6 +68,7 @@ pub struct SessionInfo {
     pub username: String,
     pub status: SessionStatus,
     pub connected_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub group: String,
 }
 
 #[derive(Clone)]
@@ -93,18 +108,34 @@ impl SSHSession {
     }
 
     pub async fn info(&self) -> SessionInfo {
-        let status = self.status().await;
-        let connected_at = *self.connected_at.lock().await;
-        SessionInfo {
-            id: self.id.clone(),
-            name: self.config.name.clone(),
-            host: self.config.host.clone(),
-            port: self.config.port,
-            username: self.config.username.clone(),
-            status,
-            connected_at,
+
+            let status = self.status().await;
+
+            let connected_at = *self.connected_at.lock().await;
+
+    
+
+            SessionInfo {
+
+                id: self.id.clone(),
+
+                name: self.config.name.clone(),
+
+                host: self.config.host.clone(),
+
+                port: self.config.port,
+
+                username: self.config.username.clone(),
+
+                status,
+
+                connected_at,
+
+                group: self.config.group.clone(),
+
+            }
+
         }
-    }
 
     pub async fn write(&self, data: Vec<u8>) -> Result<()> {
         let mut writer = self.pty_writer.lock().await;

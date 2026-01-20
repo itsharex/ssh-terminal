@@ -117,6 +117,14 @@ impl SSHManager {
             cmd.arg("-o"); cmd.arg("UserKnownHostsFile=/dev/null");
         }
 
+        // 设置心跳间隔，保持连接活跃
+        if session.config.keep_alive_interval > 0 {
+            cmd.arg("-o");
+            cmd.arg(format!("ServerAliveInterval={}", session.config.keep_alive_interval));
+            cmd.arg("-o");
+            cmd.arg("ServerAliveCountMax=3"); // 3次失败后断开连接
+        }
+
         cmd.arg(format!("{}@{}", session.config.username, session.config.host));
 
         // 设置终端类型

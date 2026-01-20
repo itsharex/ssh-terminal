@@ -17,6 +17,8 @@ export interface SessionConfig {
   strict_host_key_checking?: boolean;
   /** 会话分组（默认为"默认分组"） */
   group?: string;
+  /** 心跳间隔（秒），0表示禁用（默认30秒） */
+  keepAliveInterval?: number;
 }
 
 export type SessionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -46,4 +48,6 @@ export interface CreateSessionOptions {
   rows?: number;
   persist?: boolean;
   strict_host_key_checking?: boolean;
+  group?: string;
+  keepAliveInterval?: number;
 }
