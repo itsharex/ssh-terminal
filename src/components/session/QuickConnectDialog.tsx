@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Zap } from 'lucide-react';
+import { playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 interface QuickConnectDialogProps {
   open: boolean;
@@ -55,14 +57,17 @@ export function QuickConnectDialog({
 
     // 基础验证
     if (!formData.host || !formData.username) {
+      playSound(SoundEffect.ERROR);
       return;
     }
 
     if (formData.authMethod === 'password' && !formData.password) {
+      playSound(SoundEffect.ERROR);
       return;
     }
 
     if (formData.authMethod === 'publicKey' && !formData.privateKeyPath) {
+      playSound(SoundEffect.ERROR);
       return;
     }
 
@@ -80,6 +85,7 @@ export function QuickConnectDialog({
 
       // 连接成功后关闭对话框
       onOpenChange(false);
+      playSound(SoundEffect.BUTTON_CLICK);
 
       // 重置表单
       setFormData({
@@ -92,6 +98,7 @@ export function QuickConnectDialog({
         passphrase: '',
       });
     } catch (error) {
+      playSound(SoundEffect.ERROR);
       console.error('Failed to connect:', error);
     } finally {
       setLoading(false);

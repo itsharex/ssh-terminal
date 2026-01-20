@@ -53,10 +53,12 @@ impl SSHManager {
     }
 
     pub async fn delete_session(&self, id: &str) -> Result<()> {
+        println!("正在删除会话: {}", id);
         let mut sessions = self.sessions.write().await;
-        sessions
+        let removed = sessions
             .remove(id)
             .ok_or_else(|| SSHError::SessionNotFound(id.to_string()))?;
+        println!("会话删除成功: {} ({})", id, removed.config.name);
         Ok(())
     }
 

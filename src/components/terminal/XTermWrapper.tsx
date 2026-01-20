@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { WebglAddon } from '@xterm/addon-webgl';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import '@xterm/xterm/css/xterm.css';
 
 interface XTermWrapperProps {
@@ -16,8 +18,15 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalRefInstance = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const webglAddonRef = useRef<WebglAddon | null>(null);
   const isInitializedRef = useRef(false);
+  const [isReady, setIsReady] = useState(false);
 
+  // 从 store 获取配置
+  const { config, getCurrentTheme } = useTerminalConfigStore();
+  const theme = getCurrentTheme();
+
+  // 初始化终端（只执行一次）
   useEffect(() => {
     if (!terminalRef.current || isInitializedRef.current) return;
 
@@ -25,31 +34,39 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
 
     // 初始化终端
     const terminal = new Terminal({
-      cursorBlink: true,
-      fontSize: 14,
-      fontFamily: 'Consolas, "Courier New", monospace',
+      cursorBlink: config.cursorBlink,
+      cursorStyle: config.cursorStyle,
+      fontSize: config.fontSize,
+      fontFamily: config.fontFamily,
+      fontWeight: config.fontWeight,
+      lineHeight: config.lineHeight,
+      letterSpacing: config.letterSpacing,
+      scrollback: config.scrollback,
       theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-        black: '#000000',
-        red: '#cd3131',
-        green: '#0dbc79',
-        yellow: '#e5e510',
-        blue: '#2472c8',
-        magenta: '#bc3fbc',
-        cyan: '#11a8cd',
-        white: '#e5e5e5',
-        brightBlack: '#666666',
-        brightRed: '#f14c4c',
-        brightGreen: '#23d18b',
-        brightYellow: '#f5f543',
-        brightBlue: '#3b8eea',
-        brightMagenta: '#d670d6',
-        brightCyan: '#29b8db',
-        brightWhite: '#ffffff',
+        foreground: theme.foreground,
+        background: theme.background,
+        cursor: theme.cursor,
+        cursorAccent: theme.cursorAccent,
+        selectionBackground: theme.selectionBackground,
+        black: theme.black,
+        red: theme.red,
+        green: theme.green,
+        yellow: theme.yellow,
+        blue: theme.blue,
+        magenta: theme.magenta,
+        cyan: theme.cyan,
+        white: theme.white,
+        brightBlack: theme.brightBlack,
+        brightRed: theme.brightRed,
+        brightGreen: theme.brightGreen,
+        brightYellow: theme.brightYellow,
+        brightBlue: theme.brightBlue,
+        brightMagenta: theme.brightMagenta,
+        brightCyan: theme.brightCyan,
+        brightWhite: theme.brightWhite,
       },
       allowProposedApi: true,
+      allowTransparency: false,
     });
 
     const fitAddon = new FitAddon();
@@ -59,8 +76,26 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
     terminal.loadAddon(webLinksAddon);
     terminal.open(terminalRef.current);
 
+    // 尝试加载 WebGL 渲染器
+    try {
+      const webglAddon = new WebglAddon();
+      webglAddon.onContextLoss(() => {
+        webglAddonRef.current?.dispose();
+        if (terminalRefInstance.current) {
+          terminalRefInstance.current.loadAddon(new WebglAddon());
+        }
+      });
+      terminal.loadAddon(webglAddon);
+      webglAddonRef.current = webglAddon;
+    } catch (e) {
+      console.warn('WebGL addon failed to load, falling back to canvas renderer:', e);
+    }
+
     terminalRefInstance.current = terminal;
     fitAddonRef.current = fitAddon;
+
+    // 标记终端已准备好
+    setIsReady(true);
 
     // 处理用户输入
     terminal.onData((data) => {
@@ -80,10 +115,8 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
         unlisten = await listen<number[]>(
           eventName,
           (event) => {
-            if (terminal._core._renderService) {
-              const data = new Uint8Array(event.payload);
-              terminal.write(data);
-            }
+            const data = new Uint8Array(event.payload);
+            terminal.write(data);
           }
         );
       } catch (error) {
@@ -93,13 +126,17 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
 
     setupOutputListener();
 
-    // 窗口大小调整
+    // 窗口大小调整（防抖处理）
+    let resizeTimer: NodeJS.Timeout | null = null;
     const handleResize = () => {
-      if (fitAddonRef.current && terminalRefInstance.current && terminalRefInstance.current._core) {
-        fitAddonRef.current.fit();
-        const { cols, rows } = terminalRefInstance.current;
-        invoke('ssh_resize_pty', { sessionId, rows, cols }).catch(console.error);
-      }
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (fitAddonRef.current && terminalRefInstance.current) {
+          fitAddonRef.current.fit();
+          const { cols, rows } = terminalRefInstance.current;
+          invoke('ssh_resize_pty', { sessionId, rows, cols }).catch(console.error);
+        }
+      }, 100);
     };
 
     window.addEventListener('resize', handleResize);
@@ -108,11 +145,17 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
     setTimeout(handleResize, 100);
 
     return () => {
+      setIsReady(false);
       isInitializedRef.current = false;
+      if (resizeTimer) clearTimeout(resizeTimer);
       if (unlisten) {
         unlisten();
       }
       window.removeEventListener('resize', handleResize);
+      if (webglAddonRef.current) {
+        webglAddonRef.current.dispose();
+        webglAddonRef.current = null;
+      }
       if (terminalRefInstance.current) {
         terminalRefInstance.current.dispose();
         terminalRefInstance.current = null;
@@ -123,11 +166,62 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
     };
   }, [sessionId]);
 
+  // 动态更新主题和配置
+  useEffect(() => {
+    if (!terminalRefInstance.current || !isReady) return;
+
+    const terminal = terminalRefInstance.current;
+
+    // 更新终端主题
+    terminal.options.theme = {
+      foreground: theme.foreground,
+      background: theme.background,
+      cursor: theme.cursor,
+      cursorAccent: theme.cursorAccent,
+      selectionBackground: theme.selectionBackground,
+      black: theme.black,
+      red: theme.red,
+      green: theme.green,
+      yellow: theme.yellow,
+      blue: theme.blue,
+      magenta: theme.magenta,
+      cyan: theme.cyan,
+      white: theme.white,
+      brightBlack: theme.brightBlack,
+      brightRed: theme.brightRed,
+      brightGreen: theme.brightGreen,
+      brightYellow: theme.brightYellow,
+      brightBlue: theme.brightBlue,
+      brightMagenta: theme.brightMagenta,
+      brightCyan: theme.brightCyan,
+      brightWhite: theme.brightWhite,
+    };
+
+    // 更新其他配置
+    terminal.options.cursorBlink = config.cursorBlink;
+    terminal.options.cursorStyle = config.cursorStyle;
+    terminal.options.fontSize = config.fontSize;
+    terminal.options.fontFamily = config.fontFamily;
+    terminal.options.fontWeight = config.fontWeight;
+    terminal.options.lineHeight = config.lineHeight;
+    terminal.options.letterSpacing = config.letterSpacing;
+
+    // 刷新终端以应用更改
+    try {
+      terminal.refresh(0, terminal.rows - 1);
+    } catch (e) {
+      // 忽略刷新错误，主题已通过 options 更新
+    }
+  }, [config, theme, isReady]);
+
+  // 使用动态样式，支持 padding
   return (
     <div
       ref={terminalRef}
-      className="w-full h-full bg-background"
-      style={{ padding: '8px' }}
+      className="w-full h-full"
+      style={{
+        padding: `${config.padding}px`,
+      }}
     />
   );
 }

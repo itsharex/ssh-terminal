@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Terminal as TerminalIcon, Plus, FolderOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { TabBar } from '@/components/terminal/TabBar';
@@ -9,24 +10,44 @@ import { QuickConnectDialog } from '@/components/session/QuickConnectDialog';
 import { ConnectionStatusBadge } from '@/components/ssh/ConnectionStatusBadge';
 import { useSessionStore } from '@/store/sessionStore';
 import { useTerminalStore } from '@/store/terminalStore';
+import { playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 export function Terminal() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [quickConnectOpen, setQuickConnectOpen] = useState(false);
-  const { sessions, activeSessionId, loadSessions, loadSessionsFromStorage, addSession } = useSessionStore();
+  const [isLoading, setIsLoading] = useState(true);
+  const { sessions, activeSessionId, loadSessions, loadSessionsFromStorage, addSession, isStorageLoaded } = useSessionStore();
   const { tabs, addTab, getActiveTab } = useTerminalStore();
 
   useEffect(() => {
-    // 先从存储加载已保存的会话，然后加载当前内存中的会话
-    loadSessionsFromStorage();
-    loadSessions();
-  }, [loadSessions, loadSessionsFromStorage]);
+    const initializeSessions = async () => {
+      setIsLoading(true);
+      try {
+        // 只在首次加载时从存储加载配置
+        if (!isStorageLoaded) {
+          await loadSessionsFromStorage();
+        }
+        // 每次切换回终端页面时，重新从后端获取最新状态
+        await loadSessions();
+      } catch (error) {
+        console.error('Failed to load sessions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeSessions();
+  }, [location.pathname]); // 只依赖路由变化
 
   const handleNewTab = () => {
+    playSound(SoundEffect.BUTTON_CLICK);
     setQuickConnectOpen(true);
   };
 
   const handleSessionManager = () => {
+    playSound(SoundEffect.BUTTON_CLICK);
     navigate('/sessions');
   };
 
@@ -52,6 +73,7 @@ export function Terminal() {
 
     // 添加临时会话并创建标签页
     const sessionId = await addSession(sessionConfig);
+    playSound(SoundEffect.TAB_OPEN);
     addTab(sessionId, sessionConfig.name);
   };
 
@@ -85,8 +107,9 @@ export function Terminal() {
         {activeSession && (
           <div className="flex items-center gap-3 text-sm">
             <ConnectionStatusBadge status={activeSession.status} />
-            <span className="text-muted-foreground font-mono">
-              {activeSession.username}@{activeSession.host}:{activeSession.port}
+            <span className="font-medium">{activeSession.name}</span>
+            <span className="text-muted-foreground font-mono text-xs">
+              ({activeSession.username}@{activeSession.host}:{activeSession.port})
             </span>
           </div>
         )}
@@ -94,7 +117,13 @@ export function Terminal() {
 
       {/* 终端内容区域 */}
       <div className="flex-1 overflow-hidden">
-        {tabs.length === 0 ? (
+        {isLoading ? (
+          // 加载状态
+          <div className="flex flex-col items-center justify-center h-full bg-muted/10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+            <p className="text-sm text-muted-foreground">正在加载会话...</p>
+          </div>
+        ) : tabs.length === 0 ? (
           // 空状态
           <div className="flex flex-col items-center justify-center h-full bg-muted/10">
             <div className="flex flex-col items-center text-center max-w-md px-6">

@@ -7,6 +7,8 @@ import type { SessionInfo } from '@/types/ssh';
 import { useSessionStore } from '@/store/sessionStore';
 import { useTerminalStore } from '@/store/terminalStore';
 import { useNavigate } from 'react-router-dom';
+import { playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 interface SessionCardProps {
   sessionId: string;
@@ -42,6 +44,7 @@ export function SessionCard({ sessionId }: SessionCardProps) {
     if (session.status === 'connected') {
       // 已连接，添加标签页并跳转到终端
       const tabId = `tab-${session.id}`;
+      playSound(SoundEffect.TAB_OPEN);
       addTab(session.id, session.name || `${session.username}@${session.host}`);
       setActiveSession(session.id);
       navigate('/terminal');
@@ -50,12 +53,15 @@ export function SessionCard({ sessionId }: SessionCardProps) {
       setConnecting(true);
       try {
         await connectSession(session.id);
+        playSound(SoundEffect.SUCCESS);
         // 连接成功后添加标签页并跳转
         const tabId = `tab-${session.id}`;
+        playSound(SoundEffect.TAB_OPEN);
         addTab(session.id, session.name || `${session.username}@${session.host}`);
         setActiveSession(session.id);
         navigate('/terminal');
       } catch (error) {
+        playSound(SoundEffect.ERROR);
         console.error('Failed to connect:', error);
       } finally {
         setConnecting(false);
@@ -66,7 +72,9 @@ export function SessionCard({ sessionId }: SessionCardProps) {
   const handleDisconnect = async () => {
     try {
       await disconnectSession(session.id);
+      playSound(SoundEffect.SUCCESS);
     } catch (error) {
+      playSound(SoundEffect.ERROR);
       console.error('Failed to disconnect:', error);
     }
   };
@@ -74,9 +82,14 @@ export function SessionCard({ sessionId }: SessionCardProps) {
   const handleDelete = async () => {
     if (confirm(`确定要删除会话 "${session.name}" 吗？`)) {
       try {
+        console.log(`正在删除会话: ${session.name} (${session.id})`);
         await deleteSession(session.id);
+        playSound(SoundEffect.SUCCESS);
+        console.log(`会话删除成功: ${session.name}`);
       } catch (error) {
-        console.error('Failed to delete session:', error);
+        playSound(SoundEffect.ERROR);
+        console.error('删除会话失败:', error);
+        alert(`删除失败: ${error}`);
       }
     }
   };

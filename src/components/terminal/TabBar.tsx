@@ -1,6 +1,8 @@
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTerminalStore } from '@/store/terminalStore';
+import { playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 export function TabBar() {
   const { tabs, setActiveTab, removeTab } = useTerminalStore();
@@ -24,7 +26,12 @@ export function TabBar() {
                 : 'border-transparent text-muted-foreground hover:bg-muted/40'
             }
           `}
-          onClick={() => setActiveTab(tab.id)}
+          onClick={() => {
+            if (!tab.isActive) {
+              playSound(SoundEffect.TAB_SWITCH);
+            }
+            setActiveTab(tab.id);
+          }}
         >
           <span className="text-sm font-medium truncate flex-1">
             {tab.title}
@@ -35,6 +42,7 @@ export function TabBar() {
             className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation();
+              playSound(SoundEffect.TAB_CLOSE);
               removeTab(tab.id);
             }}
           >

@@ -13,6 +13,9 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ModeToggle } from '@/components/mode-toggle';
+import { TerminalSettings } from '@/components/settings/TerminalSettings';
+import { soundManager, playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 export function Settings() {
   const [settings, setSettings] = useState({
@@ -28,7 +31,7 @@ export function Settings() {
 
     // 通知设置
     notifications: true,
-    soundEffects: false,
+    soundEffects: soundManager.isEnabled(),
 
     // 会话设置
     autoSaveSessions: true,
@@ -37,6 +40,17 @@ export function Settings() {
 
   const handleSwitchChange = (key: string, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+
+    // 如果是音效设置，更新音效管理器
+    if (key === 'soundEffects') {
+      soundManager.setEnabled(value);
+      if (value) {
+        playSound(SoundEffect.SUCCESS);
+      }
+    } else if (value) {
+      // 其他开关打开时播放轻微点击音
+      playSound(SoundEffect.TOGGLE_SWITCH);
+    }
   };
 
   return (
@@ -122,79 +136,7 @@ export function Settings() {
 
         {/* 终端设置 */}
         <TabsContent value="terminal" className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="cursor-blink">光标闪烁</Label>
-                <p className="text-sm text-muted-foreground">
-                  启用终端光标闪烁动画
-                </p>
-              </div>
-              <Switch
-                id="cursor-blink"
-                checked={settings.cursorBlink}
-                onCheckedChange={(checked) => handleSwitchChange('cursorBlink', checked)}
-              />
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="copy-on-select">选择即复制</Label>
-                <p className="text-sm text-muted-foreground">
-                  自动复制选中的文本到剪贴板
-                </p>
-              </div>
-              <Switch
-                id="copy-on-select"
-                checked={settings.copyOnSelect}
-                onCheckedChange={(checked) => handleSwitchChange('copyOnSelect', checked)}
-              />
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <Label htmlFor="scrollback">滚动缓冲区大小</Label>
-              <p className="text-sm text-muted-foreground">
-                终端保留的历史行数: {settings.terminalScrollback}
-              </p>
-              <div className="flex gap-2 mt-2">
-                {[500, 1000, 2000, 5000].map((value) => (
-                  <Button
-                    key={value}
-                    variant={settings.terminalScrollback === value ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSettings(prev => ({ ...prev, terminalScrollback: value }))}
-                  >
-                    {value}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <Label>终端字体大小</Label>
-              <p className="text-sm text-muted-foreground">
-                当前大小: {settings.terminalFontSize}px
-              </p>
-              <div className="flex gap-2 mt-2">
-                {[12, 14, 16, 18].map((value) => (
-                  <Button
-                    key={value}
-                    variant={settings.terminalFontSize === value ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSettings(prev => ({ ...prev, terminalFontSize: value }))}
-                  >
-                    {value}px
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <TerminalSettings />
         </TabsContent>
 
         {/* 会话设置 */}

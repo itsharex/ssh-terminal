@@ -22,6 +22,7 @@ pub fn run() {
             // 初始化SSH管理器，传入AppHandle
             let ssh_manager = Arc::new(SSHManager::new(app.handle().clone()));
             app.manage(ssh_manager as SSHManagerState);
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -43,6 +44,7 @@ pub fn run() {
             commands::storage_save_sessions,
             commands::storage_load_sessions,
             commands::storage_clear,
+            commands::storage_delete_session,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

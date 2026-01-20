@@ -7,10 +7,14 @@ import { SessionToolbar } from '@/components/session/SessionToolbar';
 import { SaveSessionDialog } from '@/components/session/SaveSessionDialog';
 import { useSessionStore } from '@/store/sessionStore';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 export function SessionManager() {
   const navigate = useNavigate();
-  const { sessions, loadSessions, loadSessionsFromStorage, saveSessions, createSession } = useSessionStore();
+  const location = useLocation();
+  const { sessions, loadSessions, loadSessionsFromStorage, saveSessions, createSession, isStorageLoaded } = useSessionStore();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
@@ -18,12 +22,20 @@ export function SessionManager() {
   const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
-    // 先从存储加载已保存的会话，然后加载当前内存中的会话
-    loadSessionsFromStorage();
-    loadSessions();
-  }, [loadSessions, loadSessionsFromStorage]);
+    const initializeSessions = async () => {
+      // 只在首次加载时从存储加载配置
+      if (!isStorageLoaded) {
+        await loadSessionsFromStorage();
+      }
+      // 每次切换到会话管理页面时，重新从后端获取最新状态
+      await loadSessions();
+    };
+
+    initializeSessions();
+  }, [location.pathname]); // 只依赖路由变化
 
   const handleNewSession = () => {
+    playSound(SoundEffect.BUTTON_CLICK);
     setSaveDialogOpen(true);
   };
 
@@ -36,7 +48,9 @@ export function SessionManager() {
     setSaving(true);
     try {
       await saveSessions();
+      playSound(SoundEffect.SUCCESS);
     } catch (error) {
+      playSound(SoundEffect.ERROR);
       console.error('Failed to save sessions:', error);
     } finally {
       setSaving(false);
@@ -44,6 +58,7 @@ export function SessionManager() {
   };
 
   const handleConnect = (sessionId: string) => {
+    playSound(SoundEffect.BUTTON_CLICK);
     navigate('/terminal');
   };
 

@@ -12,11 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
-        "width": 800,
-        "height": 600,
-        "minWidth": 600,
-        "minHeight": 500
+        "title": "SSH Terminal",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "transparent": false,
+        "decorations": true
       }
     ],
     "security": {

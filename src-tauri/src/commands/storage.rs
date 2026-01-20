@@ -47,3 +47,10 @@ pub async fn storage_clear() -> std::result::Result<(), String> {
     storage.clear().map_err(|e| e.to_string())?;
     Ok(())
 }
+
+/// 从存储中删除单个会话配置
+#[tauri::command]
+pub async fn storage_delete_session(session_name: String) -> std::result::Result<bool, String> {
+    let storage = Storage::new().map_err(|e| e.to_string())?;
+    storage.delete_session(&session_name).map_err(|e| e.to_string())
+}
