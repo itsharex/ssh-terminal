@@ -157,10 +157,6 @@
 
   body {
     @apply bg-background text-foreground;
-  }
-
-  /* 基础字体和排版设置 */
-  body {
     font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
     font-size: 16px;
     line-height: 24px;
@@ -170,10 +166,12 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
-  
-  /* 链接、标题和输入框样式 - 项目中使用Tailwind CSS组件，这些样式可以删除 */
-  
+
   /* 滚动条优化 - 跟随主题切换 */
   /* Webkit浏览器 (Chrome, Safari, Edge) */
   ::-webkit-scrollbar {

@@ -44,7 +44,9 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   },
 
   removeTab: (tabId) => {
-    const isActive = get().tabs.find((t) => t.id === tabId)?.isActive;
+    const removedTab = get().tabs.find((t) => t.id === tabId);
+    const isActive = removedTab?.isActive;
+
     set((state) => {
       const newTabs = state.tabs.filter((t) => t.id !== tabId);
 
@@ -55,6 +57,19 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
       return { tabs: newTabs };
     });
+
+    // 检查该会话是否还有其他标签页
+    if (removedTab) {
+      const remainingTabs = get().getTabsBySession(removedTab.sessionId);
+      if (remainingTabs.length === 0) {
+        // 没有其他标签页了，触发断开连接事件
+        // 通过自定义事件通知Terminal页面
+        const event = new CustomEvent('tab-closed-for-session', {
+          detail: { sessionId: removedTab.sessionId }
+        });
+        window.dispatchEvent(event);
+      }
+    }
   },
 
   setActiveTab: (tabId) => {

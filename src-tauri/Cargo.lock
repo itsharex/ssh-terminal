@@ -3755,6 +3755,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "ssh-terminal"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "argon2",
+ "base64 0.21.7",
+ "chrono",
+ "dirs 5.0.1",
+ "portable-pty",
+ "rand 0.8.5",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "window-vibrancy 0.5.3",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3976,32 +4002,6 @@ dependencies = [
  "webview2-com",
  "window-vibrancy 0.6.0",
  "windows",
-]
-
-[[package]]
-name = "tauri-app"
-version = "0.1.0"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "argon2",
- "base64 0.21.7",
- "chrono",
- "dirs 5.0.1",
- "portable-pty",
- "rand 0.8.5",
- "secrecy",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "window-vibrancy 0.5.3",
 ]
 
 [[package]]

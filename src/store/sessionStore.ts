@@ -5,25 +5,15 @@ import type { SessionConfig, SessionInfo } from '@/types/ssh';
 
 // 将前端扁平化的认证配置转换为后端 AuthMethod 枚举格式
 function convertAuthMethod(config: SessionConfig) {
-  if (config.auth_method === 'password') {
-    return {
-      Password: {
-        password: config.password || '',
-      },
-    };
+  if ('Password' in config.auth_method) {
+    return config.auth_method;
   } else {
-    return {
-      PublicKey: {
-        private_key_path: config.privateKeyPath || '',
-        passphrase: config.passphrase,
-      },
-    };
+    return config.auth_method;
   }
 }
 
 interface SessionStore {
   sessions: SessionInfo[];
-  activeSessionId: string | null;
   isStorageLoaded: boolean; // 标记是否已从存储加载
 
   // 操作
@@ -40,14 +30,12 @@ interface SessionStore {
   // 查询
   getSession: (id: string) => SessionInfo | undefined;
   getActiveSession: () => SessionInfo | undefined;
-  setActiveSession: (id: string) => void;
 }
 
 export const useSessionStore = create<SessionStore>()(
   persist(
     (set, get) => ({
       sessions: [],
-      activeSessionId: null,
       isStorageLoaded: false,
 
       addSession: async (config) => {
@@ -144,7 +132,32 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       updateSession: async (id, config) => {
-        // TODO: 实现更新会话配置
+        // 更新会话配置
+        await invoke('ssh_update_session', { 
+          sessionId: id, 
+          updates: {
+            name: config.name,
+            host: config.host,
+            port: config.port,
+            username: config.username,
+            group: config.group || '默认分组',
+            auth_method: config.auth_method,
+            terminal_type: config.terminal_type,
+            columns: config.columns,
+            rows: config.rows,
+            persist: true,
+            strict_host_key_checking: config.strict_host_key_checking ?? true,
+            keep_alive_interval: config.keepAliveInterval ?? 30,
+          }
+        });
+
+        // 保存到持久化存储
+        try {
+          await invoke('storage_save_sessions');
+        } catch (error) {
+          console.error('Failed to save sessions to storage:', error);
+        }
+
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === id ? { ...s, ...config } : s
@@ -156,7 +169,6 @@ export const useSessionStore = create<SessionStore>()(
         await invoke('ssh_delete_session', { sessionId: id });
         set((state) => ({
           sessions: state.sessions.filter((s) => s.id !== id),
-          activeSessionId: state.activeSessionId === id ? null : state.activeSessionId,
         }));
       },
 
@@ -287,20 +299,15 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       getActiveSession: () => {
-        const { activeSessionId, sessions } = get();
-        return activeSessionId ? sessions.find((s) => s.id === activeSessionId) : undefined;
-      },
-
-      setActiveSession: (id) => {
-        set({ activeSessionId: id });
+        const { sessions } = get();
+        // 返回第一个已连接的会话，如果没有则返回undefined
+        return sessions.find((s) => s.status === 'connected');
       },
     }),
     {
       name: 'ssh-sessions-storage',
-      partialize: (state) => ({
-        // 只持久化 activeSessionId，不持久化 sessions
-        // sessions 应该始终从后端获取
-        activeSessionId: state.activeSessionId,
+      partialize: () => ({
+        // 不持久化任何字段，sessions 应该始终从后端获取
       }),
     }
   )

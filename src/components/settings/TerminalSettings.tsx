@@ -83,7 +83,6 @@ function SliderControl({ label, value, unit, min, max, step, onChange }: SliderC
 
 export function TerminalSettings() {
   const { config, setConfig, setTheme, resetConfig } = useTerminalConfigStore();
-  const currentTheme = TERMINAL_THEMES[config.themeId];
 
   return (
     <div className="space-y-6">
@@ -202,6 +201,18 @@ export function TerminalSettings() {
               checked={config.cursorBlink}
               onCheckedChange={(cursorBlink) => {
                 setConfig({ cursorBlink });
+                playSound(SoundEffect.TOGGLE_SWITCH);
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="copy-on-select">选择时复制</Label>
+            <Switch
+              id="copy-on-select"
+              checked={config.copyOnSelect}
+              onCheckedChange={(copyOnSelect) => {
+                setConfig({ copyOnSelect });
                 playSound(SoundEffect.TOGGLE_SWITCH);
               }}
             />

@@ -8,12 +8,6 @@ use ssh::manager::SSHManager;
 use std::sync::Arc;
 use tauri::Manager;
 
-// 保留原有的greet命令
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -23,11 +17,15 @@ pub fn run() {
             let ssh_manager = Arc::new(SSHManager::new(app.handle().clone()));
             app.manage(ssh_manager as SSHManagerState);
 
+            #[cfg(debug_assertions)]
+            {
+                let window = app.get_webview_window("main").unwrap();
+                window.open_devtools();
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // 原有命令
-            greet,
             // SSH会话管理命令
             commands::ssh_create_session,
             commands::ssh_connect,
@@ -35,6 +33,7 @@ pub fn run() {
             commands::ssh_list_sessions,
             commands::ssh_get_session,
             commands::ssh_delete_session,
+            commands::ssh_update_session,
             // SSH终端命令
             commands::ssh_write,
             commands::ssh_resize_pty,
@@ -45,6 +44,8 @@ pub fn run() {
             commands::storage_load_sessions,
             commands::storage_clear,
             commands::storage_delete_session,
+            commands::storage_save_app_config,
+            commands::storage_load_app_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

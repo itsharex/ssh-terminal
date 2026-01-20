@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Terminal, Trash2, Play } from 'lucide-react';
+import { Terminal, Trash2, Play, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConnectionStatusBadge } from '@/components/ssh/ConnectionStatusBadge';
@@ -12,12 +12,13 @@ import { SoundEffect } from '@/lib/sounds';
 
 interface SessionCardProps {
   sessionId: string;
+  onEdit?: (session: SessionInfo) => void;
 }
 
-export function SessionCard({ sessionId }: SessionCardProps) {
+export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
   const [connecting, setConnecting] = useState(false);
   const navigate = useNavigate();
-  const { connectSession, disconnectSession, deleteSession, setActiveSession, sessions } = useSessionStore();
+  const { connectSession, disconnectSession, deleteSession, sessions } = useSessionStore();
   const { addTab } = useTerminalStore();
 
   // 从 store 中动态获取会话信息
@@ -30,10 +31,8 @@ export function SessionCard({ sessionId }: SessionCardProps) {
   const handleConnect = async () => {
     if (session.status === 'connected') {
       // 已连接，添加标签页并跳转到终端
-      const tabId = `tab-${session.id}`;
       playSound(SoundEffect.TAB_OPEN);
       addTab(session.id, session.name || `${session.username}@${session.host}`);
-      setActiveSession(session.id);
       navigate('/terminal');
     } else {
       // 未连接，先连接
@@ -42,10 +41,8 @@ export function SessionCard({ sessionId }: SessionCardProps) {
         await connectSession(session.id);
         playSound(SoundEffect.SUCCESS);
         // 连接成功后添加标签页并跳转
-        const tabId = `tab-${session.id}`;
         playSound(SoundEffect.TAB_OPEN);
         addTab(session.id, session.name || `${session.username}@${session.host}`);
-        setActiveSession(session.id);
         navigate('/terminal');
       } catch (error) {
         playSound(SoundEffect.ERROR);
@@ -79,6 +76,11 @@ export function SessionCard({ sessionId }: SessionCardProps) {
         alert(`删除失败: ${error}`);
       }
     }
+  };
+
+  const handleEdit = () => {
+    playSound(SoundEffect.BUTTON_CLICK);
+    onEdit?.(session);
   };
 
   return (
@@ -125,25 +127,38 @@ export function SessionCard({ sessionId }: SessionCardProps) {
             </Button>
           </>
         ) : (
-          <Button
-            size="sm"
-            onClick={handleConnect}
-            disabled={connecting}
-            className="flex-1"
-          >
-            {connecting ? (
-              <>连接中...</>
-            ) : (
-              <>
-                <Play className="h-4 w-4 mr-1" />
-                连接
-              </>
-            )}
-          </Button>
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleEdit}
+            >
+              <Edit className="h-4 w-4 mr-1" />
+              编辑
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConnect}
+              disabled={connecting}
+              className="flex-1"
+            >
+              {connecting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                  连接中
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-1" />
+                  连接
+                </>
+              )}
+            </Button>
+          </>
         )}
         <Button
           size="sm"
-          variant="ghost"
+          variant="destructive"
           onClick={handleDelete}
         >
           <Trash2 className="h-4 w-4" />

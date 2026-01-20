@@ -1,48 +1,76 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { TerminalConfig, TerminalTheme } from '@/types/terminal';
 import { DEFAULT_TERMINAL_CONFIG, TERMINAL_THEMES } from '@/config/themes';
+import { invoke } from '@tauri-apps/api/core';
 
 interface TerminalConfigStore {
   config: TerminalConfig;
+  isLoading: boolean;
 
   // 操作
-  setConfig: (config: Partial<TerminalConfig>) => void;
-  setTheme: (themeId: string) => void;
-  resetConfig: () => void;
+  setConfig: (config: Partial<TerminalConfig>) => Promise<void>;
+  setTheme: (themeId: string) => Promise<void>;
+  resetConfig: () => Promise<void>;
+  loadConfig: () => Promise<void>;
 
   // 查询
   getCurrentTheme: () => TerminalTheme;
 }
 
-export const useTerminalConfigStore = create<TerminalConfigStore>()(
-  persist(
-    (set, get) => ({
+export const useTerminalConfigStore = create<TerminalConfigStore>((set, get) => ({
+  config: DEFAULT_TERMINAL_CONFIG,
+  isLoading: false,
+
+  setConfig: async (partialConfig) => {
+    const newConfig = { ...get().config, ...partialConfig };
+    set({ config: newConfig });
+    await invoke('storage_save_app_config', {
+      config: {
+        themeId: newConfig.themeId,
+        fontSize: newConfig.fontSize,
+        fontFamily: newConfig.fontFamily,
+        fontWeight: newConfig.fontWeight,
+        lineHeight: newConfig.lineHeight,
+        cursorStyle: newConfig.cursorStyle,
+        cursorBlink: newConfig.cursorBlink,
+        letterSpacing: newConfig.letterSpacing,
+        padding: newConfig.padding,
+        scrollback: newConfig.scrollback,
+        keepAliveInterval: newConfig.keepAliveInterval,
+        copyOnSelect: newConfig.copyOnSelect,
+        notificationsEnabled: newConfig.notificationsEnabled,
+        soundEffectsEnabled: newConfig.soundEffectsEnabled,
+      },
+    });
+  },
+
+  setTheme: async (themeId) => {
+    await get().setConfig({ themeId });
+  },
+
+  resetConfig: async () => {
+    await invoke('storage_save_app_config', {
       config: DEFAULT_TERMINAL_CONFIG,
+    });
+    set({ config: DEFAULT_TERMINAL_CONFIG });
+  },
 
-      setConfig: (partialConfig) => {
-        set((state) => ({
-          config: { ...state.config, ...partialConfig },
-        }));
-      },
-
-      setTheme: (themeId) => {
-        set((state) => ({
-          config: { ...state.config, themeId },
-        }));
-      },
-
-      resetConfig: () => {
-        set({ config: DEFAULT_TERMINAL_CONFIG });
-      },
-
-      getCurrentTheme: () => {
-        const { config } = get();
-        return TERMINAL_THEMES[config.themeId] || TERMINAL_THEMES['one-dark'];
-      },
-    }),
-    {
-      name: 'terminal-config',
+  loadConfig: async () => {
+    set({ isLoading: true });
+    try {
+      const savedConfig = await invoke<TerminalConfig | null>('storage_load_app_config');
+      if (savedConfig) {
+        set({ config: savedConfig });
+      }
+    } catch (error) {
+      console.error('Failed to load config:', error);
+    } finally {
+      set({ isLoading: false });
     }
-  )
-);
+  },
+
+  getCurrentTheme: () => {
+    const { config } = get();
+    return TERMINAL_THEMES[config.themeId] || TERMINAL_THEMES['one-dark'];
+  },
+}));

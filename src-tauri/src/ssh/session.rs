@@ -108,34 +108,20 @@ impl SSHSession {
     }
 
     pub async fn info(&self) -> SessionInfo {
+        let status = self.status().await;
+        let connected_at = *self.connected_at.lock().await;
 
-            let status = self.status().await;
-
-            let connected_at = *self.connected_at.lock().await;
-
-    
-
-            SessionInfo {
-
-                id: self.id.clone(),
-
-                name: self.config.name.clone(),
-
-                host: self.config.host.clone(),
-
-                port: self.config.port,
-
-                username: self.config.username.clone(),
-
-                status,
-
-                connected_at,
-
-                group: self.config.group.clone(),
-
-            }
-
+        SessionInfo {
+            id: self.id.clone(),
+            name: self.config.name.clone(),
+            host: self.config.host.clone(),
+            port: self.config.port,
+            username: self.config.username.clone(),
+            status,
+            connected_at,
+            group: self.config.group.clone(),
         }
+    }
 
     pub async fn write(&self, data: Vec<u8>) -> Result<()> {
         let mut writer = self.pty_writer.lock().await;

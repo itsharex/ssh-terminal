@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Zap } from 'lucide-react';
 import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';

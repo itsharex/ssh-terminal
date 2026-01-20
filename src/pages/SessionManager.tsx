@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Plus, Save, FolderOpen } from 'lucide-react';
+import { Plus, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { SessionCard } from '@/components/session/SessionCard';
 import { SessionToolbar } from '@/components/session/SessionToolbar';
 import { SaveSessionDialog } from '@/components/session/SaveSessionDialog';
+import { EditSessionDialog } from '@/components/session/EditSessionDialog';
 import { useSessionStore } from '@/store/sessionStore';
 import { useTerminalConfigStore } from '@/store/terminalConfigStore';
+import type { SessionInfo, SessionConfig } from '@/types/ssh';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
@@ -17,10 +19,10 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export function SessionManager() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { sessions, loadSessions, loadSessionsFromStorage, saveSessions, createSession, isStorageLoaded } = useSessionStore();
+  const { sessions, loadSessions, loadSessionsFromStorage, createSession, isStorageLoaded } = useSessionStore();
   const { config: terminalConfig } = useTerminalConfigStore();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [editingSession, setEditingSession] = useState<SessionInfo | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('all');
@@ -52,22 +54,15 @@ export function SessionManager() {
     await loadSessions();
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await saveSessions();
-      playSound(SoundEffect.SUCCESS);
-    } catch (error) {
-      playSound(SoundEffect.ERROR);
-      console.error('Failed to save sessions:', error);
-    } finally {
-      setSaving(false);
-    }
+  const handleEditSession = (session: SessionInfo) => {
+    setEditingSession(session);
   };
 
-  const handleConnect = (sessionId: string) => {
-    playSound(SoundEffect.BUTTON_CLICK);
-    navigate('/terminal');
+  const handleUpdateSession = async (config: Partial<SessionConfig>) => {
+    if (!editingSession) return;
+    const { updateSession } = useSessionStore.getState();
+    await updateSession(editingSession.id, config);
+    setEditingSession(null);
   };
 
   // 过滤会话
@@ -142,14 +137,6 @@ export function SessionManager() {
             <FolderOpen className="h-4 w-4 mr-2" />
             打开终端
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? '保存中...' : '保存会话'}
-          </Button>
           <Button onClick={handleNewSession}>
             <Plus className="h-4 w-4 mr-2" />
             新建会话
@@ -204,7 +191,11 @@ export function SessionManager() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {sessionsByGroup[group].map((session) => (
-                    <SessionCard key={session.id} sessionId={session.id} />
+                    <SessionCard 
+                      key={session.id} 
+                      sessionId={session.id}
+                      onEdit={handleEditSession}
+                    />
                   ))}
                 </div>
               </div>
@@ -232,11 +223,14 @@ export function SessionManager() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredSessions.map((session) => (
-                <SessionCard key={session.id} sessionId={session.id} />
-              ))}
-            </div>
-          )}
+                              {filteredSessions.map((session) => (
+                                <SessionCard 
+                                  key={session.id} 
+                                  sessionId={session.id}
+                                  onEdit={handleEditSession}
+                                />
+                              ))}
+                            </div>          )}
         </TabsContent>
       </Tabs>
 
@@ -246,6 +240,15 @@ export function SessionManager() {
         onOpenChange={setSaveDialogOpen}
         onSave={handleSaveSession}
       />
+
+      {editingSession && (
+        <EditSessionDialog
+          open={!!editingSession}
+          onOpenChange={(open) => !open && setEditingSession(null)}
+          session={editingSession}
+          onUpdate={handleUpdateSession}
+        />
+      )}
     </div>
   );
 }

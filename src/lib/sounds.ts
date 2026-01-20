@@ -28,7 +28,6 @@ export enum SoundEffect {
 class SoundManager {
   private enabled: boolean = false;
   private audioContext: AudioContext | null = null;
-  private sounds: Map<SoundEffect, AudioBuffer> = new Map();
 
   constructor() {
     // 从 localStorage 读取音效设置

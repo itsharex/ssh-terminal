@@ -54,3 +54,12 @@ pub async fn ssh_delete_session(
 ) -> Result<()> {
     manager.delete_session(&session_id).await
 }
+
+#[tauri::command]
+pub async fn ssh_update_session(
+    manager: State<'_, SSHManagerState>,
+    session_id: String,
+    updates: crate::ssh::session::SessionConfig,
+) -> Result<()> {
+    manager.update_session(&session_id, updates).await
+}

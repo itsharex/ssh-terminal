@@ -69,6 +69,23 @@ impl SSHManager {
         Ok(())
     }
 
+    pub async fn update_session(&self, id: &str, updates: crate::ssh::session::SessionConfig) -> Result<()> {
+        let mut sessions = self.sessions.write().await;
+        let session = sessions
+            .get_mut(id)
+            .ok_or_else(|| SSHError::SessionNotFound(id.to_string()))?;
+
+        // 更新会话配置
+        session.config.name = updates.name;
+        session.config.host = updates.host;
+        session.config.port = updates.port;
+        session.config.username = updates.username;
+        session.config.group = updates.group;
+
+        println!("会话更新成功: {} ({})", id, session.config.name);
+        Ok(())
+    }
+
     pub async fn connect_session(&self, id: &str) -> Result<()> {
         let session = self.get_session(id).await?;
         session.set_status(SessionStatus::Connecting).await;

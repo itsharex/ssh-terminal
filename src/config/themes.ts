@@ -230,6 +230,9 @@ export const DEFAULT_TERMINAL_CONFIG: TerminalConfig = {
   padding: 16,
   scrollback: 10000,
   keepAliveInterval: 30, // 默认30秒
+  copyOnSelect: false,
+  notificationsEnabled: true,
+  soundEffectsEnabled: true,
 };
 
 // 可用字体列表

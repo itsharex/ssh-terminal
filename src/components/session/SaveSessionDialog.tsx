@@ -19,22 +19,12 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save, Loader2 } from 'lucide-react';
+import type { SessionConfig } from '@/types/ssh';
 
 interface SaveSessionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (config: {
-    name: string;
-    host: string;
-    port: number;
-    username: string;
-    auth_method: 'password' | 'publicKey';
-    password?: string;
-    privateKeyPath?: string;
-    passphrase?: string;
-    terminal_type?: string;
-    group?: string;
-  }) => Promise<void>;
+  onSave: (config: SessionConfig) => Promise<void>;
 }
 
 export function SaveSessionDialog({
@@ -64,6 +54,7 @@ export function SaveSessionDialog({
       host: '',
       port: '22',
       username: '',
+      group: '默认分组',
       authMethod: 'password',
       password: '',
       privateKeyPath: '',
@@ -103,7 +94,9 @@ export function SaveSessionDialog({
         host: formData.host,
         port: parseInt(formData.port),
         username: formData.username,
-        auth_method: formData.authMethod as 'password' | 'publicKey',
+        auth_method: formData.authMethod === 'password'
+          ? { Password: { password: formData.password || '' } }
+          : { PublicKey: { private_key_path: formData.privateKeyPath || '', passphrase: formData.passphrase } },
         password: formData.authMethod === 'password' ? formData.password : undefined,
         privateKeyPath: formData.authMethod === 'publicKey' ? formData.privateKeyPath : undefined,
         passphrase: formData.authMethod === 'publicKey' ? formData.passphrase : undefined,

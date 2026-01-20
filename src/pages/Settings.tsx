@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Settings as SettingsIcon,
   Palette,
@@ -19,7 +19,7 @@ import { SoundEffect } from '@/lib/sounds';
 import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 
 export function Settings() {
-  const { config, setConfig } = useTerminalConfigStore();
+  const { config, setConfig, loadConfig } = useTerminalConfigStore();
   const [settings, setSettings] = useState({
     // 终端设置
     terminalFont: 'monospace',
@@ -38,6 +38,11 @@ export function Settings() {
     // 会话设置
     autoSaveSessions: true,
   });
+
+  // 加载配置
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
 
   const handleSwitchChange = (key: string, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));

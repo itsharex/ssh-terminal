@@ -54,3 +54,15 @@ pub async fn storage_delete_session(session_name: String) -> std::result::Result
     let storage = Storage::new().map_err(|e| e.to_string())?;
     storage.delete_session(&session_name).map_err(|e| e.to_string())
 }
+
+/// 保存应用配置
+#[tauri::command]
+pub async fn storage_save_app_config(config: crate::config::storage::TerminalConfig) -> std::result::Result<(), String> {
+    Storage::save_app_config(&config).map_err(|e| e.to_string())
+}
+
+/// 加载应用配置
+#[tauri::command]
+pub async fn storage_load_app_config() -> std::result::Result<Option<crate::config::storage::TerminalConfig>, String> {
+    Storage::load_app_config().map_err(|e| e.to_string())
+}

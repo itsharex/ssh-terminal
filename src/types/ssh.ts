@@ -1,10 +1,14 @@
+export type AuthMethod =
+  | { Password: { password: string } }
+  | { PublicKey: { private_key_path: string; passphrase?: string } };
+
 export interface SessionConfig {
   id?: string;
   name: string;
   host: string;
   port: number;
   username: string;
-  auth_method: 'password' | 'publicKey';
+  auth_method: AuthMethod;
   password?: string;
   privateKeyPath?: string;
   passphrase?: string;
@@ -23,31 +27,14 @@ export interface SessionConfig {
 
 export type SessionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
-export interface SessionInfo extends SessionConfig {
+export interface SessionInfo {
   id: string;
-  status: SessionStatus;
-  connectedAt?: string;
-  error?: string;
-}
-
-export interface AuthMethod {
-  type: 'password' | 'publicKey';
-  password?: string;
-  privateKeyPath?: string;
-  passphrase?: string;
-}
-
-export interface CreateSessionOptions {
   name: string;
   host: string;
   port: number;
   username: string;
-  auth_method: AuthMethod;
-  terminal_type?: string;
-  columns?: number;
-  rows?: number;
-  persist?: boolean;
-  strict_host_key_checking?: boolean;
-  group?: string;
-  keepAliveInterval?: number;
+  status: SessionStatus;
+  connectedAt?: string;
+  error?: string;
+  group: string;
 }

@@ -15,12 +15,13 @@ interface XTermWrapperProps {
   onTitleChange?: (title: string) => void;
 }
 
-export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperProps) {
+export function XTermWrapper({ sessionId, onData }: XTermWrapperProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalRefInstance = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const webglAddonRef = useRef<WebglAddon | null>(null);
   const isInitializedRef = useRef(false);
+  const dialogShownRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
 
   // 主机密钥确认对话框状态
@@ -84,6 +85,18 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(webLinksAddon);
     terminal.open(terminalRef.current);
+
+    // 禁用右键菜单，并实现右键复制功能
+    terminalRef.current.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      // 如果有选中的文本，复制到剪贴板
+      if (terminal.hasSelection()) {
+        const selection = terminal.getSelection();
+        navigator.clipboard.writeText(selection).catch(err => {
+          console.error('Failed to copy:', err);
+        });
+      }
+    });
 
     // 尝试加载 WebGL 渲染器
     try {
@@ -153,6 +166,7 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
                   fingerprint: fingerprintMatch[1],
                   keyType: keyTypeMatch[1],
                 });
+                dialogShownRef.current = true;
               }
             }
           }
@@ -278,12 +292,12 @@ export function XTermWrapper({ sessionId, onData, onTitleChange }: XTermWrapperP
           });
           setHostKeyDialog({ ...hostKeyDialog, open: false });
           // 重置标志，允许下次连接时再次检测
-          dialogShown = false;
+          dialogShownRef.current = false;
         }}
         onCancel={() => {
           setHostKeyDialog({ ...hostKeyDialog, open: false });
           // 重置标志
-          dialogShown = false;
+          dialogShownRef.current = false;
         }}
       />
     </>

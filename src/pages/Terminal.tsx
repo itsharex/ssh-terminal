@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { TabBar } from '@/components/terminal/TabBar';
 import { XTermWrapper } from '@/components/terminal/XTermWrapper';
+import { ErrorBoundary } from '@/components/terminal/ErrorBoundary';
 import { QuickConnectDialog } from '@/components/session/QuickConnectDialog';
 import { ConnectionStatusBadge } from '@/components/ssh/ConnectionStatusBadge';
 import { useSessionStore } from '@/store/sessionStore';
@@ -19,7 +20,7 @@ export function Terminal() {
   const location = useLocation();
   const [quickConnectOpen, setQuickConnectOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { sessions, activeSessionId, loadSessions, loadSessionsFromStorage, addSession, isStorageLoaded } = useSessionStore();
+  const { sessions, loadSessions, loadSessionsFromStorage, addSession, connectSession, disconnectSession, isStorageLoaded } = useSessionStore();
   const { tabs, addTab, getActiveTab } = useTerminalStore();
   const { config: terminalConfig } = useTerminalConfigStore();
 
@@ -41,7 +42,27 @@ export function Terminal() {
     };
 
     initializeSessions();
-  }, [location.pathname]); // 只依赖路由变化
+
+    // 监听tab关闭事件，自动断开连接
+    const handleTabClosed = async (event: CustomEvent) => {
+      const { sessionId } = event.detail;
+      const session = sessions.find(s => s.id === sessionId);
+      if (session && session.status === 'connected') {
+        try {
+          await disconnectSession(sessionId);
+          console.log(`Disconnected session: ${session.name}`);
+        } catch (error) {
+          console.error('Failed to disconnect session:', error);
+        }
+      }
+    };
+
+    window.addEventListener('tab-closed-for-session', handleTabClosed as unknown as EventListener);
+
+    return () => {
+      window.removeEventListener('tab-closed-for-session', handleTabClosed as unknown as EventListener);
+    };
+  }, [location.pathname, isStorageLoaded, loadSessions, loadSessionsFromStorage, disconnectSession]);
 
   const handleNewTab = () => {
     playSound(SoundEffect.BUTTON_CLICK);
@@ -62,12 +83,12 @@ export function Terminal() {
     passphrase?: string;
   }) => {
     // 创建临时会话配置（不保存）
-    const sessionConfig = {
+    const sessionConfig: any = {
       name: `${config.username}@${config.host}`, // 临时名称
       host: config.host,
       port: config.port,
       username: config.username,
-      auth_method: config.password ? ('password' as const) : ('publicKey' as const),
+      auth_method: config.password ? { Password: { password: config.password } } : { PublicKey: { private_key_path: config.privateKeyPath || '', passphrase: config.passphrase } },
       password: config.password,
       privateKeyPath: config.privateKeyPath,
       passphrase: config.passphrase,
@@ -78,6 +99,15 @@ export function Terminal() {
     const sessionId = await addSession(sessionConfig);
     playSound(SoundEffect.TAB_OPEN);
     addTab(sessionId, sessionConfig.name);
+
+    // 自动连接
+    try {
+      await connectSession(sessionId);
+      playSound(SoundEffect.SUCCESS);
+    } catch (error) {
+      playSound(SoundEffect.ERROR);
+      console.error('Failed to connect:', error);
+    }
   };
 
   const activeTab = getActiveTab();
@@ -145,13 +175,12 @@ export function Terminal() {
           </div>
         ) : activeTab && activeSession ? (
           // 显示活动终端
-          <XTermWrapper
-            key={activeTab.id}
-            sessionId={activeTab.sessionId}
-            onTitleChange={(title) => {
-              // TODO: 更新标签页标题
-            }}
-          />
+          <ErrorBoundary>
+            <XTermWrapper
+              key={activeTab.id}
+              sessionId={activeTab.sessionId}
+            />
+          </ErrorBoundary>
         ) : (
           // 没有活动标签页
           <div className="flex items-center justify-center h-full bg-muted/10">

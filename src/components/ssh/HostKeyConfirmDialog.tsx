@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { AlertTriangle, Fingerprint, CheckCircle, XCircle } from 'lucide-react';
 import {
   Dialog,

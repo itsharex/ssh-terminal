@@ -18,6 +18,34 @@ pub struct SessionStorage {
     pub sessions: Vec<SavedSession>,
 }
 
+/// 应用配置存储结构
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppConfig {
+    pub version: String,
+    pub terminal_config: TerminalConfig,
+}
+
+/// 终端配置
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalConfig {
+    pub theme_id: String,
+    pub font_size: u16,
+    pub font_family: String,
+    pub font_weight: u16,
+    pub line_height: f32,
+    pub cursor_style: String,
+    pub cursor_blink: bool,
+    pub letter_spacing: f32,
+    pub padding: u16,
+    pub scrollback: u32,
+    pub keep_alive_interval: u64,
+    pub copy_on_select: bool,
+    pub notifications_enabled: bool,
+    pub sound_effects_enabled: bool,
+}
+
 /// 保存的会话（密码已加密）
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SavedSession {
@@ -325,6 +353,71 @@ impl Storage {
         self.save_sessions(&updated_sessions)?;
 
         Ok(true)
+    }
+
+    /// 保存应用配置
+    pub fn save_app_config(config: &TerminalConfig) -> Result<()> {
+        let storage_dir = Self::get_storage_dir()?;
+
+        // 确保存储目录存在
+        fs::create_dir_all(&storage_dir)
+            .map_err(|e| SSHError::Storage(format!("Failed to create storage directory: {}", e)))?;
+
+        let config_path = storage_dir.join("app_config.json");
+
+        let app_config = AppConfig {
+            version: "1.0".to_string(),
+            terminal_config: config.clone(),
+        };
+
+        let content = serde_json::to_string_pretty(&app_config)
+            .map_err(|e| SSHError::Storage(format!("Failed to serialize app config: {}", e)))?;
+
+        fs::write(&config_path, content)
+            .map_err(|e| SSHError::Storage(format!("Failed to write app config: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// 加载应用配置
+    pub fn load_app_config() -> Result<Option<TerminalConfig>> {
+        let storage_dir = Self::get_storage_dir()?;
+        let config_path = storage_dir.join("app_config.json");
+
+        if !config_path.exists() {
+            // 文件不存在，创建默认配置
+            let default_config = Self::get_default_config();
+            Self::save_app_config(&default_config)?;
+            return Ok(Some(default_config));
+        }
+
+        let content = fs::read_to_string(&config_path)
+            .map_err(|e| SSHError::Storage(format!("Failed to read app config: {}", e)))?;
+
+        let app_config: AppConfig = serde_json::from_str(&content)
+            .map_err(|e| SSHError::Storage(format!("Failed to parse app config: {}", e)))?;
+
+        Ok(Some(app_config.terminal_config))
+    }
+
+    /// 获取默认配置
+    fn get_default_config() -> TerminalConfig {
+        TerminalConfig {
+            theme_id: "one-dark".to_string(),
+            font_size: 14,
+            font_family: "\"JetBrains Mono\", \"Fira Code\", \"Cascadia Code\", Consolas, monospace".to_string(),
+            font_weight: 400,
+            line_height: 1.3,
+            cursor_style: "bar".to_string(),
+            cursor_blink: true,
+            letter_spacing: 0.0,
+            padding: 16,
+            scrollback: 10000,
+            keep_alive_interval: 30,
+            copy_on_select: false,
+            notifications_enabled: true,
+            sound_effects_enabled: true,
+        }
     }
 }
 
