@@ -14,7 +14,9 @@
             {
                 "title": "SSH Terminal",
                 "width": 1200,
-                "height": 600,
+                "height": 700,
+                "x": 100,
+                "y": 30,
                 "minWidth": 800,
                 "minHeight": 600,
                 "transparent": false,
