@@ -5,7 +5,7 @@ import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
 
 export function TabBar() {
-  const { tabs, setActiveTab, removeTab } = useTerminalStore();
+  const { tabs, setActiveTab, removeTab, focusTerminal } = useTerminalStore();
 
   if (tabs.length === 0) {
     return null;
@@ -29,8 +29,13 @@ export function TabBar() {
           onClick={() => {
             if (!tab.isActive) {
               playSound(SoundEffect.TAB_SWITCH);
+              // 切换到新标签页时，聚焦对应的终端
+              setActiveTab(tab.id);
+              // 延迟聚焦，确保终端组件已经完成渲染和 DOM 更新
+              setTimeout(() => {
+                focusTerminal(tab.connectionId);
+              }, 150);
             }
-            setActiveTab(tab.id);
           }}
         >
           <span className="text-sm font-medium truncate flex-1">

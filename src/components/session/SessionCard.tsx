@@ -28,8 +28,21 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
     return null;
   }
 
+  // 计算实际的连接状态：查找关联的连接实例
+  const getDisplayStatus = () => {
+    // 如果是连接实例本身，直接返回其状态
+    if (session.connectionSessionId) {
+      return session.status;
+    }
+    // 如果是会话配置，查找是否有活跃的连接实例
+    const connections = sessions.filter(s => s.connectionSessionId === sessionId && s.status === 'connected');
+    return connections.length > 0 ? 'connected' : 'disconnected';
+  };
+
+  const displayStatus = getDisplayStatus();
+
   const handleConnect = async () => {
-    if (session.status === 'connected') {
+    if (displayStatus === 'connected') {
       // 已连接，创建一个新的连接实例（独立的SSH会话）
       setConnecting(true);
       try {
@@ -102,7 +115,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
             <Terminal className="h-5 w-5 text-muted-foreground" />
             <CardTitle className="text-base">{session.name}</CardTitle>
           </div>
-          <ConnectionStatusBadge status={session.status} />
+          <ConnectionStatusBadge status={displayStatus} />
         </div>
         <div className="text-sm text-muted-foreground mt-2">
           <div>{session.username}@{session.host}:{session.port}</div>
@@ -118,7 +131,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
       </CardContent>
 
       <CardFooter className="gap-2 pt-3">
-        {session.status === 'connected' ? (
+        {displayStatus === 'connected' ? (
           <>
             <Button
               size="sm"

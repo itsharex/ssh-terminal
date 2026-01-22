@@ -27,16 +27,8 @@ export function SessionManager() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('all');
 
-  // 只显示session配置，但显示实际的连接状态
-  const sessionConfigs = sessions.filter(s => !s.connectionSessionId).map(config => {
-    // 查找关联的连接实例
-    const connections = sessions.filter(s => s.connectionSessionId === config.id && s.status === 'connected');
-    // 如果有已连接的实例，显示连接状态
-    if (connections.length > 0) {
-      return { ...config, status: 'connected' as const };
-    }
-    return config;
-  });
+  // 只显示session配置（过滤掉连接实例）
+  const sessionConfigs = sessions.filter(s => !s.connectionSessionId);
 
   useEffect(() => {
     const initializeSessions = async () => {

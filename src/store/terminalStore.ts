@@ -51,6 +51,7 @@ interface TerminalStore {
   getTerminalInstance: (connectionId: string) => TerminalInstance | undefined;
   setTerminalInstance: (connectionId: string, instance: TerminalInstance) => void;
   removeTerminalInstance: (connectionId: string) => void;
+  focusTerminal: (connectionId: string) => void;
 
   // 输出监听器管理
   setupOutputListener: (connectionId: string) => void;
@@ -354,6 +355,21 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
         onDataListenerActive: false,
       });
       set({ terminalInstances: newInstances });
+    }
+  },
+
+  // 聚焦终端实例
+  focusTerminal: (connectionId) => {
+    const instance = get().terminalInstances.get(connectionId);
+    if (instance?.terminal) {
+      try {
+        instance.terminal.focus();
+        console.log(`[TerminalStore] Focused terminal for connection: ${connectionId}`);
+      } catch (e) {
+        console.warn(`[TerminalStore] Failed to focus terminal for ${connectionId}:`, e);
+      }
+    } else {
+      console.warn(`[TerminalStore] No terminal instance found for connection: ${connectionId}`);
     }
   },
 }));

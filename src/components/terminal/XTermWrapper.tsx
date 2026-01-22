@@ -129,6 +129,18 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
       setIsReady(true);
       isInitializedRef.current = true;
 
+      // 终端复用完成后，延迟聚焦（确保 DOM 已经更新）
+      setTimeout(() => {
+        if (terminalRefInstance.current) {
+          try {
+            terminalRefInstance.current.focus();
+            console.log(`[XTermWrapper] Auto-focused terminal for connection: ${currentConnectionId}`);
+          } catch (e) {
+            console.warn(`[XTermWrapper] Failed to auto-focus terminal:`, e);
+          }
+        }
+      }, 100);
+
       // 更新主机密钥检测回调（如果还没有设置）
       if (!existingInstance.onHostKeyDetect) {
         setTerminalInstance(currentConnectionId, {
@@ -251,6 +263,18 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
 
       // 标记终端已准备好
       setIsReady(true);
+
+      // 新终端创建完成后，延迟聚焦（确保 DOM 已经渲染）
+      setTimeout(() => {
+        if (terminalRefInstance.current) {
+          try {
+            terminalRefInstance.current.focus();
+            console.log(`[XTermWrapper] Auto-focused new terminal for connection: ${currentConnectionId}`);
+          } catch (e) {
+            console.warn(`[XTermWrapper] Failed to auto-focus new terminal:`, e);
+          }
+        }
+      }, 100);
     }
 
     // 注意：onData 监听器和输出监听器会在单独的 useEffect 中统一设置，避免重复绑定

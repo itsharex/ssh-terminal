@@ -20,7 +20,7 @@ export function Terminal() {
   const [quickConnectOpen, setQuickConnectOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { sessions, loadSessions, loadSessionsFromStorage, createTemporaryConnection, connectSession, disconnectSession, isStorageLoaded } = useSessionStore();
-  const { tabs, addTab, getActiveTab } = useTerminalStore();
+  const { tabs, addTab, getActiveTab, focusTerminal } = useTerminalStore();
   const { config: terminalConfig } = useTerminalConfigStore();
 
   useEffect(() => {
@@ -67,6 +67,21 @@ export function Terminal() {
       window.removeEventListener('tab-closed-for-session', handleTabClosed as unknown as EventListener);
     };
   }, [location.pathname, isStorageLoaded, loadSessions, loadSessionsFromStorage, disconnectSession]);
+
+  // 当切换到终端页面时，聚焦当前活动标签页的终端
+  useEffect(() => {
+    if (location.pathname === '/' || location.pathname === '/terminal') {
+      // 延迟聚焦，确保终端已经渲染完成
+      const timer = setTimeout(() => {
+        const activeTab = getActiveTab();
+        if (activeTab) {
+          focusTerminal(activeTab.connectionId);
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, getActiveTab, focusTerminal]);
 
   const handleNewTab = () => {
     playSound(SoundEffect.BUTTON_CLICK);
