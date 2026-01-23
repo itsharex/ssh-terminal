@@ -84,9 +84,21 @@ export function SessionManager() {
       );
     }
 
-    // 状态过滤
+    // 状态过滤 - 修复：基于是否有活跃连接实例来判断
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(session => session.status === statusFilter);
+      filtered = filtered.filter(session => {
+        // 查找该会话配置是否有活跃的连接实例
+        const hasActiveConnection = sessions.some(
+          s => s.connectionSessionId === session.id && s.status === 'connected'
+        );
+        
+        if (statusFilter === 'connected') {
+          return hasActiveConnection;
+        } else if (statusFilter === 'disconnected') {
+          return !hasActiveConnection;
+        }
+        return true;
+      });
     }
 
     // 最近连接过滤（最近24小时内连接过的）

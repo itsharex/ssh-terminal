@@ -307,7 +307,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       if (currentInstance?.terminal === terminal &&
           currentInstance?.onDataHandler === onDataHandler) {
         console.log(`[TerminalStore] Writing data to connection: ${connectionId}, length: ${data.length}, data: ${JSON.stringify(data)}`);
-        invoke('ssh_write', {
+        invoke('terminal_write', {
           sessionId: connectionId,
           data: new TextEncoder().encode(data),
         }).catch((error) => {

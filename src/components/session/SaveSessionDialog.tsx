@@ -20,6 +20,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save, Loader2 } from 'lucide-react';
 import type { SessionConfig } from '@/types/ssh';
+import { toast } from 'sonner';
 
 interface SaveSessionDialogProps {
   open: boolean;
@@ -105,10 +106,15 @@ export function SaveSessionDialog({
       });
 
       // 保存成功后关闭对话框并重置表单
+      toast.success('会话保存成功');
       resetForm();
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to save session:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error('会话保存失败', {
+        description: errorMessage,
+      });
     } finally {
       setLoading(false);
     }
@@ -125,8 +131,8 @@ export function SaveSessionDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={onOpenChange} closeOnClickOutside={false}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" hideCloseButton>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Save className="h-5 w-5 text-primary" />

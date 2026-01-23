@@ -24,6 +24,33 @@ pub struct SessionConfig {
     pub keep_alive_interval: u64,
 }
 
+/// 用于部分更新会话配置的结构体
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct SessionConfigUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub host: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auth_method: Option<AuthMethod>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terminal_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub columns: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rows: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict_host_key_checking: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub keep_alive_interval: Option<u64>,
+}
+
 fn default_strict_host_key_checking() -> bool {
     true // 默认启用严格的主机密钥验证
 }

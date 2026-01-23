@@ -7,7 +7,7 @@ use super::session::SSHManagerState;
 
 /// 保存所有会话配置到存储
 #[tauri::command]
-pub async fn storage_save_sessions(
+pub async fn storage_sessions_save(
     manager: State<'_, SSHManagerState>,
 ) -> Result<()> {
     let manager = manager.as_ref();
@@ -25,7 +25,7 @@ pub async fn storage_save_sessions(
 
 /// 从存储加载所有保存的会话
 #[tauri::command]
-pub async fn storage_load_sessions() -> std::result::Result<Vec<SessionConfig>, String> {
+pub async fn storage_sessions_load() -> std::result::Result<Vec<SessionConfig>, String> {
     let storage = Storage::new().map_err(|e| e.to_string())?;
     let sessions = storage.load_sessions().map_err(|e| e.to_string())?;
     Ok(sessions)
@@ -33,7 +33,7 @@ pub async fn storage_load_sessions() -> std::result::Result<Vec<SessionConfig>, 
 
 /// 清除所有保存的会话
 #[tauri::command]
-pub async fn storage_clear() -> std::result::Result<(), String> {
+pub async fn storage_sessions_clear() -> std::result::Result<(), String> {
     let storage = Storage::new().map_err(|e| e.to_string())?;
     storage.clear().map_err(|e| e.to_string())?;
     Ok(())
@@ -41,19 +41,19 @@ pub async fn storage_clear() -> std::result::Result<(), String> {
 
 /// 从存储中删除单个会话配置
 #[tauri::command]
-pub async fn storage_delete_session(session_name: String) -> std::result::Result<bool, String> {
+pub async fn storage_session_delete(session_name: String) -> std::result::Result<bool, String> {
     let storage = Storage::new().map_err(|e| e.to_string())?;
     storage.delete_session(&session_name).map_err(|e| e.to_string())
 }
 
 /// 保存应用配置
 #[tauri::command]
-pub async fn storage_save_app_config(config: crate::config::storage::TerminalConfig) -> std::result::Result<(), String> {
+pub async fn storage_config_save(config: crate::config::storage::TerminalConfig) -> std::result::Result<(), String> {
     Storage::save_app_config(&config).map_err(|e| e.to_string())
 }
 
 /// 加载应用配置
 #[tauri::command]
-pub async fn storage_load_app_config() -> std::result::Result<Option<crate::config::storage::TerminalConfig>, String> {
+pub async fn storage_config_load() -> std::result::Result<Option<crate::config::storage::TerminalConfig>, String> {
     Storage::load_app_config().map_err(|e| e.to_string())
 }

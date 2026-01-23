@@ -9,6 +9,7 @@ import { useTerminalStore } from '@/store/terminalStore';
 import { useNavigate } from 'react-router-dom';
 import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
+import { toast } from 'sonner';
 
 interface SessionCardProps {
   sessionId: string;
@@ -17,9 +18,10 @@ interface SessionCardProps {
 
 export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
   const [connecting, setConnecting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const navigate = useNavigate();
   const { connectSession, disconnectSession, deleteSession, sessions, createConnection } = useSessionStore();
-  const { addTab } = useTerminalStore();
+  const { addTab, removeTab, getTabsByConnection } = useTerminalStore();
 
   // 从 store 中动态获取会话信息
   const session = sessions.find(s => s.id === sessionId);
@@ -55,6 +57,10 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
       } catch (error) {
         playSound(SoundEffect.ERROR);
         console.error('Failed to create connection:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        toast.error('创建新连接失败', {
+          description: errorMessage,
+        });
       } finally {
         setConnecting(false);
       }
@@ -71,6 +77,10 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
       } catch (error) {
         playSound(SoundEffect.ERROR);
         console.error('Failed to connect:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        toast.error('连接失败', {
+          description: errorMessage,
+        });
       } finally {
         setConnecting(false);
       }
@@ -79,26 +89,63 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
 
   const handleDisconnect = async () => {
     try {
-      await disconnectSession(session.id);
+      // 获取该会话配置的所有活跃连接实例
+      const activeConnections = sessions.filter(
+        s => s.connectionSessionId === session.id && s.status === 'connected'
+      );
+
+      // 断开所有连接实例
+      for (const connection of activeConnections) {
+        await disconnectSession(connection.id);
+        
+        // 关闭对应的标签页
+        const tabs = getTabsByConnection(connection.id);
+        tabs.forEach(tab => {
+          removeTab(tab.id);
+        });
+      }
+
       playSound(SoundEffect.SUCCESS);
+      toast.success('断开连接成功');
     } catch (error) {
       playSound(SoundEffect.ERROR);
       console.error('Failed to disconnect:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error('断开连接失败', {
+        description: errorMessage,
+      });
     }
   };
 
   const handleDelete = async () => {
-    if (confirm(`确定要删除会话 "${session.name}" 吗？`)) {
-      try {
-        console.log(`正在删除会话: ${session.name} (${session.id})`);
-        await deleteSession(session.id);
-        playSound(SoundEffect.SUCCESS);
-        console.log(`会话删除成功: ${session.name}`);
-      } catch (error) {
-        playSound(SoundEffect.ERROR);
-        console.error('删除会话失败:', error);
-        alert(`删除失败: ${error}`);
-      }
+    setShowDeleteConfirm(false);
+    
+    // 检查是否有活跃连接
+    const hasActiveConnection = sessions.some(
+      s => s.connectionSessionId === session.id && s.status === 'connected'
+    );
+
+    if (hasActiveConnection) {
+      playSound(SoundEffect.ERROR);
+      toast.error('无法删除会话', {
+        description: '该会话存在活跃连接，请先断开所有连接后再删除',
+      });
+      return;
+    }
+
+    try {
+      console.log(`正在删除会话: ${session.name} (${session.id})`);
+      await deleteSession(session.id);
+      playSound(SoundEffect.SUCCESS);
+      toast.success('删除会话成功');
+      console.log(`会话删除成功: ${session.name}`);
+    } catch (error) {
+      playSound(SoundEffect.ERROR);
+      console.error('删除会话失败:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error('删除会话失败', {
+        description: errorMessage,
+      });
     }
   };
 
@@ -183,11 +230,37 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
         <Button
           size="sm"
           variant="destructive"
-          onClick={handleDelete}
+          onClick={() => setShowDeleteConfirm(true)}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
       </CardFooter>
+
+      {/* 删除确认对话框 */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background border rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-2">确认删除</h3>
+            <p className="text-muted-foreground mb-4">
+              确定要删除会话 "{session.name}" 吗？此操作无法撤销。
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                取消
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+              >
+                删除
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

@@ -5,16 +5,17 @@ interface DialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   children: React.ReactNode
+  closeOnClickOutside?: boolean  // 新增：是否允许点击外部关闭
 }
 
-const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
+const Dialog = ({ open, onOpenChange, children, closeOnClickOutside = true }: DialogProps) => {
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="fixed inset-0 bg-black/50"
-        onClick={() => onOpenChange?.(false)}
+        onClick={() => closeOnClickOutside && onOpenChange?.(false)}
       />
       <div className="relative z-50">{children}</div>
     </div>
@@ -23,8 +24,11 @@ const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
 
 const DialogContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { onOpenChange?: (open: boolean) => void }
->(({ className, children, onOpenChange, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { 
+    onOpenChange?: (open: boolean) => void
+    hideCloseButton?: boolean  // 新增：是否隐藏关闭按钮
+  }
+>(({ className, children, onOpenChange, hideCloseButton = false, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
@@ -33,27 +37,29 @@ const DialogContent = React.forwardRef<
     )}
     {...props}
   >
-    <button
-      onClick={() => onOpenChange?.(false)}
-      className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="h-4 w-4"
+    {!hideCloseButton && (
+      <button
+        onClick={() => onOpenChange?.(false)}
+        className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
       >
-        <path d="M18 6 6 18" />
-        <path d="m6 6 12 12" />
-      </svg>
-      <span className="sr-only">Close</span>
-    </button>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg>
+        <span className="sr-only">Close</span>
+      </button>
+    )}
     {children}
   </div>
 ))

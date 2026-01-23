@@ -5,6 +5,7 @@ import { Terminal } from "@/pages/Terminal";
 import { SessionManager } from "@/pages/SessionManager";
 import { Settings } from "@/pages/Settings";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { useTerminalConfigStore } from "@/store/terminalConfigStore";
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </MainLayout>
+        <Toaster position="top-center" />
       </ThemeProvider>
     </Router>
   );

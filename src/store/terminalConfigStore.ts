@@ -24,7 +24,7 @@ export const useTerminalConfigStore = create<TerminalConfigStore>((set, get) => 
   setConfig: async (partialConfig) => {
     const newConfig = { ...get().config, ...partialConfig };
     set({ config: newConfig });
-    await invoke('storage_save_app_config', {
+    await invoke('storage_config_save', {
       config: {
         themeId: newConfig.themeId,
         fontSize: newConfig.fontSize,
@@ -49,7 +49,7 @@ export const useTerminalConfigStore = create<TerminalConfigStore>((set, get) => 
   },
 
   resetConfig: async () => {
-    await invoke('storage_save_app_config', {
+    await invoke('storage_config_save', {
       config: DEFAULT_TERMINAL_CONFIG,
     });
     set({ config: DEFAULT_TERMINAL_CONFIG });
@@ -58,7 +58,7 @@ export const useTerminalConfigStore = create<TerminalConfigStore>((set, get) => 
   loadConfig: async () => {
     set({ isLoading: true });
     try {
-      const savedConfig = await invoke<TerminalConfig | null>('storage_load_app_config');
+      const savedConfig = await invoke<TerminalConfig | null>('storage_config_load');
       if (savedConfig) {
         set({ config: savedConfig });
       }

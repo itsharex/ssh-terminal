@@ -42,27 +42,25 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // SSH会话管理命令
-            commands::ssh_create_session,
-            commands::ssh_create_temporary_connection,
-            commands::ssh_connect,
-            commands::ssh_disconnect,
-            commands::ssh_list_sessions,
-            commands::ssh_get_session,
-            commands::ssh_delete_session,
-            commands::ssh_update_session,
-            // SSH终端命令
-            commands::ssh_write,
-            commands::ssh_resize_pty,
-            commands::ssh_read_start,
-            commands::ssh_read_stop,
-            // 存储命令
-            commands::storage_save_sessions,
-            commands::storage_load_sessions,
-            commands::storage_clear,
-            commands::storage_delete_session,
-            commands::storage_save_app_config,
-            commands::storage_load_app_config,
+            // Session 会话管理命令
+            commands::session_create,
+            commands::session_create_temp,
+            commands::session_connect,
+            commands::session_disconnect,
+            commands::session_list,
+            commands::session_get,
+            commands::session_delete,
+            commands::session_update,
+            // Terminal 终端命令
+            commands::terminal_write,
+            commands::terminal_resize,
+            // Storage 存储命令
+            commands::storage_sessions_save,
+            commands::storage_sessions_load,
+            commands::storage_sessions_clear,
+            commands::storage_session_delete,
+            commands::storage_config_save,
+            commands::storage_config_load,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

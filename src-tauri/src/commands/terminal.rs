@@ -3,8 +3,9 @@ use tauri::State;
 
 use super::session::SSHManagerState;
 
+/// 向会话写入数据
 #[tauri::command]
-pub async fn ssh_write(
+pub async fn terminal_write(
     manager: State<'_, SSHManagerState>,
     session_id: String,
     data: Vec<u8>,
@@ -12,34 +13,13 @@ pub async fn ssh_write(
     manager.write_to_session(&session_id, data).await
 }
 
+/// 调整终端大小
 #[tauri::command]
-pub async fn ssh_resize_pty(
+pub async fn terminal_resize(
     manager: State<'_, SSHManagerState>,
     session_id: String,
     rows: u16,
     cols: u16,
 ) -> Result<()> {
     manager.resize_session(&session_id, rows, cols).await
-}
-
-#[tauri::command]
-pub async fn ssh_read_start(
-    manager: State<'_, SSHManagerState>,
-    session_id: String,
-) -> Result<String> {
-    // TODO: 实现开始读取SSH输出
-    // 这应该返回一个事件通道ID
-    // 需要使用Tauri的Event系统来推送输出
-    let _ = (manager, session_id);
-    Ok("event_channel_id".to_string())
-}
-
-#[tauri::command]
-pub async fn ssh_read_stop(
-    manager: State<'_, SSHManagerState>,
-    session_id: String,
-) -> Result<()> {
-    // TODO: 实现停止读取SSH输出
-    let _ = (manager, session_id);
-    Ok(())
 }

@@ -55,7 +55,7 @@ export const useSessionStore = create<SessionStore>()(
           keep_alive_interval: config.keepAliveInterval ?? 30,
         };
 
-        const connectionId = await invoke<string>('ssh_create_temporary_connection', {
+        const connectionId = await invoke<string>('session_create_temp', {
           config: sessionConfig,
         });
 
@@ -80,13 +80,13 @@ export const useSessionStore = create<SessionStore>()(
           keep_alive_interval: config.keepAliveInterval ?? 30,
         };
 
-        const sessionId = await invoke<string>('ssh_create_session', {
+        const sessionId = await invoke<string>('session_create', {
           config: sessionConfig,
         });
 
         // 保存到持久化存储
         try {
-          await invoke('storage_save_sessions');
+          await invoke('storage_sessions_save');
         } catch (error) {
           console.error('Failed to save sessions to storage:', error);
         }
@@ -111,10 +111,10 @@ export const useSessionStore = create<SessionStore>()(
 
       createConnection: async (sessionId) => {
         // 直接调用connect_session创建新的连接实例
-        const connectionId = await invoke<string>('ssh_connect', { sessionId });
+        const connectionId = await invoke<string>('session_connect', { sessionId });
 
         // 重新加载sessions列表，包含新创建的连接实例
-        const sessions = await invoke<SessionInfo[]>('ssh_list_sessions');
+        const sessions = await invoke<SessionInfo[]>('session_list');
         set({ sessions });
 
         return connectionId;
@@ -122,7 +122,7 @@ export const useSessionStore = create<SessionStore>()(
 
       updateSession: async (id, config) => {
         // 更新会话配置
-        await invoke('ssh_update_session', {
+        await invoke('session_update', {
           sessionId: id,
           updates: {
             name: config.name,
@@ -141,7 +141,7 @@ export const useSessionStore = create<SessionStore>()(
 
         // 保存到持久化存储
         try {
-          await invoke('storage_save_sessions');
+          await invoke('storage_sessions_save');
         } catch (error) {
           console.error('Failed to save sessions to storage:', error);
         }
@@ -154,7 +154,15 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       deleteSession: async (id) => {
-        await invoke('ssh_delete_session', { sessionId: id });
+        await invoke('session_delete', { sessionId: id });
+        
+        // 保存到持久化存储
+        try {
+          await invoke('storage_sessions_save');
+        } catch (error) {
+          console.error('Failed to save sessions to storage:', error);
+        }
+        
         set((state) => ({
           sessions: state.sessions.filter((s) => s.id !== id),
         }));
@@ -163,11 +171,11 @@ export const useSessionStore = create<SessionStore>()(
       connectSession: async (id) => {
         console.log(`[sessionStore] Connecting to session: ${id}`);
         // 调用后端connect，现在返回connectionId
-        const connectionId = await invoke<string>('ssh_connect', { sessionId: id });
+        const connectionId = await invoke<string>('session_connect', { sessionId: id });
         console.log(`[sessionStore] Created connection: ${connectionId}`);
 
         // 重新加载sessions列表，包含新创建的连接实例
-        const sessions = await invoke<SessionInfo[]>('ssh_list_sessions');
+        const sessions = await invoke<SessionInfo[]>('session_list');
         console.log(`[sessionStore] Loaded sessions:`, sessions);
         set({ sessions });
 
@@ -175,24 +183,24 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       disconnectSession: async (id) => {
-        await invoke('ssh_disconnect', { sessionId: id });
+        await invoke('session_disconnect', { sessionId: id });
 
         // 检查是否是临时连接（通过connectionSessionId判断）
         const session = get().sessions.find(s => s.id === id);
 
         // 如果是临时连接（有connectionSessionId），删除它
         if (session && session.connectionSessionId) {
-          await invoke('ssh_delete_session', { sessionId: id });
+          await invoke('session_delete', { sessionId: id });
         }
 
         // 重新加载sessions列表
-        const sessions = await invoke<SessionInfo[]>('ssh_list_sessions');
+        const sessions = await invoke<SessionInfo[]>('session_list');
         set({ sessions });
       },
 
       loadSessions: async () => {
         try {
-          const sessions = await invoke<SessionInfo[]>('ssh_list_sessions');
+          const sessions = await invoke<SessionInfo[]>('session_list');
           set({ sessions });
         } catch (error) {
           console.error('Failed to load sessions:', error);
@@ -212,17 +220,17 @@ export const useSessionStore = create<SessionStore>()(
 
         try {
           // 1. 先从后端加载所有已存在的会话
-          const existingSessions = await invoke<SessionInfo[]>('ssh_list_sessions');
+          const existingSessions = await invoke<SessionInfo[]>('session_list');
           console.log('[sessionStore] Existing sessions from backend:', existingSessions.length);
 
           // 2. 从存储加载配置
-          const sessionConfigs = await invoke<SessionConfig[]>('storage_load_sessions');
+          const sessionConfigs = await invoke<SessionConfig[]>('storage_sessions_load');
           console.log('[sessionStore] Loaded session configs from storage:', sessionConfigs.length);
 
           if (sessionConfigs.length === 0) {
             console.log('[sessionStore] No session configs in storage, skipping creation');
             // 重新加载会话列表
-            const sessions = await invoke<SessionInfo[]>('ssh_list_sessions');
+            const sessions = await invoke<SessionInfo[]>('session_list');
             set({ sessions });
             return;
           }
@@ -242,7 +250,7 @@ export const useSessionStore = create<SessionStore>()(
 
             if (!alreadyExists) {
               try {
-                await invoke('ssh_create_session', {
+                await invoke('session_create', {
                   config: config,
                 });
                 createdCount++;
@@ -259,7 +267,7 @@ export const useSessionStore = create<SessionStore>()(
           console.log(`[sessionStore] Session creation summary: ${createdCount} created, ${skippedCount} skipped`);
 
           // 4. 重新加载会话列表
-          const sessions = await invoke<SessionInfo[]>('ssh_list_sessions');
+          const sessions = await invoke<SessionInfo[]>('session_list');
           set({ sessions });
           console.log('[sessionStore] Final loaded sessions:', sessions.length);
         } catch (error) {
@@ -271,7 +279,7 @@ export const useSessionStore = create<SessionStore>()(
 
       saveSessions: async () => {
         try {
-          await invoke('storage_save_sessions');
+          await invoke('storage_sessions_save');
         } catch (error) {
           console.error('Failed to save sessions:', error);
           throw error;

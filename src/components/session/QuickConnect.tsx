@@ -58,7 +58,7 @@ export function QuickConnect({ open, onOpenChange, onConnect }: QuickConnectProp
 
       // 2. 尝试连接
       try {
-        await invoke('ssh_connect', { sessionId: connectionId });
+        await invoke('session_connect', { sessionId: connectionId });
         console.log('SSH connected successfully');
 
         // 连接成功，关闭对话框并通知
@@ -87,8 +87,8 @@ export function QuickConnect({ open, onOpenChange, onConnect }: QuickConnectProp
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={onOpenChange} closeOnClickOutside={false}>
+      <DialogContent hideCloseButton>
         <DialogHeader>
           <DialogTitle>快速连接 SSH</DialogTitle>
           <DialogDescription>

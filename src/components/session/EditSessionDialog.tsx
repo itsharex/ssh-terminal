@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Edit, Loader2 } from 'lucide-react';
 import type { SessionInfo, SessionConfig } from '@/types/ssh';
+import { toast } from 'sonner';
 
 interface EditSessionDialogProps {
   open: boolean;
@@ -33,6 +34,7 @@ export function EditSessionDialog({
     port: '22',
     username: '',
     group: '默认分组',
+    password: '',
   });
 
   // 当session变化时，更新表单数据
@@ -44,6 +46,7 @@ export function EditSessionDialog({
         port: session.port.toString(),
         username: session.username,
         group: session.group || '默认分组',
+        password: '',
       });
     }
   }, [session]);
@@ -58,25 +61,39 @@ export function EditSessionDialog({
     setLoading(true);
 
     try {
-      await onUpdate({
+      const updates: Partial<SessionConfig> = {
         name: formData.name,
         host: formData.host,
         port: parseInt(formData.port),
         username: formData.username,
         group: formData.group || '默认分组',
-      });
+      };
 
+      // 如果输入了新密码，则更新认证信息
+      if (formData.password) {
+        updates.auth_method = {
+          Password: { password: formData.password }
+        };
+        updates.password = formData.password;
+      }
+
+      await onUpdate(updates);
+      toast.success('会话更新成功');
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to update session:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error('会话更新失败', {
+        description: errorMessage,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange} closeOnClickOutside={false}>
+      <DialogContent className="max-w-md" hideCloseButton>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Edit className="h-5 w-5 text-primary" />
@@ -155,6 +172,21 @@ export function EditSessionDialog({
               value={formData.group}
               onChange={(e) => setFormData({ ...formData, group: e.target.value })}
             />
+          </div>
+
+          {/* 密码 */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-password">密码（可选）</Label>
+            <Input
+              id="edit-password"
+              type="password"
+              placeholder="输入新密码以更新密码认证"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              留空表示不更新密码，输入新密码将更新认证信息
+            </p>
           </div>
 
           <DialogFooter>

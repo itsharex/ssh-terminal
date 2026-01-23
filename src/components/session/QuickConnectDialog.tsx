@@ -20,6 +20,7 @@ import {
 import { Loader2, Zap } from 'lucide-react';
 import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
+import { toast } from 'sonner';
 
 interface QuickConnectDialogProps {
   open: boolean;
@@ -99,14 +100,18 @@ export function QuickConnectDialog({
     } catch (error) {
       playSound(SoundEffect.ERROR);
       console.error('Failed to connect:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error('快速连接失败', {
+        description: errorMessage,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange} closeOnClickOutside={false}>
+      <DialogContent className="max-w-md" hideCloseButton>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />

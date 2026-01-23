@@ -1,5 +1,5 @@
 use crate::error::{Result, SSHError};
-use crate::ssh::session::{SessionConfig, SessionStatus, SessionInfo};
+use crate::ssh::session::{SessionConfig, SessionConfigUpdate, SessionStatus, SessionInfo};
 use crate::ssh::connection::{ConnectionInstance, ConnectionInfo};
 use crate::ssh::backends::DefaultBackend;
 use crate::ssh::backend::SSHBackend;
@@ -77,21 +77,46 @@ impl SSHManager {
     }
 
     /// 更新会话配置
-    pub async fn update_session(&self, id: &str, updates: SessionConfig) -> Result<()> {
+    pub async fn update_session(&self, id: &str, updates: SessionConfigUpdate) -> Result<()> {
         let mut sessions = self.sessions.write().await;
         let session = sessions
             .get_mut(id)
             .ok_or_else(|| SSHError::SessionNotFound(id.to_string()))?;
 
-        // 更新配置
-        session.name = updates.name;
-        session.host = updates.host;
-        session.port = updates.port;
-        session.username = updates.username;
-        session.group = updates.group;
-        session.auth_method = updates.auth_method;
-        session.keep_alive_interval = updates.keep_alive_interval;
-        session.strict_host_key_checking = updates.strict_host_key_checking;
+        // 只更新提供的字段
+        if let Some(name) = updates.name {
+            session.name = name;
+        }
+        if let Some(host) = updates.host {
+            session.host = host;
+        }
+        if let Some(port) = updates.port {
+            session.port = port;
+        }
+        if let Some(username) = updates.username {
+            session.username = username;
+        }
+        if let Some(group) = updates.group {
+            session.group = group;
+        }
+        if let Some(auth_method) = updates.auth_method {
+            session.auth_method = auth_method;
+        }
+        if let Some(terminal_type) = updates.terminal_type {
+            session.terminal_type = Some(terminal_type);
+        }
+        if let Some(columns) = updates.columns {
+            session.columns = Some(columns);
+        }
+        if let Some(rows) = updates.rows {
+            session.rows = Some(rows);
+        }
+        if let Some(strict_host_key_checking) = updates.strict_host_key_checking {
+            session.strict_host_key_checking = strict_host_key_checking;
+        }
+        if let Some(keep_alive_interval) = updates.keep_alive_interval {
+            session.keep_alive_interval = keep_alive_interval;
+        }
 
         println!("Updated session config: {} ({})", id, session.name);
         Ok(())

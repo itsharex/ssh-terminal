@@ -9,6 +9,7 @@ import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import { useTerminalStore } from '@/store/terminalStore';
 import { HostKeyConfirmDialog } from '@/components/ssh/HostKeyConfirmDialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
+import { toast } from 'sonner';
 import '@xterm/xterm/css/xterm.css';
 
 interface XTermWrapperProps {
@@ -28,6 +29,8 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
   const [isReady, setIsReady] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const [tempFontSize, setTempFontSize] = useState<number | null>(null);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // 主机密钥确认对话框状态
   const [hostKeyDialog, setHostKeyDialog] = useState({
@@ -287,7 +290,7 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
           fitAddonRef.current.fit();
           const { cols, rows } = terminalRefInstance.current;
           // 后端 API 使用 connectionId
-          invoke('ssh_resize_pty', { sessionId: currentConnectionId, rows, cols }).catch(console.error);
+          invoke('terminal_resize', { sessionId: currentConnectionId, rows, cols }).catch(console.error);
         }
       }, 100);
     };
@@ -383,7 +386,7 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
     try {
       const text = await navigator.clipboard.readText();
       if (text && terminalRefInstance.current) {
-        await invoke('ssh_write', {
+        await invoke('terminal_write', {
           sessionId: connectionId, // 后端 API 参数名是 sessionId，但值是 connectionId
           data: new TextEncoder().encode(text),
         });
@@ -429,11 +432,14 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
 
   // 查找功能
   const handleFind = () => {
-    if (searchAddonRef.current) {
-      const searchTerm = prompt('请输入要查找的文本:');
-      if (searchTerm) {
-        searchAddonRef.current.findNext(searchTerm);
-      }
+    setShowSearchDialog(true);
+  };
+
+  const handleSearchSubmit = () => {
+    if (searchAddonRef.current && searchTerm) {
+      searchAddonRef.current.findNext(searchTerm);
+      setShowSearchDialog(false);
+      setSearchTerm('');
     }
   };
 
@@ -441,14 +447,14 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
   const handleRestartSession = async () => {
     try {
       // 先断开连接（使用 connectionId）
-      await invoke('ssh_disconnect', { sessionId: connectionId }); // 后端 API 参数名是 sessionId，但值是 connectionId
+      await invoke('session_disconnect', { sessionId: connectionId }); // 后端 API 参数名是 sessionId，但值是 connectionId
       // 短暂延迟后重新连接
       // 注意：重新连接需要使用原始的 sessionId（会话配置 ID），而不是 connectionId
       // 这里需要从 session store 中获取对应的 sessionId
       setTimeout(async () => {
         // TODO: 需要从 session store 获取对应的 sessionId（会话配置 ID）
         // 当前实现假设使用 connectionId，可能需要调整
-        await invoke('ssh_connect', { sessionId: connectionId });
+        await invoke('session_connect', { sessionId: connectionId });
       }, 500);
     } catch (err) {
       console.error('Failed to restart session:', err);
@@ -575,7 +581,7 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
         keyType={hostKeyDialog.keyType}
         onConfirm={async () => {
           // 发送 "yes" 命令
-          await invoke('ssh_write', {
+          await invoke('terminal_write', {
             sessionId: connectionId, // 后端 API 参数名是 sessionId，但值是 connectionId
             data: new TextEncoder().encode('yes\n'),
           });
@@ -589,6 +595,49 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
           dialogShownRef.current = false;
         }}
       />
+
+      {/* 搜索对话框 */}
+      {showSearchDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background border rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">查找文本</h3>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border rounded-md mb-4"
+              placeholder="请输入要查找的文本"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearchSubmit();
+                } else if (e.key === 'Escape') {
+                  setShowSearchDialog(false);
+                  setSearchTerm('');
+                }
+              }}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 border rounded-md hover:bg-accent"
+                onClick={() => {
+                  setShowSearchDialog(false);
+                  setSearchTerm('');
+                }}
+              >
+                取消
+              </button>
+              <button
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                onClick={handleSearchSubmit}
+                disabled={!searchTerm}
+              >
+                查找
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
