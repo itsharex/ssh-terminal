@@ -9,7 +9,6 @@ import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import { useTerminalStore } from '@/store/terminalStore';
 import { HostKeyConfirmDialog } from '@/components/ssh/HostKeyConfirmDialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
-import { toast } from 'sonner';
 import '@xterm/xterm/css/xterm.css';
 
 interface XTermWrapperProps {
