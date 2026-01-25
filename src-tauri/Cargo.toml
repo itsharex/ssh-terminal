@@ -50,6 +50,7 @@ aws-lc-sys = "0.36"
 
 # SSH相关 - 跨平台 SSH 实现（所有平台包括 Android）
 russh = { version = "0.55", features = ["default"] }
+russh-sftp = "2.1.1"  # SFTP 协议支持
 async-trait = "0.1"
 bytes = "1.5"
 ssh-key = "0.6"  # 用于 SSH 密钥处理

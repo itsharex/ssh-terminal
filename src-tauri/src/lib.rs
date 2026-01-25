@@ -2,9 +2,12 @@ mod error;
 mod commands;
 mod ssh;
 mod config;
+mod sftp;
 
 use commands::session::SSHManagerState;
+use commands::sftp::SftpManagerState;
 use ssh::manager::SSHManager;
+use sftp::manager::SftpManager;
 use std::sync::Arc;
 use tauri::Manager;
 
@@ -31,7 +34,11 @@ pub fn run() {
         .setup(|app| {
             // 初始化SSH管理器，传入AppHandle
             let ssh_manager = Arc::new(SSHManager::new(app.handle().clone()));
-            app.manage(ssh_manager as SSHManagerState);
+            app.manage(ssh_manager.clone() as SSHManagerState);
+
+            // 初始化SFTP管理器
+            let sftp_manager = Arc::new(SftpManager::new(ssh_manager));
+            app.manage(sftp_manager as SftpManagerState);
 
             #[cfg(debug_assertions)]
             {
@@ -61,6 +68,17 @@ pub fn run() {
             commands::storage_session_delete,
             commands::storage_config_save,
             commands::storage_config_load,
+            // SFTP 文件管理命令
+            commands::sftp_list_dir,
+            commands::sftp_create_dir,
+            commands::sftp_remove_file,
+            commands::sftp_remove_dir,
+            commands::sftp_rename,
+            commands::sftp_chmod,
+            commands::sftp_read_file,
+            commands::sftp_write_file,
+            commands::sftp_download_file,
+            commands::sftp_upload_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

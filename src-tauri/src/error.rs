@@ -11,11 +11,20 @@ pub enum SSHError {
     #[error("会话未找到: {0}")]
     SessionNotFound(String),
 
+    #[error("未找到: {0}")]
+    NotFound(String),
+
     #[error("未连接")]
     NotConnected,
 
+    #[error("不支持的操作: {0}")]
+    NotSupported(String),
+
     #[error("IO错误: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("IO操作错误: {0}")]
+    Io(String),
 
     #[error("SSH错误: {0}")]
     Ssh(String),

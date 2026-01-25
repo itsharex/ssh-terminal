@@ -4,6 +4,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Terminal } from "@/pages/Terminal";
 import { SessionManager } from "@/pages/SessionManager";
 import { Settings } from "@/pages/Settings";
+import { SftpManager } from "@/pages/SftpManager";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { useTerminalConfigStore } from "@/store/terminalConfigStore";
@@ -64,6 +65,7 @@ function App() {
             <Route path="/terminal" element={<Terminal />} />
             <Route path="/sessions" element={<SessionManager />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/sftp" element={<SftpManager />} />
           </Routes>
         </MainLayout>
         <Toaster position="top-center" />

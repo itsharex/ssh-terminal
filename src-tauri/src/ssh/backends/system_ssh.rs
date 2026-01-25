@@ -67,6 +67,10 @@ impl Default for SystemSSHBackend {
 
 #[async_trait]
 impl SSHBackend for SystemSSHBackend {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn connect(&mut self, config: &SessionConfig) -> Result<()> {
         // 构建 SSH 命令
         let pty_system = native_pty_system();

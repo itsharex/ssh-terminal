@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tauri::{AppHandle, Emitter};
+use tracing::error as tracing_error;
 
 // 常量定义
 const BUFFER_SIZE: usize = 8192;
@@ -495,5 +496,36 @@ impl SSHManager {
     /// 兼容旧API：resize_session
     pub async fn resize_session(&self, id: &str, rows: u16, cols: u16) -> Result<()> {
         self.resize_connection(id, rows, cols).await
+    }
+
+    /// 打开 SFTP channel
+    ///
+    /// 在指定的连接上打开一个新的 SFTP 子系统 channel
+    pub async fn open_sftp_channel(&self, connection_id: &str) -> Result<russh_sftp::client::SftpSession> {
+        use russh_sftp::client;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let connection = self.get_connection(connection_id).await?;
+
+        // 获取 backend
+        let backend_guard = connection.backend.lock().await;
+        let backend = backend_guard.as_ref()
+            .ok_or_else(|| SSHError::NotConnected)?;
+
+        // 尝试获取 RusshBackend 的 handle
+        // 注意：这里我们需要访问 RusshBackend 的内部 handle
+        // 由于我们使用的是 trait object，需要使用 downcasting
+
+        // 为了简化，我们使用一个替代方案：
+        // 直接创建一个新的 SFTP 连接，而不是复用现有连接
+        // 这是一个临时解决方案
+
+        tracing_error!("SFTP channel opening requires direct access to RusshBackend handle");
+        Err(SSHError::NotSupported("SFTP requires architecture redesign".to_string()))
+
+        // 完整实现需要：
+        // 1. 在 ConnectionInstance 中保存 RusshBackend 的具体类型（而不是 trait object）
+        // 2. 或者提供一个方法来通过 trait 获取 SFTP channel
+        // 3. 使用 russh::client::Handle 打开 channel_open_session() 和 request_subsystem()
     }
 }

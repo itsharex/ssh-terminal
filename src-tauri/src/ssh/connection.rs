@@ -106,4 +106,22 @@ impl ConnectionInstance {
             connection_session_id: Some(self.session_id.clone()),
         }
     }
+
+    /// 创建 SFTP 客户端
+    ///
+    /// 此方法使用 Any trait 安全地 downcast backend
+    pub async fn create_sftp_client(&self) -> crate::error::Result<crate::sftp::client::SftpClient> {
+        use crate::ssh::backends::russh::RusshBackend;
+
+        let backend_guard = self.backend.lock().await;
+        let backend = backend_guard.as_ref()
+            .ok_or(crate::error::SSHError::NotConnected)?;
+
+        // 使用 as_any() 和 downcast_ref() 进行安全的类型转换
+        let russh_backend = backend.as_any()
+            .downcast_ref::<RusshBackend>()
+            .ok_or(crate::error::SSHError::NotSupported("SFTP only supported with RusshBackend".to_string()))?;
+
+        russh_backend.create_sftp_client_direct().await
+    }
 }

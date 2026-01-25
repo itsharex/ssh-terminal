@@ -3,6 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Terminal,
   FolderOpen,
+  HardDrive,
   Settings,
   LucideIcon
 } from "lucide-react";
@@ -24,6 +25,12 @@ const navigationItems: NavigationSection[] = [
     items: [
       { name: "终端", path: "/terminal", icon: Terminal },
       { name: "会话管理", path: "/sessions", icon: FolderOpen },
+    ]
+  },
+  {
+    title: "工具",
+    items: [
+      { name: "文件管理器", path: "/sftp", icon: HardDrive },
     ]
   },
   {
