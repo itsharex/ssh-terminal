@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import type { SftpFileInfo } from '@/types/sftp';
+import { playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 interface FilePaneProps {
   type: 'local' | 'remote';
@@ -117,11 +119,18 @@ export function FilePane({
       };
       loadDrives();
     }
-  }, [type]);
+  }, [type, refreshKey]); // 添加 refreshKey 依赖，刷新时重新加载盘符
 
   const handleGoToParent = () => {
+    playSound(SoundEffect.BUTTON_CLICK);
     const parentPath = getParentPath(path);
     onPathChange(parentPath);
+
+    // 仅对远程文件操作显示提示
+    if (type === 'remote') {
+      toast.success('已进入上级目录');
+    }
+    // 本地文件不显示提示
   };
 
   const handleCreateFolder = async () => {
@@ -137,6 +146,8 @@ export function FilePane({
           path: folderPath,
           recursive: false,
         });
+        toast.success(`文件夹 "${newFolderName}" 创建成功`);
+        playSound(SoundEffect.SUCCESS);
       }
       setShowNewFolderDialog(false);
       setNewFolderName('');
@@ -154,6 +165,7 @@ export function FilePane({
       } else {
         toast.error(`创建文件夹失败: ${errorMsg}`);
       }
+      playSound(SoundEffect.ERROR);
     }
   };
 
@@ -175,6 +187,8 @@ export function FilePane({
             });
           }
         }
+        toast.success(`成功删除 ${selectedFiles.length} 项`);
+        playSound(SoundEffect.SUCCESS);
       }
       setShowDeleteDialog(false);
       onSelectedFilesChange([]);
@@ -192,6 +206,7 @@ export function FilePane({
       } else {
         toast.error(`删除失败: ${errorMsg}`);
       }
+      playSound(SoundEffect.ERROR);
     }
   };
 
@@ -209,6 +224,8 @@ export function FilePane({
           oldPath: file.path,
           newPath: newPath,
         });
+        toast.success(`重命名成功：${file.name} → ${renameValue}`);
+        playSound(SoundEffect.SUCCESS);
       }
       setShowRenameDialog(false);
       setRenameValue('');
@@ -227,16 +244,53 @@ export function FilePane({
       } else {
         toast.error(`重命名失败: ${errorMsg}`);
       }
+      playSound(SoundEffect.ERROR);
     }
   };
 
-  const handleGoToRoot = () => {
-    onPathChange('/');
+  const handleGoToRoot = async () => {
+    playSound(SoundEffect.BUTTON_CLICK);
+    if (type === 'local') {
+      // 本地文件：根据当前盘符判断
+      const currentDrive = getCurrentDrive();
+      if (currentDrive === 'C:') {
+        // C盘：进入用户家目录
+        try {
+          const homeDir = await invoke<string>('local_home_dir');
+          onPathChange(homeDir);
+        } catch (error) {
+          console.error('Failed to get home directory:', error);
+        }
+      } else if (currentDrive) {
+        // 其他盘符：进入对应盘符的根目录
+        const rootPath = await invoke<string>('local_drive_root', { drive: currentDrive });
+        onPathChange(rootPath);
+      } else {
+        // 无法识别盘符，默认进入家目录
+        try {
+          const homeDir = await invoke<string>('local_home_dir');
+          onPathChange(homeDir);
+        } catch (error) {
+          console.error('Failed to get home directory:', error);
+        }
+      }
+    } else {
+      // 远程文件：进入根目录
+      onPathChange('/');
+      toast.success('已切换到根目录');
+    }
   };
 
   const handleRefresh = () => {
+    playSound(SoundEffect.BUTTON_CLICK);
     // 触发重新加载
     setInternalRefreshKey(prev => prev + 1);
+
+    // 仅对远程文件操作显示提示
+    if (type === 'remote') {
+      toast.success('已刷新');
+    }
+    // 本地文件不显示提示
   };
 
   // 处理盘符切换
@@ -277,9 +331,11 @@ export function FilePane({
     // 规范化路径
     let normalizedPath = inputPath.trim();
     if (!normalizedPath) {
-      normalizedPath = '/';
+      normalizedPath = type === 'local' ? '\\' : '/';
     }
-    if (!normalizedPath.startsWith('/')) {
+
+    // 对于远程文件，确保路径以 / 开头
+    if (type === 'remote' && !normalizedPath.startsWith('/')) {
       normalizedPath = '/' + normalizedPath;
     }
 
@@ -293,6 +349,7 @@ export function FilePane({
         });
         // 路径有效，更新路径
         onPathChange(normalizedPath);
+        toast.success(`已跳转到：${normalizedPath}`);
       } catch (error) {
         console.error('Invalid path:', error);
         // 判断错误类型并显示相应的提示
@@ -310,7 +367,7 @@ export function FilePane({
         setInputPath(path);
       }
     } else {
-      // 本地文件直接更新路径
+      // 本地文件直接更新路径，不显示提示
       onPathChange(normalizedPath);
     }
   };
@@ -345,6 +402,7 @@ export function FilePane({
           }
         }
       } else {
+        // 本地文件直接进入目录，不显示提示
         onPathChange(newPath);
       }
     } else {
@@ -516,7 +574,10 @@ export function FilePane({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewFolderDialog(false)}>
+            <Button variant="outline" onClick={() => {
+              playSound(SoundEffect.BUTTON_CLICK);
+              setShowNewFolderDialog(false);
+            }}>
               取消
             </Button>
             <Button onClick={handleCreateFolder}>
@@ -539,7 +600,10 @@ export function FilePane({
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <Button variant="outline" onClick={() => {
+              playSound(SoundEffect.BUTTON_CLICK);
+              setShowDeleteDialog(false);
+            }}>
               取消
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
@@ -572,7 +636,10 @@ export function FilePane({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRenameDialog(false)}>
+            <Button variant="outline" onClick={() => {
+              playSound(SoundEffect.BUTTON_CLICK);
+              setShowRenameDialog(false);
+            }}>
               取消
             </Button>
             <Button onClick={handleRename}>

@@ -14,6 +14,8 @@ import { useSftpStore } from '@/store/sftpStore';
 import { toast } from 'sonner';
 import { DualPane } from '@/components/sftp/DualPane';
 import { invoke } from '@tauri-apps/api/core';
+import { playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 export function SftpManager() {
   const navigate = useNavigate();
@@ -54,21 +56,31 @@ export function SftpManager() {
   }, [availableConnections, selectedConnectionId]);
 
   const handleConnect = async (connectionId: string) => {
+    playSound(SoundEffect.BUTTON_CLICK);
     setSelectedConnectionId(connectionId);
     const connection = availableConnections.find(c => c.id === connectionId);
     toast.success(`已切换到: ${connection?.name || connectionId} (${connection?.host})`);
   };
 
   const handleRefresh = async () => {
+    playSound(SoundEffect.BUTTON_CLICK);
     if (!selectedConnectionId) {
       toast.error('请先选择一个连接');
       return;
     }
     setIsLoading(true);
     try {
-      // TODO: 刷新文件列表
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // 刷新远程文件列表
+      setRemoteRefreshKey(prev => prev + 1);
+
+      // 刷新本地文件列表
+      setLocalRefreshKey(prev => prev + 1);
+
+      // 等待一下让刷新生效
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
       toast.success('刷新成功');
+      playSound(SoundEffect.SUCCESS);
     } catch (error) {
       toast.error('刷新失败', { description: String(error) });
     } finally {
@@ -77,6 +89,7 @@ export function SftpManager() {
   };
 
   const handleUpload = async () => {
+    playSound(SoundEffect.BUTTON_CLICK);
     if (!selectedConnectionId) {
       toast.error('请先选择一个连接');
       return;
@@ -125,6 +138,7 @@ export function SftpManager() {
       }
 
       toast.success(`成功上传 ${selectedLocalFiles.length} 个文件`);
+      playSound(SoundEffect.SUCCESS);
       setSelectedLocalFiles([]);
 
       // 刷新远程面板
@@ -132,12 +146,14 @@ export function SftpManager() {
     } catch (error) {
       console.error('Upload failed:', error);
       toast.error(`上传失败: ${error}`);
+      playSound(SoundEffect.ERROR);
     } finally {
       setUploading(false);
     }
   };
 
   const handleDownload = async () => {
+    playSound(SoundEffect.BUTTON_CLICK);
     if (!selectedConnectionId) {
       toast.error('请先选择一个连接');
       return;
@@ -169,6 +185,7 @@ export function SftpManager() {
       }
 
       toast.success(`成功下载 ${selectedRemoteFiles.length} 个文件`);
+      playSound(SoundEffect.SUCCESS);
       setSelectedRemoteFiles([]);
 
       // 刷新本地面板
@@ -176,6 +193,7 @@ export function SftpManager() {
     } catch (error) {
       console.error('Download failed:', error);
       toast.error(`下载失败: ${error}`);
+      playSound(SoundEffect.ERROR);
     } finally {
       setDownloading(false);
     }
@@ -192,7 +210,10 @@ export function SftpManager() {
           <p className="text-sm text-muted-foreground mb-6">
             请先在终端页面连接到 SSH 服务器
           </p>
-          <Button onClick={() => navigate('/terminal')}>
+          <Button onClick={() => {
+            playSound(SoundEffect.BUTTON_CLICK);
+            navigate('/terminal');
+          }}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             前往终端
           </Button>
@@ -210,7 +231,10 @@ export function SftpManager() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/terminal')}
+              onClick={() => {
+                playSound(SoundEffect.BUTTON_CLICK);
+                navigate('/terminal');
+              }}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
