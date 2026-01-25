@@ -28,10 +28,21 @@ pub struct ConnectionInstance {
     pub backend: Arc<Mutex<Option<Box<dyn SSHBackend>>>>,
     pub backend_reader: Arc<Mutex<Option<Box<dyn BackendReader + Send>>>>,
 
-    // 保留PTY相关字段以兼容
+    // 保留PTY相关字段以兼容（移动端使用 Send + Sync 类型）
+    #[cfg(not(target_os = "android"))]
     pub pty_pair: Arc<Mutex<Option<Box<dyn portable_pty::MasterPty + Send>>>>,
+    #[cfg(target_os = "android")]
+    pub pty_pair: Arc<Mutex<Option<Box<dyn std::any::Any + Send + Sync>>>>,
+
+    #[cfg(not(target_os = "android"))]
     pub pty_writer: Arc<Mutex<Option<Box<dyn std::io::Write + Send>>>>,
+    #[cfg(target_os = "android")]
+    pub pty_writer: Arc<Mutex<Option<Box<dyn std::any::Any + Send + Sync>>>>,
+
+    #[cfg(not(target_os = "android"))]
     pub child: Arc<Mutex<Option<Box<dyn portable_pty::Child + Send>>>>,
+    #[cfg(target_os = "android")]
+    pub child: Arc<Mutex<Option<Box<dyn std::any::Any + Send + Sync>>>>,
 }
 
 impl ConnectionInstance {
@@ -44,8 +55,17 @@ impl ConnectionInstance {
             connected_at: Arc::new(Mutex::new(None)),
             backend: Arc::new(Mutex::new(None)),
             backend_reader: Arc::new(Mutex::new(None)),
+            #[cfg(not(target_os = "android"))]
             pty_pair: Arc::new(Mutex::new(None)),
+            #[cfg(target_os = "android")]
+            pty_pair: Arc::new(Mutex::new(None)),
+            #[cfg(not(target_os = "android"))]
             pty_writer: Arc::new(Mutex::new(None)),
+            #[cfg(target_os = "android")]
+            pty_writer: Arc::new(Mutex::new(None)),
+            #[cfg(not(target_os = "android"))]
+            child: Arc::new(Mutex::new(None)),
+            #[cfg(target_os = "android")]
             child: Arc::new(Mutex::new(None)),
         }
     }

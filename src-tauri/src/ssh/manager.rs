@@ -1,8 +1,9 @@
 use crate::error::{Result, SSHError};
 use crate::ssh::session::{SessionConfig, SessionConfigUpdate, SessionStatus, SessionInfo};
 use crate::ssh::connection::{ConnectionInstance, ConnectionInfo};
-use crate::ssh::backends::DefaultBackend;
 use crate::ssh::backend::SSHBackend;
+#[cfg(not(target_os = "android"))]
+use crate::ssh::backends::DefaultBackend;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -217,26 +218,30 @@ impl SSHManager {
 
         println!("Starting SSH connection for: {}", connection_id);
 
-        // 创建后端实例
-        let mut backend = Box::new(DefaultBackend::new());
-
-        // 建立连接
-        backend.connect(&connection.config).await?;
-
-        // 取出 reader
-        let reader = backend.reader()
-            .map_err(|e| SSHError::ConnectionFailed(format!("Failed to get backend reader: {}", e)))?;
-
-        // 保存后端到连接
+        #[cfg(not(target_os = "android"))]
         {
-            let mut backend_guard = connection.backend.lock().await;
-            *backend_guard = Some(backend);
-        }
+            // 桌面平台：使用实际的 SSH 后端
+            // 创建后端实例
+            let mut backend = Box::new(DefaultBackend::new());
 
-        // 保存 reader 到连接
-        {
-            let mut reader_guard = connection.backend_reader.lock().await;
-            *reader_guard = Some(reader);
+            // 建立连接
+            backend.connect(&connection.config).await?;
+
+            // 取出 reader
+            let reader = backend.reader()
+                .map_err(|e| SSHError::ConnectionFailed(format!("Failed to get backend reader: {}", e)))?;
+
+            // 保存后端到连接
+            {
+                let mut backend_guard = connection.backend.lock().await;
+                *backend_guard = Some(backend);
+            }
+
+            // 保存 reader 到连接
+            {
+                let mut reader_guard = connection.backend_reader.lock().await;
+                *reader_guard = Some(reader);
+            }
         }
 
         connection.set_status(SessionStatus::Connected).await;
@@ -269,11 +274,21 @@ impl SSHManager {
         }
 
         // 清理 PTY 和子进程
+        #[cfg(not(target_os = "android"))]
         {
-            let mut child_guard = connection.child.lock().await;
-            if let Some(ref mut child) = *child_guard {
-                let _ = child.kill();
+            {
+                let mut child_guard = connection.child.lock().await;
+                if let Some(ref mut child) = *child_guard {
+                    let _ = child.kill();
+                }
+                *child_guard = None;
             }
+        }
+
+        #[cfg(target_os = "android")]
+        {
+            // 移动端：清理占位符对象
+            let mut child_guard = connection.child.lock().await;
             *child_guard = None;
         }
 

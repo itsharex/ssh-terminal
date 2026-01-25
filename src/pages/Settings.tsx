@@ -60,21 +60,21 @@ export function Settings() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       {/* 页面标题 */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <SettingsIcon className="h-8 w-8" />
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 sm:gap-3">
+          <SettingsIcon className="h-6 w-6 sm:h-8 sm:w-8" />
           设置
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">
           配置应用偏好和终端选项
         </p>
       </div>
 
       {/* 设置选项卡 */}
-      <Tabs defaultValue="appearance" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="appearance" className="space-y-4 sm:space-y-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 h-auto">
           <TabsTrigger value="appearance" className="gap-2">
             <Palette className="h-4 w-4" />
             外观
@@ -155,12 +155,13 @@ export function Settings() {
               <p className="text-sm text-muted-foreground">
                 保持 SSH 连接活跃的间隔秒数: {config.keepAliveInterval}s
               </p>
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 {[0, 15, 30, 60, 120].map((value) => (
                   <Button
                     key={value}
                     variant={config.keepAliveInterval === value ? 'default' : 'outline'}
                     size="sm"
+                    className="flex-1 min-w-16 touch-manipulation"
                     onClick={() => setConfig({ keepAliveInterval: value })}
                   >
                     {value === 0 ? '禁用' : `${value}s`}
@@ -203,22 +204,22 @@ export function Settings() {
 
             <div className="space-y-3">
               <h3 className="font-semibold">技术栈</h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 text-sm">
                 <div className="rounded border p-3 bg-muted/20">
                   <p className="font-medium">前端</p>
-                  <p className="text-muted-foreground">React 19</p>
+                  <p className="text-muted-foreground text-xs">React 19</p>
                 </div>
                 <div className="rounded border p-3 bg-muted/20">
                   <p className="font-medium">后端</p>
-                  <p className="text-muted-foreground">Tauri 2.0</p>
+                  <p className="text-muted-foreground text-xs">Tauri 2.0</p>
                 </div>
                 <div className="rounded border p-3 bg-muted/20">
                   <p className="font-medium">UI 库</p>
-                  <p className="text-muted-foreground">shadcn/ui</p>
+                  <p className="text-muted-foreground text-xs">shadcn/ui</p>
                 </div>
                 <div className="rounded border p-3 bg-muted/20">
                   <p className="font-medium">终端</p>
-                  <p className="text-muted-foreground">xterm.js</p>
+                  <p className="text-muted-foreground text-xs">xterm.js</p>
                 </div>
               </div>
             </div>

@@ -1,3 +1,6 @@
+// 系统 SSH 后端实现 - 仅在非移动端平台编译
+#![cfg(not(target_os = "android"))]
+
 use crate::error::{Result, SSHError};
 use crate::ssh::backend::{BackendReader, SSHBackend};
 use crate::ssh::session::SessionConfig;

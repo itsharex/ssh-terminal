@@ -17,8 +17,8 @@
                 "height": 700,
                 "x": 100,
                 "y": 30,
-                "minWidth": 800,
-                "minHeight": 600,
+                "minWidth": 100,
+                "minHeight": 100,
                 "transparent": false,
                 "decorations": true
             }

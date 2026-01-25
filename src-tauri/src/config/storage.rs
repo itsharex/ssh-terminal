@@ -3,6 +3,7 @@ use crate::error::{Result, SSHError};
 use std::fs;
 use std::path::PathBuf;
 use dirs::home_dir;
+use tauri::Manager;
 use serde::{Deserialize, Serialize};
 use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit};
 use aes_gcm::aead::Aead;
@@ -77,8 +78,8 @@ pub struct Storage {
 
 impl Storage {
     /// 创建新的存储实例
-    pub fn new() -> Result<Self> {
-        let storage_dir = Self::get_storage_dir()?;
+    pub fn new(app_handle: Option<&tauri::AppHandle>) -> Result<Self> {
+        let storage_dir = Self::get_storage_dir(app_handle)?;
 
         // 确保存储目录存在
         fs::create_dir_all(&storage_dir)
@@ -134,20 +135,41 @@ impl Storage {
     }
 
     /// 获取存储目录
-    fn get_storage_dir() -> Result<PathBuf> {
-        let home = home_dir()
-            .ok_or_else(|| SSHError::Storage("Failed to get home directory".to_string()))?;
+    fn get_storage_dir(app_handle: Option<&tauri::AppHandle>) -> Result<PathBuf> {
+        #[cfg(target_os = "android")]
+        {
+            // Android: 使用Tauri的PathResolver API
+            if let Some(handle) = app_handle {
+                let path_resolver = handle.path();
+                let app_data_dir = path_resolver
+                    .app_local_data_dir()
+                    .map_err(|e| SSHError::Storage(format!("Failed to get app data dir: {}", e)))?;
+                Ok(app_data_dir.join("tauri-terminal"))
+            } else {
+                // 降级方案：使用环境变量或固定路径
+                use std::env;
+                let app_id = env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "com.shenjianz.ssh_terminal".to_string());
+                Ok(PathBuf::from(format!("/data/data/{}/files", app_id.replace('.', "_"))))
+            }
+        }
 
-        let config_dir = if cfg!(target_os = "windows") {
-            home.join(".tauri-terminal")
-        } else if cfg!(target_os = "macos") {
-            home.join("Library/Application Support/tauri-terminal")
-        } else {
-            // Linux
-            home.join(".config/tauri-terminal")
-        };
+        #[cfg(not(target_os = "android"))]
+        {
+            // 桌面平台：使用dirs crate
+            let home = home_dir()
+                .ok_or_else(|| SSHError::Storage("Failed to get home directory".to_string()))?;
 
-        Ok(config_dir)
+            let config_dir = if cfg!(target_os = "windows") {
+                home.join(".tauri-terminal")
+            } else if cfg!(target_os = "macos") {
+                home.join("Library/Application Support/tauri-terminal")
+            } else {
+                // Linux
+                home.join(".config/tauri-terminal")
+            };
+
+            Ok(config_dir)
+        }
     }
 
     /// 加载所有保存的会话
@@ -355,8 +377,8 @@ impl Storage {
     }
 
     /// 保存应用配置
-    pub fn save_app_config(config: &TerminalConfig) -> Result<()> {
-        let storage_dir = Self::get_storage_dir()?;
+    pub fn save_app_config(config: &TerminalConfig, app_handle: Option<&tauri::AppHandle>) -> Result<()> {
+        let storage_dir = Self::get_storage_dir(app_handle)?;
 
         // 确保存储目录存在
         fs::create_dir_all(&storage_dir)
@@ -379,14 +401,14 @@ impl Storage {
     }
 
     /// 加载应用配置
-    pub fn load_app_config() -> Result<Option<TerminalConfig>> {
-        let storage_dir = Self::get_storage_dir()?;
+    pub fn load_app_config(app_handle: Option<&tauri::AppHandle>) -> Result<Option<TerminalConfig>> {
+        let storage_dir = Self::get_storage_dir(app_handle)?;
         let config_path = storage_dir.join("app_config.json");
 
         if !config_path.exists() {
             // 文件不存在，创建默认配置
             let default_config = Self::get_default_config();
-            Self::save_app_config(&default_config)?;
+            Self::save_app_config(&default_config, app_handle)?;
             return Ok(Some(default_config));
         }
 
@@ -420,8 +442,4 @@ impl Storage {
     }
 }
 
-impl Default for Storage {
-    fn default() -> Self {
-        Self::new().expect("Failed to create storage")
-    }
-}
+// Note: Default trait removed because Storage now requires AppHandle

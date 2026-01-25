@@ -138,12 +138,12 @@ export function SessionManager() {
   const groups = Object.keys(sessionsByGroup);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* 页面标题和操作栏 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-3xl font-bold">会话管理</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">会话管理</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             管理你的 SSH 会话配置
           </p>
         </div>
@@ -151,13 +151,16 @@ export function SessionManager() {
           <Button
             variant="outline"
             onClick={() => navigate('/terminal')}
+            className="touch-manipulation"
           >
             <FolderOpen className="h-4 w-4 mr-2" />
-            打开终端
+            <span className="hidden sm:inline">打开终端</span>
+            <span className="sm:hidden">终端</span>
           </Button>
-          <Button onClick={handleNewSession}>
+          <Button onClick={handleNewSession} className="touch-manipulation">
             <Plus className="h-4 w-4 mr-2" />
-            新建会话
+            <span className="hidden sm:inline">新建会话</span>
+            <span className="sm:hidden">新建</span>
           </Button>
         </div>
       </div>
@@ -180,19 +183,19 @@ export function SessionManager() {
           />
 
           {filteredSessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="bg-muted/20 rounded-full p-6 mb-4">
-                <FolderOpen className="h-12 w-12 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center px-4">
+              <div className="bg-muted/20 rounded-full p-4 sm:p-6 mb-4">
+                <FolderOpen className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">
+              <h2 className="text-lg sm:text-xl font-semibold mb-2">
                 {search || statusFilter !== 'all' ? '没有匹配的会话' : '没有保存的会话'}
               </h2>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 {search || statusFilter !== 'all'
                   ? '尝试调整搜索条件或筛选器'
                   : '创建你的第一个 SSH 会话配置'}
               </p>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-2">
                 前往 <span className="font-medium">终端</span> 页面创建新连接
               </p>
             </div>
@@ -230,12 +233,12 @@ export function SessionManager() {
           />
 
           {filteredSessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="bg-muted/20 rounded-full p-6 mb-4">
-                <FolderOpen className="h-12 w-12 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center px-4">
+              <div className="bg-muted/20 rounded-full p-4 sm:p-6 mb-4">
+                <FolderOpen className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">没有最近的连接</h2>
-              <p className="text-muted-foreground mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold mb-2">没有最近的连接</h2>
+              <p className="text-sm sm:text-base text-muted-foreground mb-6">
                 最近24小时内没有连接记录
               </p>
             </div>

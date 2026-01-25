@@ -34,3 +34,11 @@ bun.lockb
 russh*
 ssh-terminal-systmssh-impl/
 xterm.js*
+.qoder
+mobile-ssh-terminal/
+keystore*
+
+ANDROID_*
+adb-install*
+build-and-install*
+sign*
