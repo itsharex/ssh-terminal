@@ -83,6 +83,14 @@ pub fn run() {
             commands::local_home_dir,
             commands::local_available_drives,
             commands::local_drive_root,
+            // Recording 录制命令
+            commands::recording_save,
+            commands::recording_load,
+            commands::recording_list,
+            commands::recording_delete,
+            commands::recording_update_metadata,
+            // 文件系统命令
+            commands::fs_write_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

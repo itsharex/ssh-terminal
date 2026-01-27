@@ -44,6 +44,18 @@ pub struct TerminalConfig {
     pub keep_alive_interval: u64,
     pub notifications_enabled: bool,
     pub sound_effects_enabled: bool,
+    #[serde(default = "default_video_quality")]
+    pub video_quality: String,
+    #[serde(default = "default_video_format")]
+    pub video_format: String,
+}
+
+fn default_video_quality() -> String {
+    "medium".to_string()
+}
+
+fn default_video_format() -> String {
+    "webm".to_string()
 }
 
 /// 保存的会话（密码已加密）
@@ -436,6 +448,8 @@ impl Storage {
             keep_alive_interval: 30,
             notifications_enabled: true,
             sound_effects_enabled: true,
+            video_quality: "medium".to_string(),
+            video_format: "webm".to_string(),
         }
     }
 }
