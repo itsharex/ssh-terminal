@@ -47,4 +47,12 @@ export interface TerminalConfig {
   videoQuality: 'low' | 'medium' | 'high';
   /** 视频录制格式 */
   videoFormat: 'webm' | 'mp4';
+  /** 是否启用麦克风录制 */
+  recordMicrophone: boolean;
+  /** 是否启用扬声器(系统音频)录制 */
+  recordSpeaker: boolean;
+  /** 音频录制质量 */
+  audioQuality: 'low' | 'medium' | 'high';
+  /** 音频采样率 (Hz) */
+  audioSampleRate: number;
 }

@@ -234,6 +234,10 @@ export const DEFAULT_TERMINAL_CONFIG: TerminalConfig = {
   soundEffectsEnabled: true,
   videoQuality: 'medium',
   videoFormat: 'webm',
+  recordMicrophone: false,
+  recordSpeaker: false,
+  audioQuality: 'medium',
+  audioSampleRate: 48000,
 };
 
 // 可用字体列表

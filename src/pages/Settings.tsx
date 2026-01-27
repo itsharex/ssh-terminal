@@ -6,7 +6,9 @@ import {
   Bell,
   Keyboard,
   Info,
-  Users
+  Users,
+  Mic,
+  Volume2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -234,6 +236,92 @@ export function Settings() {
                   onClick={() => setConfig({ videoFormat: 'mp4' })}
                 >
                   MP4 (H.264)
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* 音频录制设置 */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Mic className="h-4 w-4" />
+                录制麦克风
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                录制用户通过麦克风说话的声音（需要用户授权）
+              </p>
+              <Switch
+                checked={config.recordMicrophone}
+                onCheckedChange={(checked) => {
+                  setConfig({ recordMicrophone: checked });
+                  playSound(SoundEffect.TOGGLE_SWITCH);
+                }}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Volume2 className="h-4 w-4" />
+                录制扬声器（系统音频）
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                录制系统播放的声音（Windows WASAPI Loopback Recording）
+              </p>
+              <Switch
+                checked={config.recordSpeaker}
+                onCheckedChange={(checked) => {
+                  setConfig({ recordSpeaker: checked });
+                  playSound(SoundEffect.TOGGLE_SWITCH);
+                }}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label>音频录制质量</Label>
+              <p className="text-sm text-muted-foreground">
+                选择录制音频的质量（影响音频文件大小）
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Button
+                  variant={config.audioQuality === 'low' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1 min-w-24 touch-manipulation"
+                  onClick={() => {
+                    setConfig({ audioQuality: 'low' });
+                    playSound(SoundEffect.BUTTON_CLICK);
+                  }}
+                  disabled={!config.recordMicrophone && !config.recordSpeaker}
+                >
+                  低 (64 Kbps)
+                </Button>
+                <Button
+                  variant={config.audioQuality === 'medium' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1 min-w-24 touch-manipulation"
+                  onClick={() => {
+                    setConfig({ audioQuality: 'medium' });
+                    playSound(SoundEffect.BUTTON_CLICK);
+                  }}
+                  disabled={!config.recordMicrophone && !config.recordSpeaker}
+                >
+                  中 (128 Kbps)
+                </Button>
+                <Button
+                  variant={config.audioQuality === 'high' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1 min-w-24 touch-manipulation"
+                  onClick={() => {
+                    setConfig({ audioQuality: 'high' });
+                    playSound(SoundEffect.BUTTON_CLICK);
+                  }}
+                  disabled={!config.recordMicrophone && !config.recordSpeaker}
+                >
+                  高 (256 Kbps)
                 </Button>
               </div>
             </div>

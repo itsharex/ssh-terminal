@@ -3,9 +3,11 @@ mod commands;
 mod ssh;
 mod config;
 mod sftp;
+mod audio;
 
 use commands::session::SSHManagerState;
 use commands::sftp::SftpManagerState;
+use commands::audio::AudioCapturerState;
 use ssh::manager::SSHManager;
 use sftp::manager::SftpManager;
 use std::sync::Arc;
@@ -39,6 +41,13 @@ pub fn run() {
             // 初始化SFTP管理器
             let sftp_manager = Arc::new(SftpManager::new(ssh_manager));
             app.manage(sftp_manager as SftpManagerState);
+
+            // 初始化音频捕获器状态
+            let audio_capturer = commands::audio::AudioCapturerState {
+                capturer: Arc::new(std::sync::Mutex::new(None)),
+                audio_receiver: Arc::new(std::sync::Mutex::new(None)),
+            };
+            app.manage(audio_capturer);
 
             #[cfg(debug_assertions)]
             {
@@ -95,6 +104,11 @@ pub fn run() {
             commands::recording_update_metadata,
             commands::recording_save_video,
             commands::recording_load_video,
+            // Audio 音频命令
+            commands::audio_start_capturing,
+            commands::audio_stop_capturing,
+            commands::audio_list_devices,
+            commands::audio_check_support,
             // 文件系统命令
             commands::fs_write_file,
         ])

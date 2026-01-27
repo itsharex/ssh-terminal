@@ -41,6 +41,10 @@ export const useTerminalConfigStore = create<TerminalConfigStore>((set, get) => 
         soundEffectsEnabled: newConfig.soundEffectsEnabled,
         videoQuality: newConfig.videoQuality,
         videoFormat: newConfig.videoFormat,
+        recordMicrophone: newConfig.recordMicrophone,
+        recordSpeaker: newConfig.recordSpeaker,
+        audioQuality: newConfig.audioQuality,
+        audioSampleRate: newConfig.audioSampleRate,
       },
     });
   },

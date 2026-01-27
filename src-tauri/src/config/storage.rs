@@ -48,6 +48,14 @@ pub struct TerminalConfig {
     pub video_quality: String,
     #[serde(default = "default_video_format")]
     pub video_format: String,
+    #[serde(default = "default_record_microphone")]
+    pub record_microphone: bool,
+    #[serde(default = "default_record_speaker")]
+    pub record_speaker: bool,
+    #[serde(default = "default_audio_quality")]
+    pub audio_quality: String,
+    #[serde(default = "default_audio_sample_rate")]
+    pub audio_sample_rate: u32,
 }
 
 fn default_video_quality() -> String {
@@ -56,6 +64,22 @@ fn default_video_quality() -> String {
 
 fn default_video_format() -> String {
     "webm".to_string()
+}
+
+fn default_record_microphone() -> bool {
+    false
+}
+
+fn default_record_speaker() -> bool {
+    false
+}
+
+fn default_audio_quality() -> String {
+    "medium".to_string()
+}
+
+fn default_audio_sample_rate() -> u32 {
+    48000
 }
 
 /// 保存的会话（密码已加密）
@@ -450,6 +474,10 @@ impl Storage {
             sound_effects_enabled: true,
             video_quality: "medium".to_string(),
             video_format: "webm".to_string(),
+            record_microphone: false,
+            record_speaker: false,
+            audio_quality: "medium".to_string(),
+            audio_sample_rate: 48000,
         }
     }
 }

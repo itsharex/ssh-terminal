@@ -8,6 +8,7 @@ import type { TerminalConfig } from '@/types/terminal';
 import { Terminal } from '@xterm/xterm';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { TERMINAL_THEMES } from '@/config/themes';
+import { AudioCaptureManager } from '@/lib/audio/AudioCaptureManager';
 
 export class VideoRecorder {
   private terminal: Terminal | null = null;
@@ -18,6 +19,13 @@ export class VideoRecorder {
   private isRecording: boolean = false;
   private videoQuality: 'low' | 'medium' | 'high' = 'medium';
   private videoFormat: 'webm' | 'mp4' = 'webm';
+
+  // 音频录制相关
+  private audioCaptureManager: AudioCaptureManager | null = null;
+  private recordMicrophone: boolean = false;
+  private recordSpeaker: boolean = false;
+  private audioQuality: 'low' | 'medium' | 'high' = 'medium';
+  private audioSampleRate: number = 48000;
 
   constructor() {
     // 创建隐藏的容器
@@ -43,6 +51,30 @@ export class VideoRecorder {
     // 保存视频质量和格式设置
     this.videoQuality = terminalConfig?.videoQuality || 'medium';
     this.videoFormat = terminalConfig?.videoFormat || 'webm';
+
+    // 保存音频配置
+    this.recordMicrophone = terminalConfig?.recordMicrophone || false;
+    this.recordSpeaker = terminalConfig?.recordSpeaker || false;
+    this.audioQuality = terminalConfig?.audioQuality || 'medium';
+    this.audioSampleRate = terminalConfig?.audioSampleRate || 48000;
+
+    // 初始化音频捕获管理器
+    if (this.recordMicrophone || this.recordSpeaker) {
+      try {
+        this.audioCaptureManager = new AudioCaptureManager();
+        await this.audioCaptureManager.initialize(
+          this.recordMicrophone,
+          this.recordSpeaker,
+          this.audioQuality,
+          this.audioSampleRate
+        );
+        console.log('[VideoRecorder] Audio capture initialized');
+      } catch (error) {
+        console.error('[VideoRecorder] Failed to initialize audio capture:', error);
+        // 音频初始化失败不影响视频录制
+        this.audioCaptureManager = null;
+      }
+    }
 
     // 创建 xterm.js 实例
     const fontSize = terminalConfig?.fontSize || 14;
@@ -202,10 +234,32 @@ export class VideoRecorder {
 
     const mimeType = getMimeType();
 
-    const stream = canvasElement.captureStream(30); // 30 FPS
-    this.mediaRecorder = new MediaRecorder(stream, {
+    // 获取视频流
+    const canvasStream = canvasElement.captureStream(30); // 30 FPS
+
+    // 获取音频流并合并
+    let finalStream: MediaStream;
+    const audioStream = this.audioCaptureManager?.getAudioStream();
+
+    if (audioStream && audioStream.getAudioTracks().length > 0) {
+      // 合并视频和音频轨道
+      const videoTracks = canvasStream.getVideoTracks();
+      const audioTracks = audioStream.getAudioTracks();
+      finalStream = new MediaStream([...videoTracks, ...audioTracks]);
+      console.log('[VideoRecorder] Audio tracks added to stream:', audioTracks.length, 'track(s)');
+    } else {
+      // 只有视频
+      finalStream = canvasStream;
+      console.log('[VideoRecorder] No audio tracks, video only');
+    }
+
+    // 获取音频比特率
+    const audioBitrate = this.audioCaptureManager?.getAudioBitrate() || 128000;
+
+    this.mediaRecorder = new MediaRecorder(finalStream, {
       mimeType,
       videoBitsPerSecond: bitrate,
+      audioBitsPerSecond: audioBitrate,
     });
 
     // 设置数据收集
@@ -221,7 +275,22 @@ export class VideoRecorder {
       medium: '2 Mbps',
       high: '5 Mbps',
     };
-    console.log(`[VideoRecorder] 视频录制配置 - 格式: ${this.videoFormat.toUpperCase()}, MIME: ${mimeType}, 质量: ${this.videoQuality} (${bitrateLabels[this.videoQuality]})`);
+
+    const audioBitrateLabels: Record<string, string> = {
+      low: '64 Kbps',
+      medium: '128 Kbps',
+      high: '256 Kbps',
+    };
+
+    const hasAudio = audioStream && audioStream.getAudioTracks().length > 0;
+
+    console.log(
+      `[VideoRecorder] 录制配置 - ` +
+      `格式: ${this.videoFormat.toUpperCase()}, ` +
+      `MIME: ${mimeType}, ` +
+      `视频质量: ${this.videoQuality} (${bitrateLabels[this.videoQuality]}), ` +
+      `音频: ${hasAudio ? '启用' : '禁用'}${hasAudio ? ` (${this.audioQuality} - ${audioBitrateLabels[this.audioQuality]})` : ''}`
+    );
   }
 
   /**
@@ -293,6 +362,13 @@ export class VideoRecorder {
   dispose(): void {
     if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
       this.mediaRecorder.stop();
+    }
+
+    // 清理音频捕获资源
+    if (this.audioCaptureManager) {
+      this.audioCaptureManager.dispose();
+      this.audioCaptureManager = null;
+      console.log('[VideoRecorder] Audio capture disposed');
     }
 
     if (this.webglAddon) {
