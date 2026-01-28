@@ -6,9 +6,8 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   // GitHub Pages 部署配置
-  // 如果仓库名是 'ssh-terminal-website'，使用 '/ssh-terminal-website/'
-  // 如果是作为项目主页，使用 '/'
-  base: '/ssh-terminal-website/',
+  // 仓库名是 'ssh-terminal'，使用 '/ssh-terminal/'
+  base: '/ssh-terminal/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

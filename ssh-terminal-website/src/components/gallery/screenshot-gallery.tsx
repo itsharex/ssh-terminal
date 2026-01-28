@@ -54,7 +54,7 @@ export function ScreenshotGallery() {
 
         <div className="max-w-5xl mx-auto">
           {/* Main Image */}
-          <div className="relative rounded-lg overflow-hidden border-2 border-border">
+          <div className="relative rounded-lg overflow-hidden border">
             <AnimatePresence mode="wait">
               <motion.img
                 key={currentIndex}
@@ -119,10 +119,10 @@ export function ScreenshotGallery() {
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={`rounded-lg overflow-hidden border-2 transition-all ${
+                className={`rounded-lg overflow-hidden border transition-all ${
                   index === currentIndex
                     ? 'border-primary scale-105'
-                    : 'border-border hover:border-primary/50'
+                    : 'border hover:border-primary/50'
                 }`}
               >
                 <img

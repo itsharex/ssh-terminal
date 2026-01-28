@@ -93,7 +93,7 @@ export function FeatureGrid() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {features.map((feature, index) => (
             <ScrollReveal key={index} delay={index * 0.1}>
-              <Card className="group h-full hover:shadow-2xl dark:hover:shadow-none dark:hover:shadow-2xl dark:hover:shadow-primary/5 transition-all duration-300 border border-border/50 dark:border-border/20 hover:border-primary/30 dark:hover:border-primary/20 cursor-default relative overflow-hidden">
+              <Card className="group h-full hover:shadow-2xl dark:hover:shadow-none dark:hover:shadow-2xl dark:hover:shadow-primary/5 transition-all duration-300 border hover:border-primary/30 dark:hover:border-primary/20 cursor-default relative overflow-hidden">
                 {/* 渐变背景装饰 */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 

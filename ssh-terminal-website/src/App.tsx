@@ -64,18 +64,18 @@ function HeroSection() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="flex justify-center gap-4"
         >
-          <Button size="lg" className="gap-2 font-mono glow-effect" asChild>
-            <a href="#download">
+          <a href="#download" className="inline-flex">
+            <Button size="lg" className="gap-2 font-mono glow-effect items-center">
               <Download className="h-5 w-5" />
               立即下载
-            </a>
-          </Button>
-          <Button size="lg" variant="outline" className="gap-2 font-mono" asChild>
-            <a href="#screenshots">
+            </Button>
+          </a>
+          <a href="#screenshots" className="inline-flex">
+            <Button size="lg" variant="outline" className="gap-2 font-mono items-center">
               <FileVideo className="h-5 w-5" />
               查看演示
-            </a>
-          </Button>
+            </Button>
+          </a>
         </motion.div>
 
         {/* 技术指标 */}
@@ -127,7 +127,7 @@ function TechStack() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {techItems.map((tech, index) => (
             <ScrollReveal key={index} delay={index * 0.1}>
-              <Card className="group hover:shadow-xl transition-all duration-300 border border-border/50 dark:border-border/30 hover:border-primary/30 dark:hover:border-primary/20">
+              <Card className="group hover:shadow-xl transition-all duration-300 border hover:border-primary/30 dark:hover:border-primary/20">
                 <CardHeader>
                   <div className={`flex items-center gap-4 mb-3`}>
                     <div className={`p-4 rounded-lg ${tech.bg} ${tech.color} group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-300 font-mono`}>
@@ -163,7 +163,7 @@ function DownloadSection() {
               { name: 'Linux', desc: 'AppImage / DEB', ext: '', icon: '🐧', color: 'from-green-500/10 to-green-500/5' },
             ].map((platform, index) => (
               <ScrollReveal key={index} delay={index * 0.1}>
-                <Card className="group hover:shadow-2xl transition-all duration-300 border border-border/50 dark:border-border/20 hover:border-primary/30 dark:hover:border-primary/20 relative overflow-hidden">
+                <Card className="group hover:shadow-2xl transition-all duration-300 border hover:border-primary/30 dark:hover:border-primary/20 relative overflow-hidden">
                   <div className={`absolute inset-0 bg-gradient-to-br ${platform.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
                   <CardHeader className="relative z-10">
@@ -172,12 +172,12 @@ function DownloadSection() {
                     <CardDescription className="text-base relative z-10">{platform.desc}</CardDescription>
                   </CardHeader>
                   <CardContent className="relative z-10">
-                    <Button className="w-full gap-2 font-mono" asChild>
-                      <a href="https://github.com/shenjianz/ssh-terminal/releases">
+                    <a href="https://github.com/shenjianz/ssh-terminal/releases" className="block">
+                      <Button className="w-full gap-2 font-mono items-center">
                         <Download className="h-4 w-4" />
                         下载{platform.ext || '安装包'}
-                      </a>
-                    </Button>
+                      </Button>
+                    </a>
                   </CardContent>
                 </Card>
               </ScrollReveal>
@@ -205,7 +205,7 @@ function DownloadSection() {
 
 function Footer() {
   return (
-    <footer className="border-t border-border/50 py-12 bg-muted/20 dark:bg-muted/5">
+    <footer className="border-t py-12 bg-muted/20 dark:bg-muted/5">
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">

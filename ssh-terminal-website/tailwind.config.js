@@ -7,45 +7,33 @@ export default {
   darkMode: ["class"],
   theme: {
     extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
+      // 移动端优先的断点配置
+      screens: {
+        'xs': '375px',   // 超小屏手机
+        'sm': '640px',   // 小屏手机
+        'md': '768px',   // 平板
+        'lg': '1024px',  // 桌面
+        'xl': '1280px',  // 大屏桌面
+        '2xl': '1536px', // 超大屏
       },
+      // 移动端友好的间距
+      spacing: {
+        'mobile-safe': 'env(safe-area-inset-bottom)',
+      },
+      // 移动端友好的圆角
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        'mobile': '12px',
+        'lg': 'var(--radius)',
+        'md': "calc(var(--radius) - 2px)",
+        'sm': "calc(var(--radius) - 4px)",
+      },
+      // 移动端友好的阴影
+      boxShadow: {
+        'mobile': '0 2px 8px rgba(0, 0, 0, 0.1)',
+      },
+      // 移动端友好的动画
+      transitionDuration: {
+        '400': '400ms',
       },
       keyframes: {
         "fade-in": {

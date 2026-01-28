@@ -67,7 +67,7 @@ export function MobileMenu() {
                 >
                   下载
                 </a>
-                <div className="pt-4 border-t dark:border-border/50">
+                <div className="pt-4 border-t dark:border-border/10">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground dark:text-muted-foreground/80">主题</span>
                     <ThemeToggle />
