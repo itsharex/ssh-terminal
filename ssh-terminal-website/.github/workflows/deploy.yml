@@ -3,7 +3,8 @@ on:
   push:
     branches: [ master, main ]  # 支持两个分支名称
     paths:
-      - 'ssh-terminal-website/**'  # 只在网站目录变化时触发
+      - 'ssh-terminal-website/**'  # 网站目录变化时触发
+      - 'package.json'  # 根目录 package.json 变化时也触发
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -40,6 +41,12 @@ jobs:
           version: 8
       - name: Install dependencies
         run: pnpm install
+      - name: Sync version from package.json
+        run: |
+          VERSION=$(node -p "require('../package.json').version")
+          echo "Syncing version: v${VERSION}"
+          sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${VERSION}/g" src/App.tsx
+          echo "{\"version\":\"${VERSION}\"}" > version.json
       - name: Build
         run: pnpm build
       - name: Upload artifact

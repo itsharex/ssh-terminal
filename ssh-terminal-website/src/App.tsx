@@ -33,7 +33,7 @@ function HeroSection() {
             <div className="absolute inset-0 bg-primary/10 blur-xl rounded-2xl transition-all duration-500 animate-pulse" />
             <Terminal className="h-32 w-32 text-primary relative" />
             <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-lg px-3 py-1 text-xs font-mono font-bold border border-primary/20">
-              v2.0
+              v0.5.0
             </div>
           </div>
         </motion.div>

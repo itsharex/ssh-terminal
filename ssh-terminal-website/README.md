@@ -2,19 +2,20 @@
 
 这是 SSH Terminal 项目的主页网站，使用 React + shadcn/ui + pnpm 构建。
 
-
 ## 🌐 在线访问
 
-- GitHub Pages: https://yourusername.github.io/ssh-terminal-website
+- GitHub Pages: https://shenjianz.github.io/ssh-terminal/
 
 ## 🛠️ 技术栈
 
 - **React 19** - 用户界面框架
 - **TypeScript** - 类型安全
 - **Vite** - 构建工具
-- **Tailwind CSS** - 样式框架
+- **Tailwind CSS 4.0** - 样式框架（使用 OKLCH 色彩空间）
 - **shadcn/ui** - UI 组件库
 - **Lucide React** - 图标库
+- **Framer Motion** - 动画库
+- **next-themes** - 主题切换
 
 ## 📦 安装依赖
 
@@ -46,16 +47,15 @@ pnpm build
 
 网站通过 GitHub Actions 自动部署到 GitHub Pages。
 
-### 手动部署
-
-1. 构建项目：`pnpm build`
-2. 将 `dist` 目录的内容推送到 `gh-pages` 分支
-
 ### 自动部署
 
-每次推送到 `main` 分支时，GitHub Actions 会自动：
+每次推送到 `master` 分支时，且 `ssh-terminal-website/` 目录有变化时，GitHub Actions 会自动：
 1. 构建项目
 2. 部署到 GitHub Pages
+
+### 手动触发部署
+
+你也可以在 GitHub Actions 页面手动触发部署工作流。
 
 ## 🎨 自定义
 
@@ -65,13 +65,32 @@ pnpm build
 
 ### 添加新组件
 
-1. 在 `src/components/ui/` 创建新组件
+1. 使用 shadcn CLI 添加组件：
+   ```bash
+   npx shadcn@latest add [component-name]
+   ```
 2. 在 `src/App.tsx` 中导入使用
 
 ### 修改样式
 
 1. 编辑 `tailwind.config.js` 自定义主题
 2. 编辑 `src/style.css` 添加全局样式
+3. 使用 CSS 变量（支持亮色和深色主题）
+
+### 主题系统
+
+项目支持亮色/深色主题切换，使用 `next-themes` 实现：
+- 主题配置在 `src/style.css` 中
+- 使用 OKLCH 色彩空间
+- 自动适配系统主题偏好
+
+### 版本管理
+
+网站版本号会自动与主项目保持一致：
+- 版本号显示在 Hero 区域的终端图标右上角
+- GitHub Actions 会在构建时自动从根目录 `package.json` 读取版本号
+- 每次推送到 master/main 分支时自动部署
+- 当 `package.json` 或网站目录变化时触发重新构建
 
 ## 📝 项目结构
 
@@ -82,17 +101,64 @@ ssh-terminal-website/
 │       └── deploy.yml   # 自动部署配置
 ├── src/                    # 源代码
 │   ├── components/         # React 组件
+│   │   ├── animations/    # 动画组件
+│   │   ├── features/      # 功能展示组件
+│   │   ├── gallery/       # 截图画廊
+│   │   ├── guide/         # 使用指南
+│   │   ├── navigation/    # 导航组件
 │   │   └── ui/           # shadcn/ui 组件
 │   ├── lib/               # 工具函数
 │   ├── App.tsx            # 主应用组件
 │   ├── main.tsx           # 应用入口
 │   └── style.css          # 全局样式
 ├── public/                 # 静态资源
+│   └── screenshots/       # 应用截图
 ├── index.html              # HTML 模板
 ├── tailwind.config.js      # Tailwind 配置
 ├── tsconfig.json          # TypeScript 配置
 ├── vite.config.ts         # Vite 配置
 └── package.json           # 项目配置
+```
+
+## 🎨 配置说明
+
+### Vite 配置
+
+项目配置了 `base: '/ssh-terminal/'`，以匹配 GitHub 仓库名称：
+- 开发环境：使用根路径 `/`
+- 生产环境：使用 `/ssh-terminal/`
+
+### Tailwind CSS 配置
+
+- 使用 Tailwind CSS 4.0
+- 配置了移动端优先的断点
+- 自定义了间距、圆角、阴影等
+- 支持自定义动画时长
+
+### 样式系统
+
+- 使用 OKLCH 色彩空间
+- CSS 变量驱动的主题系统
+- 完整的深色模式支持
+- 自定义滚动条样式
+- 移动端优化（安全区域、触摸优化）
+
+## 🔧 开发工具
+
+### 添加 shadcn/ui 组件
+
+```bash
+# 查看所有可用组件
+npx shadcn@latest add
+
+# 添加特定组件
+npx shadcn@latest add button card dialog
+```
+
+### 类型检查
+
+```bash
+pnpm build  # 构建时会自动进行类型检查
 ```
 
 ## 📄 许可证
@@ -101,8 +167,10 @@ MIT License
 
 ## 🔗 相关链接
 
-- [SSH Terminal 项目](https://github.com/yourusername/ssh-terminal)
+- [SSH Terminal 项目](https://github.com/shenjianZ/ssh-terminal)
+- [配置参考文档](../docs/SHADCN_TAILWIND_SETUP.md)
 - [Tauri 文档](https://tauri.app/)
 - [React 文档](https://react.dev/)
 - [shadcn/ui 文档](https://ui.shadcn.com/)
 - [Tailwind CSS 文档](https://tailwindcss.com/)
+- [OKLCH 色彩空间](https://oklch.com/)
