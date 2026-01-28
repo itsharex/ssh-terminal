@@ -4,6 +4,7 @@ mod ssh;
 mod config;
 mod sftp;
 mod audio;
+mod ai;
 
 use commands::session::SSHManagerState;
 use commands::sftp::SftpManagerState;
@@ -110,6 +111,16 @@ pub fn run() {
             commands::audio_stop_capturing,
             commands::audio_list_devices,
             commands::audio_check_support,
+            // AI 命令
+            commands::ai_chat,
+            commands::ai_explain_command,
+            commands::ai_generate_command,
+            commands::ai_analyze_error,
+            commands::ai_test_connection,
+            // AI 配置存储命令
+            commands::storage_ai_config_save,
+            commands::storage_ai_config_load,
+            commands::storage_ai_config_get_default,
             // 文件系统命令
             commands::fs_write_file,
         ])

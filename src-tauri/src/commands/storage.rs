@@ -64,3 +64,21 @@ pub async fn storage_config_load(app: AppHandle) -> std::result::Result<Option<c
 pub async fn storage_config_get_default() -> crate::config::storage::TerminalConfig {
     Storage::get_default_config()
 }
+
+/// 保存 AI 配置
+#[tauri::command]
+pub async fn storage_ai_config_save(config: crate::config::storage::AIConfig, app: AppHandle) -> std::result::Result<(), String> {
+    crate::config::Storage::save_ai_config(&config, Some(&app)).map_err(|e| e.to_string())
+}
+
+/// 加载 AI 配置
+#[tauri::command]
+pub async fn storage_ai_config_load(app: AppHandle) -> std::result::Result<Option<crate::config::storage::AIConfig>, String> {
+    crate::config::Storage::load_ai_config(Some(&app)).map_err(|e| e.to_string())
+}
+
+/// 获取默认 AI 配置
+#[tauri::command]
+pub async fn storage_ai_config_get_default() -> crate::config::storage::AIConfig {
+    crate::config::Storage::get_default_ai_config()
+}

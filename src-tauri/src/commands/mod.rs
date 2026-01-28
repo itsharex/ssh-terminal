@@ -5,6 +5,7 @@ pub mod sftp;
 pub mod recording;
 pub mod keybindings;
 pub mod audio;
+pub mod ai;
 
 pub use session::*;
 pub use terminal::*;
@@ -13,3 +14,7 @@ pub use sftp::*;
 pub use recording::*;
 pub use keybindings::*;
 pub use audio::*;
+pub use ai::*;
+
+// 导出 AI 配置相关的类型
+pub use crate::config::storage::{AIConfig, AIProviderConfig, AIShortcuts};

@@ -27,6 +27,68 @@ pub struct AppConfig {
     pub terminal_config: TerminalConfig,
 }
 
+/// AI 配置存储结构
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AIAppConfig {
+    pub version: String,
+    pub ai_config: AIConfig,
+}
+
+/// AI Provider 配置
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct AIProviderConfig {
+    #[serde(default)]
+    pub id: String,
+    #[serde(rename = "type", default)]
+    pub provider_type: String, // "openai" | "ollama" | "qwen" | "wenxin"
+    #[serde(default)]
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>, // 明文 API Key（前端使用，不保存到文件）
+    #[serde(default)]
+    pub api_key_encrypted: Option<String>, // 加密的 API Key（保存到文件）
+    #[serde(default)]
+    pub nonce: Option<String>, // AES-GCM nonce（保存到文件）
+    #[serde(default)]
+    pub base_url: Option<String>,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default = "default_temperature")]
+    pub temperature: f32,
+    #[serde(default = "default_max_tokens")]
+    pub max_tokens: u32,
+    #[serde(default)]
+    pub enabled: bool,
+}
+
+fn default_temperature() -> f32 {
+    0.7
+}
+
+fn default_max_tokens() -> u32 {
+    2000
+}
+
+/// AI 配置
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AIConfig {
+    pub providers: Vec<AIProviderConfig>,
+    pub default_provider: String,
+    pub shortcuts: AIShortcuts,
+}
+
+/// AI 快捷键配置
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AIShortcuts {
+    pub explain_command: String,
+    pub open_chat: String,
+    pub nl_to_command: String,
+}
+
 /// 终端配置
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -486,6 +548,211 @@ impl Storage {
             audio_sample_rate: 48000,
             app_theme: "system".to_string(),
         }
+    }
+
+    /// 保存 AI 配置
+    pub fn save_ai_config(config: &AIConfig, app_handle: Option<&tauri::AppHandle>) -> Result<()> {
+        let storage_dir = Self::get_storage_dir(app_handle)?;
+
+        // 确保存储目录存在
+        fs::create_dir_all(&storage_dir)
+            .map_err(|e| SSHError::Storage(format!("Failed to create storage directory: {}", e)))?;
+
+        let config_path = storage_dir.join("ai_config.json");
+
+        // 创建 Storage 实例用于加密
+        let storage = Storage::new(app_handle)?;
+
+        // 加密所有 API Keys
+        let mut providers_to_save = Vec::new();
+        for provider in &config.providers {
+            let mut provider_to_save = provider.clone();
+
+            // 如果有明文 apiKey，加密它
+            if let Some(api_key) = &provider_to_save.api_key {
+                if !api_key.is_empty() {
+                    match storage.encrypt_api_key(api_key) {
+                        Ok((encrypted_key, nonce)) => {
+                            provider_to_save.api_key_encrypted = Some(encrypted_key);
+                            provider_to_save.nonce = Some(nonce);
+                            provider_to_save.api_key = None; // 清空明文
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to encrypt API key for provider '{}': {}", provider.id, e);
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+
+            providers_to_save.push(provider_to_save);
+        }
+
+        let config_to_save = AIConfig {
+            providers: providers_to_save,
+            default_provider: config.default_provider.clone(),
+            shortcuts: config.shortcuts.clone(),
+        };
+
+        let app_config = AIAppConfig {
+            version: "1.0".to_string(),
+            ai_config: config_to_save,
+        };
+
+        let content = serde_json::to_string_pretty(&app_config)
+            .map_err(|e| SSHError::Storage(format!("Failed to serialize AI config: {}", e)))?;
+
+        fs::write(&config_path, content)
+            .map_err(|e| SSHError::Storage(format!("Failed to write AI config: {}", e)))?;
+
+        tracing::info!("AI config saved successfully");
+        Ok(())
+    }
+
+    /// 加载 AI 配置
+    pub fn load_ai_config(app_handle: Option<&tauri::AppHandle>) -> Result<Option<AIConfig>> {
+        let storage_dir = Self::get_storage_dir(app_handle)?;
+        let config_path = storage_dir.join("ai_config.json");
+
+        if !config_path.exists() {
+            // 文件不存在，创建默认配置
+            let default_config = Self::get_default_ai_config();
+            Self::save_ai_config(&default_config, app_handle)?;
+            return Ok(Some(default_config));
+        }
+
+        let content = fs::read_to_string(&config_path)
+            .map_err(|e| SSHError::Storage(format!("Failed to read AI config: {}", e)))?;
+
+        let app_config: AIAppConfig = serde_json::from_str(&content)
+            .map_err(|e| SSHError::Storage(format!("Failed to parse AI config: {}", e)))?;
+
+        // 创建 Storage 实例用于解密
+        let storage = Storage::new(app_handle)?;
+
+        // 解密所有 API Keys 并清除加密字段
+        let mut providers_loaded = Vec::new();
+        for provider in app_config.ai_config.providers {
+            let mut provider_loaded = provider.clone();
+
+            // 如果有加密的 apiKey，解密它
+            if let (Some(encrypted_key), Some(nonce)) = (&provider.api_key_encrypted, &provider.nonce) {
+                match storage.decrypt_api_key(encrypted_key, nonce) {
+                    Ok(decrypted_key) => {
+                        provider_loaded.api_key = Some(decrypted_key);
+                        // 清除加密字段，不返回给前端
+                        provider_loaded.api_key_encrypted = None;
+                        provider_loaded.nonce = None;
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to decrypt API key for provider '{}': {}", provider.id, e);
+                        // 解密失败时继续，但保持 api_key 为 None
+                        provider_loaded.api_key_encrypted = None;
+                        provider_loaded.nonce = None;
+                    }
+                }
+            } else {
+                // 即使没有加密字段，也要清除它们（如果有）
+                provider_loaded.api_key_encrypted = None;
+                provider_loaded.nonce = None;
+            }
+
+            providers_loaded.push(provider_loaded);
+        }
+
+        let config_loaded = AIConfig {
+            providers: providers_loaded,
+            default_provider: app_config.ai_config.default_provider,
+            shortcuts: app_config.ai_config.shortcuts,
+        };
+
+        Ok(Some(config_loaded))
+    }
+
+    /// 获取默认 AI 配置
+    pub fn get_default_ai_config() -> AIConfig {
+        AIConfig {
+            providers: vec![
+                AIProviderConfig {
+                    id: "openai-default".to_string(),
+                    provider_type: "openai".to_string(),
+                    name: "OpenAI".to_string(),
+                    api_key: None, // 明文 API Key
+                    base_url: None,
+                    model: "gpt-3.5-turbo".to_string(),
+                    temperature: 0.7,
+                    max_tokens: 2000,
+                    enabled: false,
+                    ..Default::default()
+                },
+                AIProviderConfig {
+                    id: "ollama-default".to_string(),
+                    provider_type: "ollama".to_string(),
+                    name: "Ollama (本地)".to_string(),
+                    api_key: None,
+                    base_url: Some("http://localhost:11434".to_string()),
+                    model: "llama3.2".to_string(),
+                    temperature: 0.7,
+                    max_tokens: 2000,
+                    enabled: false,
+                    ..Default::default()
+                },
+            ],
+            default_provider: "openai-default".to_string(),
+            shortcuts: AIShortcuts {
+                explain_command: "Ctrl+Shift+A".to_string(),
+                open_chat: "Ctrl+Shift+I".to_string(),
+                nl_to_command: "Ctrl+Shift+N".to_string(),
+            },
+        }
+    }
+
+    /// 加密 API Key
+    pub fn encrypt_api_key(&self, api_key: &str) -> Result<(String, String)> {
+        // 从密钥字符串派生 AES-256 密钥
+        let key_bytes = self.derive_key_from_password(self.encryption_key.expose_secret())?;
+        let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
+
+        // 生成随机 nonce
+        let nonce_bytes: [u8; 12] = rand::random();
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        // 加密数据
+        let cipher = Aes256Gcm::new(key);
+        let ciphertext = cipher
+            .encrypt(nonce, api_key.as_bytes())
+            .map_err(|e| SSHError::Crypto(format!("Encryption failed: {}", e)))?;
+
+        // 编码为 base64
+        let api_key_encrypted = base64::engine::general_purpose::STANDARD.encode(&ciphertext);
+        let nonce_encoded = base64::engine::general_purpose::STANDARD.encode(&nonce_bytes);
+
+        Ok((api_key_encrypted, nonce_encoded))
+    }
+
+    /// 解密 API Key
+    pub fn decrypt_api_key(&self, encrypted_key: &str, nonce_str: &str) -> Result<String> {
+        let key_bytes = self.derive_key_from_password(self.encryption_key.expose_secret())?;
+        let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
+
+        // 解码 nonce 和密文
+        let nonce_bytes = base64::engine::general_purpose::STANDARD
+            .decode(nonce_str)
+            .map_err(|e| SSHError::Crypto(format!("Failed to decode nonce: {}", e)))?;
+
+        let ciphertext = base64::engine::general_purpose::STANDARD
+            .decode(encrypted_key)
+            .map_err(|e| SSHError::Crypto(format!("Failed to decode ciphertext: {}", e)))?;
+
+        // 解密数据
+        let nonce = Nonce::from_slice(&nonce_bytes);
+        let cipher = Aes256Gcm::new(key);
+
+        let decrypted_data = cipher.decrypt(nonce, ciphertext.as_ref())
+            .map_err(|e| SSHError::Crypto(format!("Decryption failed: {}", e)))?;
+
+        String::from_utf8(decrypted_data)
+            .map_err(|e| SSHError::Crypto(format!("Invalid UTF-8: {}", e)))
     }
 }
 
