@@ -62,6 +62,15 @@ export class KeybindingActionExecutor {
       case 'terminal.openNLToCmd':
         return this.executeTerminalOpenNLToCmd();
 
+      case 'terminal.explainCommand':
+        return this.executeTerminalExplainCommand();
+
+      case 'terminal.analyzeError':
+        return this.executeTerminalAnalyzeError();
+
+      case 'terminal.openAIChat':
+        return this.executeTerminalOpenAIChat();
+
       // ========== SFTP 快捷键 ==========
       case 'sftp.upload':
         return this.executeSftpUpload();
@@ -392,6 +401,54 @@ export class KeybindingActionExecutor {
       return true;
     } catch (error) {
       console.error('[KeybindingExecutor] Error opening NL2CMD panel:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 打开/关闭 AI 对话面板
+   */
+  private async executeTerminalOpenAIChat(): Promise<boolean> {
+    try {
+      // 触发 AI 对话面板事件
+      const event = new CustomEvent('keybinding-terminal-open-ai-chat');
+      window.dispatchEvent(event);
+      console.log('[KeybindingExecutor] Triggered AI chat panel');
+      return true;
+    } catch (error) {
+      console.error('[KeybindingExecutor] Error opening AI chat panel:', error);
+      return false;
+    }
+  }
+
+  /**
+   * AI 解释命令
+   */
+  private async executeTerminalExplainCommand(): Promise<boolean> {
+    try {
+      // 触发命令解释事件，由 XTermWrapper 监听并处理
+      const event = new CustomEvent('keybinding-terminal-explain-command');
+      window.dispatchEvent(event);
+      console.log('[KeybindingExecutor] Triggered command explanation');
+      return true;
+    } catch (error) {
+      console.error('[KeybindingExecutor] Error explaining command:', error);
+      return false;
+    }
+  }
+
+  /**
+   * AI 分析错误
+   */
+  private async executeTerminalAnalyzeError(): Promise<boolean> {
+    try {
+      // 触发错误分析事件，由 XTermWrapper 监听并处理
+      const event = new CustomEvent('keybinding-terminal-analyze-error');
+      window.dispatchEvent(event);
+      console.log('[KeybindingExecutor] Triggered error analysis');
+      return true;
+    } catch (error) {
+      console.error('[KeybindingExecutor] Error analyzing error:', error);
       return false;
     }
   }

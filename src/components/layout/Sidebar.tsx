@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,17 +6,22 @@ import {
   FolderOpen,
   HardDrive,
   Settings,
+  MessageSquare,
   LucideIcon,
   PanelLeftClose,
   PanelLeftOpen
 } from "lucide-react";
 import { useSidebarStore } from "@/store/sidebarStore";
+import { useAIStore } from "@/store/aiStore";
+import { useTerminalStore } from "@/store/terminalStore";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface NavigationItem {
   name: string;
   path: string;
   icon: LucideIcon;
+  action?: string;
 }
 
 interface NavigationSection {
@@ -30,6 +35,12 @@ const navigationItems: NavigationSection[] = [
     items: [
       { name: "终端", path: "/terminal", icon: Terminal },
       { name: "会话管理", path: "/sessions", icon: FolderOpen },
+    ]
+  },
+  {
+    title: "AI 助手",
+    items: [
+      { name: "AI 对话", path: "/ai-chat", icon: MessageSquare, action: 'toggleChat' },
     ]
   },
   {
@@ -48,6 +59,28 @@ const navigationItems: NavigationSection[] = [
 
 export function Sidebar() {
   const { isCollapsed, toggleSidebar } = useSidebarStore();
+  const { toggleChat } = useAIStore();
+  const navigate = useNavigate();
+
+  // 处理导航项点击
+  const handleNavClick = (item: NavigationItem, e: React.MouseEvent) => {
+    if (item.action === 'toggleChat') {
+      e.preventDefault();
+
+      // 检查是否有活动的标签页
+      const activeTab = useTerminalStore.getState().getActiveTab();
+
+      if (!activeTab) {
+        // 没有活动标签页，跳转到终端页面并提示
+        navigate('/terminal');
+        toast.info('请先创建或打开一个终端连接');
+        return;
+      }
+
+      // 有活动标签页，打开 AI 对话面板
+      toggleChat();
+    }
+  };
 
   return (
     <aside
@@ -105,6 +138,7 @@ export function Sidebar() {
                   <li key={itemIndex}>
                     <NavLink
                       to={item.path}
+                      onClick={(e) => handleNavClick(item, e)}
                       className={({ isActive }) =>
                         cn(
                           "flex items-center rounded-lg transition-all relative overflow-hidden",

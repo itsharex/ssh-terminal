@@ -157,7 +157,7 @@ export function NLToCommandPanel({
   return (
     <div
       className={cn(
-        'fixed bottom-6 right-6 z-50 w-[500px] max-w-[calc(100vw-2rem)] transition-all duration-300 ease-out',
+        'fixed bottom-6 right-6 z-50 w-[600px] max-w-[calc(100vw-2rem)] transition-all duration-300 ease-out',
         isAnimating ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
       )}
     >

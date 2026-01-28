@@ -8,7 +8,6 @@ mod ai;
 
 use commands::session::SSHManagerState;
 use commands::sftp::SftpManagerState;
-use commands::audio::AudioCapturerState;
 use ssh::manager::SSHManager;
 use sftp::manager::SftpManager;
 use std::sync::Arc;
@@ -113,6 +112,7 @@ pub fn run() {
             commands::audio_check_support,
             // AI 命令
             commands::ai_chat,
+            commands::ai_chat_stream,
             commands::ai_explain_command,
             commands::ai_generate_command,
             commands::ai_analyze_error,

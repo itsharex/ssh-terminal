@@ -5,14 +5,18 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { SearchAddon } from '@xterm/addon-search';
 import { invoke } from '@tauri-apps/api/core';
+import { Sparkles, Copy, Clipboard, Search, Trash2, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import { useTerminalStore } from '@/store/terminalStore';
 import { useKeybindingStore } from '@/store/keybindingStore';
 import { HostKeyConfirmDialog } from '@/components/ssh/HostKeyConfirmDialog';
 import { NLToCommandDialog } from '@/components/ai/command/NLToCommandDialog';
+import { ErrorAnalyzerDialog } from '@/components/ai/command/ErrorAnalyzerDialog';
+import { CommandExplainerDialog } from '@/components/ai/command/CommandExplainerDialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { normalizeKeyCombo } from '@/lib/keybindingParser';
 import { keybindingActionExecutor } from '@/lib/keybindingActions';
+import { toast } from 'sonner';
 import '@xterm/xterm/css/xterm.css';
 
 interface XTermWrapperProps {
@@ -38,6 +42,14 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
 
   // NL2CMD 对话框状态
   const [showNLToCmdDialog, setShowNLToCmdDialog] = useState(false);
+
+  // 错误分析对话框状态
+  const [showErrorAnalyzer, setShowErrorAnalyzer] = useState(false);
+  const [errorText, setErrorText] = useState('');
+
+  // 命令解释对话框状态
+  const [showCommandExplainer, setShowCommandExplainer] = useState(false);
+  const [commandText, setCommandText] = useState('');
 
   // 主机密钥确认对话框状态
   const [hostKeyDialog, setHostKeyDialog] = useState({
@@ -553,6 +565,54 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
     };
   }, [connectionId]);
 
+  // 监听快捷键触发的命令解释事件
+  useEffect(() => {
+    const handleKeybindingExplainCommand = () => {
+      // 检查当前是否有活跃的终端标签
+      const activeTab = useTerminalStore.getState().getActiveTab();
+      if (activeTab && activeTab.connectionId === connectionId) {
+        // 检查是否有选中的文本
+        if (terminalRefInstance.current && terminalRefInstance.current.hasSelection()) {
+          const selection = terminalRefInstance.current.getSelection();
+          setCommandText(selection);
+          setShowCommandExplainer(true);
+        } else {
+          toast.error('请先在终端中选中要解释的命令');
+        }
+      }
+    };
+
+    window.addEventListener('keybinding-terminal-explain-command', handleKeybindingExplainCommand);
+
+    return () => {
+      window.removeEventListener('keybinding-terminal-explain-command', handleKeybindingExplainCommand);
+    };
+  }, [connectionId]);
+
+  // 监听快捷键触发的错误分析事件
+  useEffect(() => {
+    const handleKeybindingAnalyzeError = () => {
+      // 检查当前是否有活跃的终端标签
+      const activeTab = useTerminalStore.getState().getActiveTab();
+      if (activeTab && activeTab.connectionId === connectionId) {
+        // 检查是否有选中的文本
+        if (terminalRefInstance.current && terminalRefInstance.current.hasSelection()) {
+          const selection = terminalRefInstance.current.getSelection();
+          setErrorText(selection);
+          setShowErrorAnalyzer(true);
+        } else {
+          toast.error('请先在终端中选中要分析的错误信息');
+        }
+      }
+    };
+
+    window.addEventListener('keybinding-terminal-analyze-error', handleKeybindingAnalyzeError);
+
+    return () => {
+      window.removeEventListener('keybinding-terminal-analyze-error', handleKeybindingAnalyzeError);
+    };
+  }, [connectionId]);
+
   // 处理复制操作
   const handleCopy = async () => {
     if (terminalRefInstance.current && terminalRefInstance.current.hasSelection()) {
@@ -562,6 +622,15 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
       } catch (err) {
         console.error('Failed to copy:', err);
       }
+    }
+  };
+
+  // 处理 AI 错误分析
+  const handleErrorAnalyze = () => {
+    if (terminalRefInstance.current && terminalRefInstance.current.hasSelection()) {
+      const selection = terminalRefInstance.current.getSelection();
+      setErrorText(selection);
+      setShowErrorAnalyzer(true);
     }
   };
 
@@ -745,27 +814,41 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
         </ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem disabled={!hasSelection} onClick={handleCopy}>
+            <Copy className="h-4 w-4 mr-2" />
             复制
           </ContextMenuItem>
           <ContextMenuItem onClick={handlePaste}>
+            <Clipboard className="h-4 w-4 mr-2" />
             粘贴
           </ContextMenuItem>
           <ContextMenuItem onClick={handleFind}>
+            <Search className="h-4 w-4 mr-2" />
             查找...
           </ContextMenuItem>
 
           <ContextMenuSeparator />
 
+          <ContextMenuItem disabled={!hasSelection} onClick={handleErrorAnalyze} className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            AI 分析错误
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
           <ContextMenuItem onClick={handleClear}>
+            <Trash2 className="h-4 w-4 mr-2" />
             清屏
           </ContextMenuItem>
           <ContextMenuItem onClick={handleReset}>
+            <RotateCcw className="h-4 w-4 mr-2" />
             重置终端
           </ContextMenuItem>
           <ContextMenuItem onClick={handleZoomIn}>
+            <ZoomIn className="h-4 w-4 mr-2" />
             放大
           </ContextMenuItem>
           <ContextMenuItem onClick={handleZoomOut}>
+            <ZoomOut className="h-4 w-4 mr-2" />
             缩小
           </ContextMenuItem>
 
@@ -813,6 +896,20 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
         onOpenChange={setShowNLToCmdDialog}
         onConfirm={handleNLToCmdConfirm}
         connectionId={connectionId}
+      />
+
+      {/* 错误分析对话框 */}
+      <ErrorAnalyzerDialog
+        open={showErrorAnalyzer}
+        onOpenChange={setShowErrorAnalyzer}
+        errorText={errorText}
+      />
+
+      {/* 命令解释对话框 */}
+      <CommandExplainerDialog
+        open={showCommandExplainer}
+        onOpenChange={setShowCommandExplainer}
+        command={commandText}
       />
 
       {/* 搜索对话框 */}

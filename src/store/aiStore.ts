@@ -4,6 +4,9 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { ChatMessage } from '@/types/ai';
 import { AIClient } from '@/lib/ai/aiClient';
+import { aiCache } from '@/lib/ai/cache';
+import { DEFAULT_SYSTEM_PROMPT } from '@/lib/ai/promptTemplates';
+import { playSound, SoundEffect } from '@/lib/sounds';
 
 interface AIStore {
   // 配置
@@ -14,6 +17,9 @@ interface AIStore {
   // 对话历史
   conversations: Map<string, ChatMessage[]>;
   currentConnectionId: string | null;
+
+  // 流式状态
+  streamingConnectionId: string | null;  // 当前正在流式生成的连接ID
 
   // UI 状态
   isChatOpen: boolean;
@@ -99,6 +105,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
   error: null,
   conversations: new Map(),
   currentConnectionId: null,
+  streamingConnectionId: null,
   isChatOpen: false,
 
   // ========== 配置管理 ==========
@@ -155,27 +162,59 @@ export const useAIStore = create<AIStore>((set, get) => ({
     const history = conversations.get(connectionId) || [];
     const newHistory = [...history, userMessage];
 
-    set({ isLoading: true, error: null });
+    // 添加一个空的 assistant 消息（用于流式更新）
+    const assistantMessage: ChatMessage = { role: 'assistant', content: '' };
+    const updatedHistory = [...newHistory, assistantMessage];
+
+    // 更新对话历史（立即显示用户消息和空的 assistant 消息）
+    const newConversations = new Map(conversations);
+    newConversations.set(connectionId, updatedHistory);
+    set({ conversations: newConversations, streamingConnectionId: connectionId, isLoading: true, error: null });
 
     try {
-      // 调用 AI API（包含最近 20 条消息作为上下文）
-      const contextMessages = newHistory.slice(-20);
-      const response = await AIClient.chat(provider, contextMessages);
+      // 添加系统提示词
+      const systemMessage: ChatMessage = { role: 'system', content: DEFAULT_SYSTEM_PROMPT };
 
-      // 添加助手回复到历史
-      const assistantMessage: ChatMessage = { role: 'assistant', content: response };
-      const updatedHistory = [...newHistory, assistantMessage];
+      // 调用流式 AI API（包含系统提示词 + 最近 20 条消息作为上下文）
+      const contextMessages = [systemMessage, ...newHistory.slice(-20)];
 
-      // 更新对话历史
-      const newConversations = new Map(conversations);
-      newConversations.set(connectionId, updatedHistory);
+      await AIClient.chatStream(provider, contextMessages, (chunk) => {
+        // 增量更新 assistant 消息内容
+        const { conversations } = get();
+        const currentConv = conversations.get(connectionId);
+        if (currentConv && currentConv.length > 0) {
+          const lastMessage = currentConv[currentConv.length - 1];
+          if (lastMessage.role === 'assistant') {
+            const updatedConv = new Map(conversations);
+            updatedConv.set(connectionId, [
+              ...currentConv.slice(0, -1),
+              { ...lastMessage, content: lastMessage.content + chunk }
+            ]);
+            set({ conversations: updatedConv });
+          }
+        }
+      });
 
-      set({ conversations: newConversations, isLoading: false });
-      return response;
+      set({ streamingConnectionId: null, isLoading: false });
+
+      // 播放流式完成音效
+      playSound(SoundEffect.AI_STREAM_COMPLETE);
+
+      return '';
     } catch (error) {
       const errorMsg = `发送消息失败: ${error}`;
       console.error('[AIStore] Send message failed:', error);
-      set({ error: errorMsg, isLoading: false });
+
+      // 移除失败的 assistant 消息
+      const { conversations } = get();
+      const currentConv = conversations.get(connectionId);
+      if (currentConv && currentConv.length > 0 && currentConv[currentConv.length - 1].role === 'assistant') {
+        const updatedConv = new Map(conversations);
+        updatedConv.set(connectionId, currentConv.slice(0, -1));
+        set({ conversations: updatedConv });
+      }
+
+      set({ error: errorMsg, streamingConnectionId: null, isLoading: false });
       throw error;
     }
   },
@@ -192,10 +231,21 @@ export const useAIStore = create<AIStore>((set, get) => ({
       throw new Error('没有可用的 AI Provider');
     }
 
+    // 检查缓存
+    const cached = aiCache.get('explain', command);
+    if (cached) {
+      console.log('[AIStore] Using cached response for command explanation');
+      return cached;
+    }
+
     set({ isLoading: true, error: null });
 
     try {
       const response = await AIClient.explainCommand(provider, command);
+
+      // 缓存响应
+      aiCache.set('explain', command, response);
+
       set({ isLoading: false });
       return response;
     } catch (error) {
@@ -244,10 +294,21 @@ export const useAIStore = create<AIStore>((set, get) => ({
       throw new Error('没有可用的 AI Provider');
     }
 
+    // 检查缓存
+    const cached = aiCache.get('analyze_error', error);
+    if (cached) {
+      console.log('[AIStore] Using cached response for error analysis');
+      return cached;
+    }
+
     set({ isLoading: true, error: null });
 
     try {
       const analysis = await AIClient.analyzeError(provider, error);
+
+      // 缓存响应
+      aiCache.set('analyze_error', error, analysis);
+
       set({ isLoading: false });
       return analysis;
     } catch (error) {

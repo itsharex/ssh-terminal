@@ -4,8 +4,8 @@
 
 use crate::error::{Result, SSHError};
 use crate::ssh::backend::SftpStream;
-use russh::client::{Handle, Msg};
-use russh::{Channel, ChannelMsg};
+use russh::client::Handle;
+use russh::ChannelMsg;
 use std::io::{self, Cursor};
 use std::pin::Pin;
 use std::task::{Context, Poll};

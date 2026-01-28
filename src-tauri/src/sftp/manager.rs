@@ -8,7 +8,7 @@ use crate::ssh::manager::SSHManager;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 
 /// SFTP 管理器
 ///

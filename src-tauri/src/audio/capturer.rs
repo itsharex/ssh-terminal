@@ -1,5 +1,5 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, Stream, StreamConfig, SampleFormat};
+use cpal::{Device, StreamConfig, SampleFormat};
 use crossbeam_channel::{Sender};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};

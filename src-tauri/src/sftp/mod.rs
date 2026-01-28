@@ -7,8 +7,6 @@ pub mod manager;
 
 pub use manager::SftpManager;
 
-use serde::{Deserialize, Serialize};
-
 /// SFTP 文件信息
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SftpFileInfo {

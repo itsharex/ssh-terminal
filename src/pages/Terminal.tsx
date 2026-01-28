@@ -9,6 +9,8 @@ import { ErrorBoundary } from '@/components/terminal/ErrorBoundary';
 import { QuickConnectDialog } from '@/components/session/QuickConnectDialog';
 import { ConnectionStatusBadge } from '@/components/ssh/ConnectionStatusBadge';
 import { RecordingControls, RecordingManager } from '@/components/recording';
+import { AIChatPanel } from '@/components/ai/chat/AIChatPanel';
+import { useAIStore } from '@/store/aiStore';
 import { useSessionStore } from '@/store/sessionStore';
 import { useTerminalStore } from '@/store/terminalStore';
 import { useTerminalConfigStore } from '@/store/terminalConfigStore';
@@ -21,6 +23,7 @@ export function Terminal() {
   const [quickConnectOpen, setQuickConnectOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showRecordingManager, setShowRecordingManager] = useState(false);
+  const { toggleChat } = useAIStore();
   const { sessions, loadSessions, loadSessionsFromStorage, createTemporaryConnection, connectSession, disconnectSession, isStorageLoaded } = useSessionStore();
   const { tabs, addTab, getActiveTab, focusTerminal } = useTerminalStore();
   const { config: terminalConfig } = useTerminalConfigStore();
@@ -120,6 +123,13 @@ export function Terminal() {
     window.addEventListener('keybinding-terminal-find', handleNewConnection); // 查找功能也打开快速连接对话框（临时）
     window.addEventListener('global-open-quick-connect', handleGlobalOpenQuickConnect);
 
+    // AI 对话快捷键监听
+    const handleOpenAIChat = () => {
+      toggleChat();
+    };
+
+    window.addEventListener('keybinding-terminal-open-ai-chat', handleOpenAIChat);
+
     // 初始检查
     checkAndOpenQuickConnect();
 
@@ -129,8 +139,9 @@ export function Terminal() {
       window.removeEventListener('keybinding-duplicate-tab', handleDuplicateTab);
       window.removeEventListener('keybinding-terminal-find', handleNewConnection);
       window.removeEventListener('global-open-quick-connect', handleGlobalOpenQuickConnect);
+      window.removeEventListener('keybinding-terminal-open-ai-chat', handleOpenAIChat);
     };
-  }, [location.pathname, isStorageLoaded, loadSessions, loadSessionsFromStorage, disconnectSession, connectSession, addTab]);
+  }, [location.pathname, isStorageLoaded, loadSessions, loadSessionsFromStorage, disconnectSession, connectSession, addTab, toggleChat]);
 
   // 当切换到终端页面时，聚焦当前活动标签页的终端
   useEffect(() => {
@@ -310,6 +321,9 @@ export function Terminal() {
           </div>
         </div>
       )}
+
+      {/* AI 对话面板 */}
+      <AIChatPanel />
     </div>
   );
 }

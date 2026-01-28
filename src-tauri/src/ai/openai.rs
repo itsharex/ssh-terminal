@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 use secrecy::{Secret, ExposeSecret};
 use serde::{Deserialize, Serialize};
+use futures::StreamExt;
 
 /// OpenAI 请求体
 #[derive(Debug, Serialize)]
@@ -13,6 +14,7 @@ struct OpenAIRequest {
     messages: Vec<ChatMessage>,
     temperature: f32,
     max_tokens: u32,
+    stream: bool,
 }
 
 /// OpenAI 响应体
@@ -24,6 +26,22 @@ struct OpenAIResponse {
 #[derive(Debug, Deserialize)]
 struct Choice {
     message: ChatMessage,
+}
+
+/// OpenAI 流式响应数据块
+#[derive(Debug, Deserialize)]
+struct StreamChunk {
+    choices: Vec<StreamChoice>,
+}
+
+#[derive(Debug, Deserialize)]
+struct StreamChoice {
+    delta: StreamDelta,
+}
+
+#[derive(Debug, Deserialize)]
+struct StreamDelta {
+    content: Option<String>,
 }
 
 /// OpenAI Provider
@@ -80,6 +98,7 @@ impl AIProvider for OpenAIProvider {
             messages,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
+            stream: false,
         };
 
         tracing::debug!("[OpenAI] Request body: {:?}", serde_json::to_string(&request));
@@ -134,5 +153,75 @@ impl AIProvider for OpenAIProvider {
                 Ok(false)
             }
         }
+    }
+}
+
+/// 流式聊天方法（返回内容块）
+impl OpenAIProvider {
+    pub async fn chat_stream<'a>(
+        &'a self,
+        messages: Vec<ChatMessage>,
+        mut callback: impl FnMut(String) + 'a,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        let url = format!("{}/chat/completions", self.base_url);
+
+        tracing::info!("[OpenAI] Sending STREAM request to: {}", url);
+
+        let request = OpenAIRequest {
+            model: self.model.clone(),
+            messages,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            stream: true,
+        };
+
+        let response = self.client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key.expose_secret()))
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await?;
+            tracing::error!("[OpenAI] API error response: {}", error_text);
+            return Err(format!("OpenAI API error: {}", error_text).into());
+        }
+
+        let mut stream = response.bytes_stream();
+        let mut full_content = String::new();
+        let mut buffer = Vec::new();
+
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result?;
+            buffer.extend_from_slice(&chunk);
+
+            // 处理 buffer 中的完整行
+            while let Some(newline_pos) = buffer.iter().position(|&b| b == b'\n') {
+                let line = buffer.drain(..=newline_pos).collect::<Vec<_>>();
+                buffer.drain(..1); // 移除换行符
+
+                let line_str = String::from_utf8_lossy(&line);
+
+                // 跳过空行和 [DONE]
+                if line_str.is_empty() || line_str.contains("[DONE]") {
+                    continue;
+                }
+
+                // 解析 SSE 格式: "data: {...}"
+                if let Some(json_str) = line_str.strip_prefix("data: ") {
+                    if let Ok(chunk_data) = serde_json::from_str::<StreamChunk>(json_str) {
+                        if let Some(content_delta) = chunk_data.choices.first().and_then(|c| c.delta.content.as_ref()) {
+                            full_content.push_str(content_delta);
+                            callback(content_delta.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        tracing::info!("[OpenAI] Stream complete, total length: {}", full_content.len());
+        Ok(full_content)
     }
 }

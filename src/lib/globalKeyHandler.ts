@@ -51,6 +51,7 @@ const ACTION_SCOPES: Record<string, KeybindingScope> = {
   'terminal.zoomOut': KeybindingScope.Terminal,
   'terminal.zoomReset': KeybindingScope.Terminal,
   'terminal.openNLToCmd': KeybindingScope.Terminal,
+  'terminal.openAIChat': KeybindingScope.Terminal,
 
   // SFTP快捷键
   'sftp.upload': KeybindingScope.SFTP,

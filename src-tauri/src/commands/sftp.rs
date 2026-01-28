@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::sftp::{SftpFileInfo, SftpManager};
 use std::sync::Arc;
 use std::path::Path;
-use tauri::{AppHandle, State};
+use tauri::State;
 
 /// SFTP Manager 状态
 pub type SftpManagerState = Arc<SftpManager>;

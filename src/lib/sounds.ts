@@ -23,6 +23,9 @@ export enum SoundEffect {
   TOGGLE_SWITCH = 'toggle_switch',
   SUCCESS = 'success',
   ERROR = 'error',
+
+  // AI 相关
+  AI_STREAM_COMPLETE = 'ai_stream_complete',
 }
 
 class SoundManager {
@@ -154,6 +157,14 @@ class SoundManager {
         this.playTone(200, 0.2, 0.25);
         setTimeout(() => this.playTone(180, 0.2, 0.2), 100);
         setTimeout(() => this.playTone(160, 0.2, 0.15), 200);
+        break;
+
+      // AI 相关音效
+      case SoundEffect.AI_STREAM_COMPLETE:
+        // AI 流式完成 - 悦耳的提示音
+        this.playTone(660, 0.1, 0.15);
+        setTimeout(() => this.playTone(880, 0.1, 0.15), 100);
+        setTimeout(() => this.playTone(1046.50, 0.12, 0.12), 200);
         break;
     }
   }

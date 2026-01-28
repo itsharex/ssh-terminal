@@ -153,6 +153,15 @@ impl KeybindingsStorageManager {
         keybindings.insert("terminal.openNLToCmd".to_string(), KeyCombination {
             ctrl: false, alt: false, shift: true, key: "Digit3".to_string(), // Shift+#
         });
+        keybindings.insert("terminal.explainCommand".to_string(), KeyCombination {
+            ctrl: true, alt: false, shift: true, key: "KeyE".to_string(), // Ctrl+Shift+E
+        });
+        keybindings.insert("terminal.analyzeError".to_string(), KeyCombination {
+            ctrl: true, alt: false, shift: true, key: "KeyA".to_string(), // Ctrl+Shift+A
+        });
+        keybindings.insert("terminal.openAIChat".to_string(), KeyCombination {
+            ctrl: true, alt: false, shift: true, key: "KeyI".to_string(), // Ctrl+Shift+I
+        });
 
         // SFTP 快捷键
         keybindings.insert("sftp.upload".to_string(), KeyCombination {

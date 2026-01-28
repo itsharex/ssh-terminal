@@ -2,7 +2,7 @@ use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 /// 通用文件写入命令（用于视频导出等场景）
 #[tauri::command]
@@ -115,13 +115,13 @@ pub struct RecordingFileItem {
 // ========== 辅助函数 ==========
 
 /// 获取录制文件存储目录
-fn get_recordings_dir(app: &AppHandle) -> Result<PathBuf> {
-    let app_data_dir = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| crate::error::SSHError::Storage(format!("Failed to get app data dir: {}", e)))?;
+/// 使用统一的存储目录：C:\Users\{Username}\.tauri-terminal\recording
+fn get_recordings_dir(_app: &AppHandle) -> Result<PathBuf> {
+    use crate::config::storage;
 
-    let recordings_dir = app_data_dir.join("recordings");
+    // 使用统一的录制存储目录
+    let recordings_dir = storage::Storage::get_recordings_storage_dir()
+        .map_err(|e| crate::error::SSHError::Storage(format!("Failed to get recordings dir: {}", e)))?;
 
     // 确保目录存在
     fs::create_dir_all(&recordings_dir).map_err(|e| {
@@ -222,7 +222,7 @@ pub async fn recording_save(
 /// 加载录制文件
 #[tauri::command]
 pub async fn recording_load(
-    app: AppHandle,
+    _app: AppHandle,
     file_path: String,
 ) -> std::result::Result<RecordingFile, String> {
     let path = PathBuf::from(&file_path);

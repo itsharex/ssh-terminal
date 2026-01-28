@@ -23,6 +23,9 @@ export const DEFAULT_KEYBINDINGS: Record<string, KeyCombination> = {
   'terminal.zoomOut': { ctrl: true, alt: false, shift: false, key: 'Minus' },
   'terminal.zoomReset': { ctrl: true, alt: false, shift: false, key: 'Digit0' },
   'terminal.openNLToCmd': { ctrl: false, alt: false, shift: true, key: 'Digit3' }, // Shift+#
+  'terminal.explainCommand': { ctrl: true, alt: false, shift: true, key: 'KeyE' }, // Ctrl+Shift+E
+  'terminal.analyzeError': { ctrl: true, alt: false, shift: true, key: 'KeyA' }, // Ctrl+Shift+A
+  'terminal.openAIChat': { ctrl: true, alt: false, shift: true, key: 'KeyI' }, // Ctrl+Shift+I
 
   // SFTP快捷键
   'sftp.upload': { ctrl: true, alt: false, shift: false, key: 'KeyU' },

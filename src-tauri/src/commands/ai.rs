@@ -4,7 +4,7 @@ use crate::ai::{AIProvider, OpenAIProvider, OllamaProvider, ChatMessage};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, Emitter};
 
 /// AI Provider 配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,7 +33,40 @@ impl AIManagerState {
     }
 }
 
-/// AI 聊天命令
+/// AI 聊天命令（流式）
+#[tauri::command]
+pub async fn ai_chat_stream(
+    app: AppHandle,
+    config: AIProviderConfig,
+    messages: Vec<ChatMessage>,
+) -> Result<String, String> {
+    // 创建 provider 实例
+    let provider = match config.provider_type.as_str() {
+        "ollama" => {
+            // Ollama 暂不支持流式
+            return Err("Ollama streaming not supported yet".to_string());
+        }
+        _ => {
+            // OpenAI 兼容接口
+            let api_key = config.api_key.ok_or("API key is required".to_string())?;
+            OpenAIProvider::new(
+                api_key,
+                config.base_url,
+                config.model,
+                config.temperature,
+                config.max_tokens,
+            )
+        }
+    };
+
+    // 使用流式方法，通过事件发送数据块
+    provider.chat_stream(messages, |chunk| {
+        // 发送流式数据块到前端
+        let _ = app.emit("ai-chat-chunk", chunk);
+    }).await.map_err(|e| e.to_string())
+}
+
+/// AI 聊天命令（非流式，保持兼容）
 #[tauri::command]
 pub async fn ai_chat(
     config: AIProviderConfig,
@@ -72,15 +105,21 @@ pub async fn ai_explain_command(
     command: String,
     config: AIProviderConfig,
 ) -> Result<String, String> {
-    let system_prompt = "你是一个 Linux/Unix 命令行专家。请简洁解释以下 Shell 命令的功能：
+    let system_prompt = "你是 Linux/Unix 命令行专家。用最简洁的语言解释命令。
 
-请按以下格式回答：
-1. 命令功能：一句话总结
-2. 参数说明：简要解释关键参数
-3. 常用场景：1-2 个使用场景
-4. 风险提示：如果有潜在风险，请警告
+**输出格式**（严格遵循）：
+```
+功能：[一句话]
+参数：[关键参数，用|分隔，无参数则写\"无\"]
+示例：[一个实际用法示例]
+风险：[有风险写具体风险，无风险写\"无\"]
+```
 
-回答要简洁明了，不超过 200 字。";
+**要求**：
+- 功能不超过15字
+- 参数只说最关键的2-3个
+- 示例必须是可执行的真实命令
+- 总字数不超过80字";
 
     let messages = vec![
         ChatMessage {
@@ -102,20 +141,18 @@ pub async fn ai_generate_command(
     input: String,
     config: AIProviderConfig,
 ) -> Result<String, String> {
-    let system_prompt = "你是一个 Linux 命令生成助手。根据用户的自然语言描述，生成对应的 Shell 命令。
+    let system_prompt = "你是 Linux 命令生成器。根据描述生成 Shell 命令。
 
-要求：
-1. 只返回命令，不要解释
-2. 如果需求不明确，返回 \"ERROR: 不明确的命令\"
-3. 如果涉及危险操作，在命令前添加 \"# 警告: \"
-4. 优先使用常用命令和参数
+**规则**：
+1. 只输出命令，不解释
+2. 需求不明确返回：\"？请明确需求\"
+3. 危险操作在命令前加：\"⚠️ \"
+4. 优先常用命令，避免复杂参数
 
-示例：
-输入: \"查看当前目录所有文件\"
-输出: ls -la
-
-输入: \"查找所有 .log 文件\"
-输出: find . -name \"*.log\"";
+**示例**：
+\"看所有文件\" → ls -la
+\"查log文件\" → find . -name \"*.log\"
+\"停止nginx\" → systemctl stop nginx";
 
     let messages = vec![
         ChatMessage {
@@ -137,14 +174,21 @@ pub async fn ai_analyze_error(
     error: String,
     config: AIProviderConfig,
 ) -> Result<String, String> {
-    let system_prompt = "你是一个 Linux 系统故障排查专家。请分析以下错误信息并提供解决方案。
+    let system_prompt = "你是 Linux 故障排查专家。快速诊断错误。
 
-请按以下格式回答：
-1. 错误原因：简要说明为什么会发生这个错误
-2. 解决方案：提供 2-3 个可能的解决方案，按推荐顺序排列
-3. 预防措施：如何避免类似问题
+**输出格式**（严格遵循）：
+```
+原因：[1句话，最多30字]
+解决：
+1. [方案1，最多30字]
+2. [方案2，最多30字]
+预防：[1句话，最多25字]
+```
 
-回答要简洁实用，每个解决方案不超过 50 字。";
+**要求**：
+- 直接给解决方案，不说废话
+- 按成功率排序方案
+- 总字数不超过120字";
 
     let messages = vec![
         ChatMessage {

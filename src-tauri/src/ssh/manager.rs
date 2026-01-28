@@ -502,9 +502,6 @@ impl SSHManager {
     ///
     /// 在指定的连接上打开一个新的 SFTP 子系统 channel
     pub async fn open_sftp_channel(&self, connection_id: &str) -> Result<russh_sftp::client::SftpSession> {
-        use russh_sftp::client;
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
         let connection = self.get_connection(connection_id).await?;
 
         // 获取 backend

@@ -3,7 +3,6 @@ use crate::error::{Result, SSHError};
 use std::fs;
 use std::path::PathBuf;
 use dirs::home_dir;
-use tauri::Manager;
 use serde::{Deserialize, Serialize};
 use aes_gcm::{Aes256Gcm, Key, Nonce, KeyInit};
 use aes_gcm::aead::Aead;
@@ -237,7 +236,81 @@ impl Storage {
         }
     }
 
-    /// 获取存储目录
+    /// 获取应用存储目录（公共方法）
+    ///
+    /// 返回应用的主存储目录，所有配置文件和数据都存储在此目录下。
+    ///
+    /// # 路径示例
+    /// - **Windows**: `C:\Users\{Username}\.tauri-terminal`
+    /// - **macOS**: `~/Library/Application Support/tauri-terminal`
+    /// - **Linux**: `~/.config/tauri-terminal`
+    ///
+    /// # 存储内容
+    /// - `sessions.json` - SSH 会话配置（加密）
+    /// - `app_config.json` - 应用配置
+    /// - `ai_config.json` - AI 服务配置（API Keys 加密）
+    /// - `encryption_key` - 加密密钥
+    /// - `recording/` - 终端录制文件（子目录）
+    ///
+    /// # 错误处理
+    /// 如果无法获取用户主目录，返回 `SSHError::Storage` 错误。
+    ///
+    /// # 示例
+    /// ```no_run
+    /// use crate::config::storage::Storage;
+    ///
+    /// let storage_dir = Storage::get_app_storage_dir().unwrap();
+    /// println!("Storage directory: {:?}", storage_dir);
+    /// ```
+    pub fn get_app_storage_dir() -> Result<PathBuf> {
+        let home = home_dir()
+            .ok_or_else(|| SSHError::Storage("Failed to get home directory".to_string()))?;
+
+        let storage_dir = if cfg!(target_os = "windows") {
+            home.join(".tauri-terminal")
+        } else if cfg!(target_os = "macos") {
+            home.join("Library/Application Support/tauri-terminal")
+        } else {
+            // Linux
+            home.join(".config/tauri-terminal")
+        };
+
+        Ok(storage_dir)
+    }
+
+    /// 获取录制文件存储目录（公共方法）
+    ///
+    /// 返回终端录制文件的专用存储目录。
+    ///
+    /// # 路径示例
+    /// - **Windows**: `C:\Users\{Username}\.tauri-terminal\recording`
+    /// - **macOS**: `~/Library/Application Support/tauri-terminal/recording`
+    /// - **Linux**: `~/.config/tauri-terminal/recording`
+    ///
+    /// # 存储内容
+    /// - `{session_name}_{date}_{time}.json` - 录制元数据（时长、终端类型等）
+    /// - `{session_name}_{date}_{time}.webm` - WebM 格式视频文件
+    /// - `{session_name}_{date}_{time}.mp4` - MP4 格式视频文件
+    ///
+    /// # 注意
+    /// 此方法不会自动创建目录，调用者需要确保目录存在。
+    ///
+    /// # 示例
+    /// ```no_run
+    /// use crate::config::storage::Storage;
+    /// use std::fs;
+    ///
+    /// let recordings_dir = Storage::get_recordings_storage_dir().unwrap();
+    /// // 确保目录存在
+    /// fs::create_dir_all(&recordings_dir).unwrap();
+    /// println!("Recordings directory: {:?}", recordings_dir);
+    /// ```
+    pub fn get_recordings_storage_dir() -> Result<PathBuf> {
+        let app_dir = Self::get_app_storage_dir()?;
+        Ok(app_dir.join("recording"))
+    }
+
+    /// 获取存储目录（内部方法）
     fn get_storage_dir(_app_handle: Option<&tauri::AppHandle>) -> Result<PathBuf> {
         #[cfg(target_os = "android")]
         {
@@ -258,20 +331,8 @@ impl Storage {
 
         #[cfg(not(target_os = "android"))]
         {
-            // 桌面平台：使用dirs crate
-            let home = home_dir()
-                .ok_or_else(|| SSHError::Storage("Failed to get home directory".to_string()))?;
-
-            let config_dir = if cfg!(target_os = "windows") {
-                home.join(".tauri-terminal")
-            } else if cfg!(target_os = "macos") {
-                home.join("Library/Application Support/tauri-terminal")
-            } else {
-                // Linux
-                home.join(".config/tauri-terminal")
-            };
-
-            Ok(config_dir)
+            // 桌面平台：使用统一的存储目录方法
+            Self::get_app_storage_dir()
         }
     }
 

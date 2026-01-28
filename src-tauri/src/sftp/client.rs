@@ -7,7 +7,7 @@ use crate::sftp::{SftpFileInfo};
 use russh_sftp::client::SftpSession;
 use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 /// SFTP 客户端
 ///

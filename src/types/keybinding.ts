@@ -168,6 +168,27 @@ export const KEYBINDING_ACTIONS: KeybindingAction[] = [
     category: 'terminal',
     defaultKeybinding: { ctrl: false, alt: false, shift: true, key: 'Digit3' }, // Shift+#
   },
+  {
+    id: 'terminal.explainCommand',
+    name: 'AI 解释命令',
+    description: '解释选中的命令（需要先在终端中选中命令）',
+    category: 'terminal',
+    defaultKeybinding: { ctrl: true, alt: false, shift: true, key: 'KeyE' }, // Ctrl+Shift+E
+  },
+  {
+    id: 'terminal.analyzeError',
+    name: 'AI 分析错误',
+    description: '分析选中的错误信息（需要先在终端中选中错误文本）',
+    category: 'terminal',
+    defaultKeybinding: { ctrl: true, alt: false, shift: true, key: 'KeyA' }, // Ctrl+Shift+A
+  },
+  {
+    id: 'terminal.openAIChat',
+    name: 'AI 对话助手',
+    description: '打开/关闭 AI 对话面板',
+    category: 'terminal',
+    defaultKeybinding: { ctrl: true, alt: false, shift: true, key: 'KeyI' }, // Ctrl+Shift+I
+  },
 
   // SFTP快捷键
   {

@@ -4606,10 +4606,12 @@ dependencies = [
  "system-configuration",
  "tokio",
  "tokio-native-tls",
+ "tokio-util",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams",
  "web-sys",
  "winreg 0.50.0",
 ]
@@ -5508,7 +5510,7 @@ dependencies = [
 
 [[package]]
 name = "ssh-terminal"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -5521,6 +5523,7 @@ dependencies = [
  "cpal",
  "crossbeam-channel",
  "dirs 5.0.1",
+ "futures",
  "hound",
  "portable-pty",
  "rand 0.8.5",
