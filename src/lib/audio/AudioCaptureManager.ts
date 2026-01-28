@@ -136,8 +136,11 @@ export class AudioCaptureManager {
         'pcm-processor'
       );
 
-      // 调用 Tauri 后端命令开始捕获
-      await invoke('audio_start_capturing');
+      // 调用 Tauri 后端命令开始捕获，传递采样率和通道数配置
+      await invoke('audio_start_capturing', {
+        sampleRate: this.sampleRate,
+        channels: 1, // 始终使用单声道（与麦克风一致）
+      });
 
       // 监听来自后端的音频数据
       // 注意：事件名称需要与 Rust 后端发送的事件名称一致
@@ -145,6 +148,12 @@ export class AudioCaptureManager {
         // 性能监控：记录接收时间
         this.lastAudioPacketTime = Date.now();
         this.audioPacketCount++;
+
+        // 每100个包输出一次日志（避免日志过多）
+        if (this.audioPacketCount % 100 === 0) {
+          const sampleCount = event.payload.length;
+          console.log(`[AudioCapture] Received audio packet #${this.audioPacketCount}, ${sampleCount} samples`);
+        }
 
         // 将接收到的 PCM 数据转发到 Worklet
         if (this.speakerWorkletNode) {
@@ -169,11 +178,20 @@ export class AudioCaptureManager {
    */
   private startAudioHealthCheck(): void {
     this.audioPacketHealthCheckInterval = window.setInterval(() => {
+      // 如果从未收到过任何音频包，不发出警告
+      if (this.lastAudioPacketTime === 0) {
+        return;
+      }
+
       const timeSinceLastPacket = Date.now() - this.lastAudioPacketTime;
 
       // 如果超过 5 秒没有收到音频数据包，发出警告
       if (timeSinceLastPacket > 5000 && this.speakerCapturingActive) {
-        console.warn('[AudioCapture] No audio packets received in last 5 seconds - Backend may have stopped or connection issue');
+        console.warn(
+          `[AudioCapture] No audio packets received in last ${Math.floor(timeSinceLastPacket / 1000)} seconds - ` +
+          `Backend may have stopped or connection issue. ` +
+          `Total packets received: ${this.audioPacketCount}`
+        );
 
         // 重置计数器避免重复警告
         this.lastAudioPacketTime = Date.now();

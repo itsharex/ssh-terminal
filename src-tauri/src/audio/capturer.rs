@@ -24,7 +24,7 @@ pub struct SystemAudioCapturer {
 }
 
 impl SystemAudioCapturer {
-    /// 创建新的音频捕获器
+    /// 使用默认配置创建新的音频捕获器
     pub fn new() -> Result<Self, String> {
         Ok(Self {
             is_recording: Arc::new(AtomicBool::new(false)),
@@ -32,6 +32,19 @@ impl SystemAudioCapturer {
             stream_thread: None,
             target_sample_rate: 48000, // 目标采样率 48kHz
             channels: 1,                 // 单声道
+            wav_writer: None,
+            volume_gain: 2.0, // 音频增益 2 倍（WASAPI Loopback 捕获音量较低）
+        })
+    }
+
+    /// 使用指定配置创建新的音频捕获器
+    pub fn new_with_config(target_sample_rate: u32, channels: u16) -> Result<Self, String> {
+        Ok(Self {
+            is_recording: Arc::new(AtomicBool::new(false)),
+            audio_sender: None,
+            stream_thread: None,
+            target_sample_rate,
+            channels,
             wav_writer: None,
             volume_gain: 2.0, // 音频增益 2 倍（WASAPI Loopback 捕获音量较低）
         })
@@ -76,13 +89,45 @@ impl SystemAudioCapturer {
         );
 
         let source_sample_rate = supported_config.sample_rate();
+        let source_channels = supported_config.channels();
+
+        // 强制使用目标采样率（由前端传递）
+        let target_sample_rate = cpal::SampleRate(self.target_sample_rate);
+
+        // 如果设备原生采样率不匹配，使用目标采样率
+        let use_sample_rate = if source_sample_rate.0 == self.target_sample_rate {
+            source_sample_rate
+        } else {
+            info!(
+                "[AudioCapturer] Device native sample rate is {} Hz, requesting {} Hz (from config)",
+                source_sample_rate.0,
+                self.target_sample_rate
+            );
+            target_sample_rate
+        };
+
+        // 使用目标通道数（由前端传递，通常为 1）
+        // 如果设备通道数不同，我们将在回调中进行混合
+        let target_channels = self.channels;
 
         // 自定义音频配置以优化音频包大小和延迟
         // 使用较大的缓冲区可以减少数据包发送频率，提高稳定性
         let buffer_size = cpal::BufferSize::Fixed(960); // 960 样本 = 20ms @ 48kHz
+
+        let _use_channels = source_channels; // 使用设备原生通道数，稍后混合
+
+        info!(
+            "[AudioCapturer] Audio config - target_sample_rate: {:?}, source_sample_rate: {:?}, target_channels: {}, source_channels: {}, buffer_size: {:?}",
+            target_sample_rate,
+            source_sample_rate,
+            target_channels,
+            source_channels,
+            buffer_size
+        );
+
         let config = cpal::StreamConfig {
-            channels: supported_config.channels(),
-            sample_rate: source_sample_rate,
+            channels: 1, // 强制使用单声道
+            sample_rate: use_sample_rate,
             buffer_size,
         };
 
@@ -179,24 +224,32 @@ impl SystemAudioCapturer {
         let stream = match device.build_input_stream(
             &config,
             move |data: &[T], _: &cpal::InputCallbackInfo| {
-                // 接收到音频数据
-                debug!("[AudioCapturer] Received {} audio samples", data.len());
+                // 接收到音频数据（单声道）
+                info!(
+                    "[AudioCapturer] Received {} audio samples",
+                    data.len()
+                );
 
-                // 转换为 f32 并发送到前端
+                // 转换为 f32
                 if let Some(ref sender) = audio_sender {
                     let volume_gain = 2.0; // 音频增益倍数
+
                     let float_samples: Vec<f32> = data.iter()
                         .map(|s| {
                             let sample = (*s).into();
                             // 应用音量增益并限制在 [-1.0, 1.0] 范围内
-                            let gain_sample = sample * volume_gain;
-                            gain_sample.max(-1.0).min(1.0)
+                            let gain_sample = (sample * volume_gain).max(-1.0).min(1.0);
+                            gain_sample
                         })
                         .collect();
+
+                    let sample_count = float_samples.len();
 
                     // 使用阻塞发送确保不丢失数据
                     if let Err(e) = sender.send(float_samples) {
                         error!("[AudioCapturer] Failed to send audio data: {}", e);
+                    } else {
+                        info!("[AudioCapturer] Sent {} audio samples (mono)", sample_count);
                     }
                 }
 
@@ -235,13 +288,20 @@ impl SystemAudioCapturer {
         // 在单独的线程中保持 Stream 存活
         let thread_handle = std::thread::spawn(move || {
             info!("[AudioCapturer] Audio stream thread started");
+            let mut loop_count = 0;
 
             // 保持线程运行，直到录音停止
             while is_recording.load(Ordering::Relaxed) {
                 std::thread::sleep(std::time::Duration::from_millis(100));
+                loop_count += 1;
+
+                // 每5秒输出一次日志
+                if loop_count % 50 == 0 {
+                    info!("[AudioCapturer] Audio stream thread running, loop_count: {}", loop_count);
+                }
             }
 
-            info!("[AudioCapturer] Audio stream thread stopping");
+            info!("[AudioCapturer] Audio stream thread stopping after {} loops", loop_count);
             // Stream 在这里被 drop，会自动暂停
         });
 

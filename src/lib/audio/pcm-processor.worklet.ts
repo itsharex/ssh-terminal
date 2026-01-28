@@ -53,29 +53,42 @@ class PCMProcessor implements AudioWorkletProcessor {
 
     console.log('[PCMProcessor] Initialized with buffer size:', this.bufferSize);
 
-    // 监听来自主线程的 PCM 数据
-    this.port.onmessage = (event: MessageEvent) => {
-      try {
-        const pcmData = event.data as Float32Array;
-
-        // 验证数据类型
-        if (!(pcmData instanceof Float32Array)) {
-          console.error('[PCMProcessor] Invalid data type received:', typeof event.data);
-          return;
-        }
-
-        // 验证数据长度
-        if (pcmData.length === 0) {
-          console.warn('[PCMProcessor] Empty PCM data received');
-          return;
-        }
-
-        this.totalSamplesReceived += pcmData.length;
-        this.writeToBuffer(pcmData);
-      } catch (error) {
-        console.error('[PCMProcessor] Error processing message:', error);
+    // 在 AudioWorkletProcessor 中，this.port 应该在构造函数中可用
+    // 如果不可用，我们在第一次 process 调用时设置
+    try {
+      if (this.port) {
+        this.port.onmessage = this.handleMessage.bind(this);
+        console.log('[PCMProcessor] Message handler attached in constructor');
       }
-    };
+    } catch (e) {
+      console.warn('[PCMProcessor] Failed to attach message handler in constructor:', e);
+    }
+  }
+
+  /**
+   * 处理来自主线程的 PCM 数据
+   */
+  private handleMessage(event: MessageEvent): void {
+    try {
+      const pcmData = event.data as Float32Array;
+
+      // 验证数据类型
+      if (!(pcmData instanceof Float32Array)) {
+        console.error('[PCMProcessor] Invalid data type received:', typeof event.data);
+        return;
+      }
+
+      // 验证数据长度
+      if (pcmData.length === 0) {
+        console.warn('[PCMProcessor] Empty PCM data received');
+        return;
+      }
+
+      this.totalSamplesReceived += pcmData.length;
+      this.writeToBuffer(pcmData);
+    } catch (error) {
+      console.error('[PCMProcessor] Error processing message:', error);
+    }
   }
 
   /**
@@ -113,6 +126,12 @@ class PCMProcessor implements AudioWorkletProcessor {
     // 如果没有输出通道，直接返回
     if (!output || output.length === 0) {
       return true;
+    }
+
+    // 尝试设置消息处理器（如果尚未设置）
+    if (this.port && !this.port.onmessage) {
+      this.port.onmessage = this.handleMessage.bind(this);
+      console.log('[PCMProcessor] Message handler attached in process()');
     }
 
     const outputChannel = output[0];

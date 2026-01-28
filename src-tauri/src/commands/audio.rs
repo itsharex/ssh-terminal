@@ -18,8 +18,10 @@ pub struct AudioCapturerState {
 pub fn audio_start_capturing(
     state: State<'_, AudioCapturerState>,
     app: AppHandle,
+    sample_rate: u32,      // 前端传递的采样率
+    channels: u16,         // 前端传递的通道数（通常为 1）
 ) -> Result<(), String> {
-    info!("[AudioCommand] Starting audio capture");
+    info!("[AudioCommand] Starting audio capture with sample_rate: {}, channels: {}", sample_rate, channels);
 
     let mut capturer_guard = state.capturer.lock().map_err(|e| format!("获取锁失败: {}", e))?;
 
@@ -32,7 +34,7 @@ pub fn audio_start_capturing(
     // 增加缓冲区大小到 300 个包（约 5 秒），避免音频数据丢失
     let (tx, rx) = bounded::<Vec<f32>>(300);
 
-    let mut capturer = SystemAudioCapturer::new()?;
+    let mut capturer = SystemAudioCapturer::new_with_config(sample_rate, channels)?;
     capturer.set_audio_sender(tx)?;
     capturer.start()?;
 
