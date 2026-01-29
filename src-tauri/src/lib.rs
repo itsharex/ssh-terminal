@@ -49,9 +49,9 @@ pub fn run() {
             };
             app.manage(audio_capturer);
 
+            // 开发模式下自动打开开发者工具
             #[cfg(debug_assertions)]
-            {
-                let window = app.get_webview_window("main").unwrap();
+            if let Some(window) = app.get_webview_window("main") {
                 window.open_devtools();
             }
 

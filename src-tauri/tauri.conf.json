@@ -20,7 +20,8 @@
                 "minWidth": 100,
                 "minHeight": 100,
                 "transparent": false,
-                "decorations": true
+                "decorations": true,
+                "devtools": true
             }
         ],
         "security": {

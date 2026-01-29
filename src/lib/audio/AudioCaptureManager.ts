@@ -125,10 +125,112 @@ export class AudioCaptureManager {
         throw new Error('AudioContext not initialized');
       }
 
-      // 加载 AudioWorklet
-      const workletUrl = new URL('./pcm-processor.worklet.ts', import.meta.url);
-      await this.audioContext.audioWorklet.addModule(workletUrl);
-      console.log('[AudioCapture] AudioWorklet module loaded');
+      // 加载 AudioWorklet - 使用 Blob URL 方式（兼容生产构建）
+      const workletCode = `
+        // RingBuffer 大小（48kHz * 2 通道 * 3秒 = 288000 个样本）
+        const DEFAULT_BUFFER_SIZE = 288000;
+        const REPORT_INTERVAL_SAMPLES = 240000;
+
+        class PCMProcessor extends AudioWorkletProcessor {
+          constructor(options) {
+            super();
+            const bufferSizeOption = options?.processorOptions?.['bufferSize'];
+            this.bufferSize = typeof bufferSizeOption === 'number' && bufferSizeOption > 0
+              ? bufferSizeOption
+              : DEFAULT_BUFFER_SIZE;
+            this.buffer = new Float32Array(this.bufferSize);
+            this.writeIndex = 0;
+            this.readIndex = 0;
+            this.totalSamplesReceived = 0;
+            this.totalSamplesProcessed = 0;
+            this.samplesSinceLastReport = 0;
+
+            console.log('[PCMProcessor] Initialized with buffer size:', this.bufferSize);
+
+            this.port.onmessage = (event) => {
+              const pcmData = event.data;
+              if (!(pcmData instanceof Float32Array)) return;
+              if (pcmData.length === 0) return;
+
+              this.totalSamplesReceived += pcmData.length;
+              for (let i = 0; i < pcmData.length; i++) {
+                const nextWriteIndex = (this.writeIndex + 1) % this.bufferSize;
+                if (nextWriteIndex === this.readIndex) {
+                  this.readIndex = (this.readIndex + 1) % this.bufferSize;
+                }
+                this.buffer[this.writeIndex] = pcmData[i];
+                this.writeIndex = nextWriteIndex;
+              }
+            };
+          }
+
+          process(inputs, outputs, parameters) {
+            const output = outputs[0];
+            if (!output || output.length === 0) return true;
+
+            const outputChannel = output[0];
+            const samplesProcessed = outputChannel.length;
+            let underflowCount = 0;
+
+            for (let i = 0; i < samplesProcessed; i++) {
+              if (this.readIndex !== this.writeIndex) {
+                outputChannel[i] = this.buffer[this.readIndex];
+                this.readIndex = (this.readIndex + 1) % this.bufferSize;
+                this.totalSamplesProcessed++;
+              } else {
+                outputChannel[i] = 0;
+                underflowCount++;
+              }
+            }
+
+            if (output.length > 1) {
+              output[1].set(output[0]);
+            }
+
+            this.samplesSinceLastReport += samplesProcessed;
+
+            if (this.samplesSinceLastReport >= REPORT_INTERVAL_SAMPLES) {
+              const bufferUsage = this.getBufferUsage();
+              const underflowPercentage = (underflowCount / samplesProcessed) * 100;
+
+              console.log('[PCMProcessor] Buffer stats:', {
+                usage: \`\${bufferUsage.toFixed(1)}%\`,
+                samplesReceived: this.totalSamplesReceived,
+                samplesProcessed: this.totalSamplesProcessed,
+                underflowSamples: underflowCount,
+                underflowPercentage: \`\${underflowPercentage.toFixed(2)}%\`,
+              });
+
+              this.samplesSinceLastReport = 0;
+            }
+
+            return true;
+          }
+
+          getBufferUsage() {
+            if (this.writeIndex >= this.readIndex) {
+              return ((this.writeIndex - this.readIndex) / this.bufferSize) * 100;
+            } else {
+              return ((this.writeIndex + this.bufferSize - this.readIndex) / this.bufferSize) * 100;
+            }
+          }
+        }
+
+        registerProcessor('pcm-processor', PCMProcessor);
+      `;
+
+      // 创建 Blob URL
+      const blob = new Blob([workletCode], { type: 'application/javascript' });
+      const workletUrl = URL.createObjectURL(blob);
+
+      try {
+        await this.audioContext.audioWorklet.addModule(workletUrl);
+        console.log('[AudioCapture] AudioWorklet module loaded via Blob URL');
+        URL.revokeObjectURL(workletUrl); // 释放 Blob URL
+      } catch (error) {
+        URL.revokeObjectURL(workletUrl);
+        throw error;
+      }
 
       // 创建 WorkletNode
       this.speakerWorkletNode = new AudioWorkletNode(
