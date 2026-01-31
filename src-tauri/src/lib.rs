@@ -65,6 +65,7 @@ pub fn run() {
             // Session 会话管理命令
             commands::session_create,
             commands::session_create_temp,
+            commands::session_create_with_id,
             commands::session_connect,
             commands::session_disconnect,
             commands::session_list,

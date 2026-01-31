@@ -114,17 +114,34 @@ export class AIHistoryManager {
     filename: string,
     format: ExportFormat
   ): Promise<void> {
+    console.log('downloadExport 调用:', { filename, format, contentLength: content.length });
+
     const blob = new Blob([content], {
-      type: format === 'json' ? 'application/json' : 'text/plain'
+      type: format === 'json' ? 'application/json' : 'text/markdown;charset=utf-8'
     });
 
     const url = URL.createObjectURL(blob);
+    console.log('Blob URL 创建成功:', url);
+
     const a = document.createElement('a');
     a.href = url;
     a.download = `${filename}.${format === 'markdown' ? 'md' : format}`;
+    a.style.display = 'none';
+
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    console.log('开始触发下载');
+
+    // 使用 setTimeout 确保 DOM 更新完成
+    setTimeout(() => {
+      a.click();
+      console.log('下载触发成功');
+
+      // 清理
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        console.log('清理完成');
+      }, 100);
+    }, 0);
   }
 }

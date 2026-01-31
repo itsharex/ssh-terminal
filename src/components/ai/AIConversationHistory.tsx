@@ -203,7 +203,7 @@ export function AIConversationHistory({
             placeholder="搜索会话..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
+            className="search-input rounded-[20px] shadow-sm border border-gray-200 focus-visible:border-gray-500 focus-visible:border-2 focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
 
@@ -226,7 +226,7 @@ export function AIConversationHistory({
                     <Input
                       value={editingTitle}
                       onChange={(e) => setEditingTitle(e.target.value)}
-                      className="title-input"
+                      className="title-input rounded-[16px] shadow-sm border border-gray-200 focus-visible:border-gray-500 focus-visible:border-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                       autoFocus
                       onClick={(e) => e.stopPropagation()}
                     />

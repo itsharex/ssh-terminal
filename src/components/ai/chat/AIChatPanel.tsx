@@ -20,6 +20,8 @@ export function AIChatPanel() {
     isLoading,
     streamingConnectionId,
     config,
+    saveChatScrollPosition,
+    getChatScrollPosition,
   } = useAIStore();
 
   const [input, setInput] = useState('');
@@ -83,6 +85,24 @@ export function AIChatPanel() {
     }
   }, [input]);
 
+  // 自动聚焦到输入框
+  useEffect(() => {
+    if (isChatOpen) {
+      // 使用 setTimeout 确保 Sheet 完全打开后再聚焦和恢复滚动位置
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus();
+        // 恢复之前保存的滚动位置
+        if (messagesContainerRef.current && currentServerId) {
+          const savedPosition = getChatScrollPosition(currentServerId);
+          if (savedPosition > 0) {
+            messagesContainerRef.current.scrollTop = savedPosition;
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isChatOpen, currentServerId, getChatScrollPosition]);
+
   // 检查用户是否在底部附近（100px 以内）
   const isNearBottom = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -104,6 +124,11 @@ export function AIChatPanel() {
 
   // 处理滚动事件
   const handleScroll = useCallback(() => {
+    // 保存当前滚动位置
+    if (messagesContainerRef.current && currentServerId) {
+      saveChatScrollPosition(currentServerId, messagesContainerRef.current.scrollTop);
+    }
+
     const nearBottom = isNearBottom();
 
     // 如果不在底部，显示"回到底部"按钮
@@ -121,7 +146,7 @@ export function AIChatPanel() {
     scrollTimeoutRef.current = setTimeout(() => {
       setIsUserScrolling(false);
     }, 500);
-  }, [isNearBottom]);
+  }, [isNearBottom, currentServerId, saveChatScrollPosition]);
 
   // 自动滚动逻辑：只在用户没有手动滚动且在底部附近时自动滚动
   useEffect(() => {
@@ -134,15 +159,20 @@ export function AIChatPanel() {
   const handleSend = async () => {
     if (!input.trim() || !currentServerId) return;
 
+    const messageToSend = input.trim();
+    // 立即清空输入框
+    setInput('');
+    setTextareaHeight('auto');
+
     try {
-      await sendMessage(currentServerId, input.trim());
-      setInput('');
-      setTextareaHeight('auto');
+      await sendMessage(currentServerId, messageToSend);
       playSound(SoundEffect.SUCCESS);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '发送失败';
       toast.error(`发送失败: ${errorMsg}`);
       playSound(SoundEffect.ERROR);
+      // 发送失败时恢复输入框内容
+      setInput(messageToSend);
     }
   };
 
@@ -302,7 +332,7 @@ export function AIChatPanel() {
           {currentServerId && hasEnabledProvider && (
             <div className="border-t p-4 bg-background/50">
               {/* 输入区域容器：带圆角边框 */}
-              <div className="relative border border-input rounded-lg bg-background transition-all duration-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+              <div className="relative border border-gray-200 rounded-[28px] bg-background shadow-sm transition-all duration-200 focus-within:border-gray-500 focus-within:border-2"
                 style={{
                   minHeight: '44px',
                   maxHeight: '300px',

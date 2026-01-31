@@ -21,13 +21,19 @@ export function AIChatMessageList({ serverId }: AIChatMessageListProps) {
   const messages = conversations.get(serverId) || [];
   const scrollRef = useRef<HTMLDivElement>(null);
   const isStreaming = streamingConnectionId === serverId;
+  const prevMessagesLengthRef = useRef(0);
 
-  // 自动滚动到底部
+  // 只在有新消息时自动滚动到底部
   useEffect(() => {
-    if (scrollRef.current) {
+    const currentLength = messages.length;
+    const hasNewMessage = currentLength > prevMessagesLengthRef.current;
+
+    if (hasNewMessage && scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, serverId]);
+
+    prevMessagesLengthRef.current = currentLength;
+  }, [messages.length]);
 
   if (messages.length === 0 && !isLoading) {
     return (

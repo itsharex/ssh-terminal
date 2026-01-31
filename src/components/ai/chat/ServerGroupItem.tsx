@@ -10,6 +10,7 @@ import { ServerConversationGroup } from '@/types/ai';
 import { ChevronDown, ChevronRight, Server, Activity, MessageSquare } from 'lucide-react';
 import { ConversationItem } from './ConversationItem';
 import { useAIStore } from '@/store/aiStore';
+import { toast } from 'sonner';
 
 interface ServerGroupItemProps {
   group: ServerConversationGroup;
@@ -18,7 +19,17 @@ interface ServerGroupItemProps {
 export function ServerGroupItem({ group }: ServerGroupItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
-  const { selectServer, getServerActiveConnectionCount } = useAIStore();
+  const { selectServer, getServerActiveConnectionCount, loadServerGroups } = useAIStore();
+
+  // 刷新服务器组列表
+  const handleRefresh = async () => {
+    try {
+      await loadServerGroups();
+    } catch (error) {
+      console.error('刷新列表失败:', error);
+      toast.error('刷新列表失败');
+    }
+  };
 
   // 获取实时的活跃连接数
   const activeConnectionCount = getServerActiveConnectionCount(group.serverIdentity.sessionId);
@@ -29,7 +40,7 @@ export function ServerGroupItem({ group }: ServerGroupItemProps) {
   };
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-card">
+    <div className="border rounded-lg overflow-hidden bg-card group">
       {/* 服务器头部 */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -68,6 +79,7 @@ export function ServerGroupItem({ group }: ServerGroupItemProps) {
             handleSelectServer();
           }}
           className="opacity-0 group-hover:opacity-100 transition-opacity"
+          title="开始新对话"
         >
           <MessageSquare className="w-4 h-4 text-muted-foreground hover:text-primary cursor-pointer" />
         </div>
@@ -80,6 +92,7 @@ export function ServerGroupItem({ group }: ServerGroupItemProps) {
             <ConversationItem
               key={conv.id}
               conversation={conv}
+              onUpdate={handleRefresh}
             />
           ))}
         </div>

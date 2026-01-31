@@ -211,7 +211,7 @@ export function NLToCommandPanel({
                     autoFocus
                     disabled={isGenerating}
                     autoComplete="off"
-                    className="text-sm pr-24 h-11 transition-all focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-2 focus-visible:border-emerald-500"
+                    className="text-sm pr-24 h-11 rounded-[20px] border border-gray-200 shadow-sm transition-all focus-visible:border-gray-500 focus-visible:border-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                   {input && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-right-2 duration-300">

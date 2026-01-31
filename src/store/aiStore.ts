@@ -33,6 +33,7 @@ interface AIStore {
 
   // UI 状态
   isChatOpen: boolean;
+  chatScrollPositions: Map<string, number>;  // 记录每个 serverId 的聊天滚动位置
 
   // ========== 配置管理 ==========
 
@@ -68,6 +69,12 @@ interface AIStore {
   toggleChat: () => void;
   openChat: () => void;
   closeChat: () => void;
+
+  // ========== 滚动位置管理 ==========
+
+  saveChatScrollPosition: (serverId: string, position: number) => void;
+  getChatScrollPosition: (serverId: string) => number;
+  clearChatScrollPosition: (serverId: string) => void;
 }
 
 export const useAIStore = create<AIStore>((set, get) => ({
@@ -83,6 +90,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
   activeConnections: new Set(),
   streamingConnectionId: null,
   isChatOpen: false,
+  chatScrollPositions: new Map(),
 
   // ========== 配置管理 ==========
 
@@ -490,6 +498,27 @@ export const useAIStore = create<AIStore>((set, get) => ({
 
   closeChat: () => {
     set({ isChatOpen: false });
+  },
+
+  // ========== 滚动位置管理 ==========
+
+  saveChatScrollPosition: (serverId: string, position: number) => {
+    const { chatScrollPositions } = get();
+    const newPositions = new Map(chatScrollPositions);
+    newPositions.set(serverId, position);
+    set({ chatScrollPositions: newPositions });
+  },
+
+  getChatScrollPosition: (serverId: string) => {
+    const { chatScrollPositions } = get();
+    return chatScrollPositions.get(serverId) || 0;
+  },
+
+  clearChatScrollPosition: (serverId: string) => {
+    const { chatScrollPositions } = get();
+    const newPositions = new Map(chatScrollPositions);
+    newPositions.delete(serverId);
+    set({ chatScrollPositions: newPositions });
   },
 }));
 

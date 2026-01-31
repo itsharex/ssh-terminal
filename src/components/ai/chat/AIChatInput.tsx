@@ -64,12 +64,17 @@ export function AIChatInput({ serverId }: AIChatInputProps) {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    const messageToSend = input.trim();
+    // 立即清空输入框
+    setInput('');
+    setTextareaHeight('auto');
+
     try {
-      await sendMessage(serverId, input.trim());
-      setInput('');
-      setTextareaHeight('auto');
+      await sendMessage(serverId, messageToSend);
     } catch (error) {
       console.error('发送失败:', error);
+      // 发送失败时恢复输入框内容
+      setInput(messageToSend);
     }
   };
 
@@ -106,7 +111,7 @@ export function AIChatInput({ serverId }: AIChatInputProps) {
       {/* 输入区域容器：带圆角边框 */}
       <div
         ref={containerRef}
-        className="relative border border-input rounded-lg bg-background transition-all duration-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+        className="relative border border-gray-200 rounded-[28px] bg-background shadow-sm transition-all duration-200 focus-within:border-gray-500 focus-within:border-2"
         style={{
           minHeight: '44px',
           maxHeight: '300px',

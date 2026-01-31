@@ -10,6 +10,7 @@ import { AIChatMessageList } from './AIChatMessageList';
 import { AIChatInput } from './AIChatInput';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useRef, useEffect } from 'react';
 
 interface AIChatMainProps {
   sidebarOpen: boolean;
@@ -17,11 +18,28 @@ interface AIChatMainProps {
 }
 
 export function AIChatMain({ sidebarOpen, setSidebarOpen }: AIChatMainProps) {
-  const { currentServerId } = useAIStore();
+  const { currentServerId, saveChatScrollPosition, getChatScrollPosition } = useAIStore();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   if (!currentServerId) {
     return null;
   }
+
+  // 保存滚动位置
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const scrollTop = scrollContainerRef.current.scrollTop;
+      saveChatScrollPosition(currentServerId, scrollTop);
+    }
+  };
+
+  // 切换 serverId 时恢复滚动位置
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const savedPosition = getChatScrollPosition(currentServerId);
+      scrollContainerRef.current.scrollTop = savedPosition;
+    }
+  }, [currentServerId, getChatScrollPosition]);
 
   // 阻止滚轮事件传播
   const handleWheel = (e: React.WheelEvent) => {
@@ -51,7 +69,13 @@ export function AIChatMain({ sidebarOpen, setSidebarOpen }: AIChatMainProps) {
       </div>
 
       {/* 消息列表 - 独立滚动区域 */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ touchAction: 'pan-y' }} onWheel={handleWheel}>
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto overflow-x-hidden"
+        style={{ touchAction: 'pan-y' }}
+        onWheel={handleWheel}
+      >
         <AIChatMessageList serverId={currentServerId} />
       </div>
 

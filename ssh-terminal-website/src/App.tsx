@@ -159,26 +159,68 @@ function DownloadSection() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {[
-              { name: 'Windows', desc: 'x64 安装包', ext: '.exe', icon: '🪟', color: 'from-blue-500/10 to-blue-500/5' },
-              { name: 'macOS', desc: 'DMG 镜像文件', ext: '.dmg', icon: '🍎', color: 'from-purple-500/10 to-purple-500/5' },
-              { name: 'Linux', desc: 'AppImage / DEB', ext: '', icon: '🐧', color: 'from-green-500/10 to-green-500/5' },
+              {
+                name: 'Windows',
+                desc: 'x64 安装包',
+                ext: '.exe',
+                icon: '🪟',
+                color: 'from-blue-500/10 to-blue-500/5',
+                available: true
+              },
+              {
+                name: 'macOS',
+                desc: 'DMG 镜像文件',
+                ext: '.dmg',
+                icon: '🍎',
+                color: 'from-purple-500/10 to-purple-500/5',
+                available: false
+              },
+              {
+                name: 'Linux',
+                desc: 'AppImage / DEB',
+                ext: '',
+                icon: '🐧',
+                color: 'from-green-500/10 to-green-500/5',
+                available: false
+              },
             ].map((platform, index) => (
               <ScrollReveal key={index} delay={index * 0.1}>
-                <Card className="group hover:shadow-2xl transition-all duration-300 border hover:border-primary/30 dark:hover:border-primary/20 relative overflow-hidden">
+                <Card className={`group transition-all duration-300 border relative overflow-hidden ${
+                  platform.available
+                    ? 'hover:shadow-2xl hover:border-primary/30 dark:hover:border-primary/20'
+                    : 'opacity-50'
+                }`}>
                   <div className={`absolute inset-0 bg-gradient-to-br ${platform.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
+                  {platform.available && (
+                    <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs font-mono font-bold px-2 py-1 rounded z-20">
+                      可用
+                    </div>
+                  )}
+
                   <CardHeader className="relative z-10">
-                    <div className="text-5xl mb-3 group-hover:scale-110 transition-transform duration-300">{platform.icon}</div>
-                    <CardTitle className="text-2xl group-hover:text-primary transition-colors relative z-10 font-mono">{platform.name}</CardTitle>
+                    <div className={`text-5xl mb-3 transition-transform duration-300 ${
+                      platform.available ? 'group-hover:scale-110' : 'grayscale opacity-50'
+                    }`}>{platform.icon}</div>
+                    <CardTitle className={`text-2xl relative z-10 font-mono ${
+                      platform.available ? 'group-hover:text-primary transition-colors' : 'text-muted-foreground'
+                    }`}>{platform.name}</CardTitle>
                     <CardDescription className="text-base relative z-10">{platform.desc}</CardDescription>
                   </CardHeader>
                   <CardContent className="relative z-10">
-                    <a href="https://github.com/shenjianz/ssh-terminal/releases" className="block">
-                      <Button className="w-full gap-2 font-mono items-center">
+                    {platform.available ? (
+                      <a href="https://github.com/shenjianz/ssh-terminal/releases" className="block">
+                        <Button className="w-full gap-2 font-mono items-center">
+                          <Download className="h-4 w-4" />
+                          下载{platform.ext || '安装包'}
+                        </Button>
+                      </a>
+                    ) : (
+                      <Button disabled className="w-full gap-2 font-mono items-center cursor-not-allowed">
                         <Download className="h-4 w-4" />
-                        下载{platform.ext || '安装包'}
+                        暂不可用
                       </Button>
-                    </a>
+                    )}
                   </CardContent>
                 </Card>
               </ScrollReveal>

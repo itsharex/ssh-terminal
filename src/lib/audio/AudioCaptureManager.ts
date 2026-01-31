@@ -85,18 +85,171 @@ export class AudioCaptureManager {
     try {
       console.log('[AudioCapture] Requesting microphone access...');
 
-      // 请求麦克风权限
-      this.microphoneStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1, // 单声道
-          sampleRate: this.sampleRate,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+      // 首先枚举所有音频输入设备，找到真正的麦克风设备
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter(device => device.kind === 'audioinput');
+
+      console.log('[AudioCapture] Found', audioInputs.length, 'audio input devices:');
+      audioInputs.forEach((device, index) => {
+        console.log(`  ${index + 1}. ${device.label} (ID: ${device.deviceId})`);
       });
 
-      console.log('[AudioCapture] Microphone access granted');
+      // 扩展的系统音频混音设备关键词列表
+      // 这些设备会捕获系统输出音频，而不是麦克风输入
+      const systemAudioKeywords = [
+        // 英文关键词
+        'stereo mix',
+        'stereomix',
+        'wave out mix',
+        'waveout',
+        'loopback',
+        'what you hear',
+        'what u hear',
+        'recording playback',
+        'mixed output',
+        'virtual audio',
+        'vb-audio',
+        'voicemeeter',
+        'audio repeater',
+        'cable output',
+        'cable input',
+        // 中文关键词
+        '立体声混音',
+        '混音',
+        '录制混音',
+        '虚拟音频',
+        '立体声',
+        '输出混音',
+        // 德语、法语等其他语言
+        'stereomischpult',
+        'mixage stéréo',
+        // 品牌特定的虚拟音频设备
+        'audiorelay',
+        'soundflower',
+        'blackhole',
+        'loopback',
+        'audio bus',
+      ];
+
+      // 明确的麦克风设备关键词（高优先级）
+      const microphoneKeywords = [
+        'microphone',
+        'mic',
+        '麦克风',
+        '内置麦克风',
+        '外置麦克风',
+        'internal mic',
+        'external mic',
+        'realtek high definition audio', // 常见的物理麦克风设备
+        'realtek usb audio',
+        'usb audio device',
+      ];
+
+      // 第一步：识别并排除所有系统音频混音设备
+      const validMicrophoneDevices = audioInputs.filter(device => {
+        const labelLower = device.label.toLowerCase();
+
+        // 检查是否是系统音频混音设备
+        const isSystemAudioDevice = systemAudioKeywords.some(keyword =>
+          labelLower.includes(keyword.toLowerCase())
+        );
+
+        if (isSystemAudioDevice) {
+          console.warn(`[AudioCapture] ⚠️ EXCLUDED system audio mix device: "${device.label}"`);
+          console.warn(`[AudioCapture] This device would record system audio instead of microphone input!`);
+          return false;
+        }
+
+        return true;
+      });
+
+      console.log(`[AudioCapture] After filtering system audio devices: ${validMicrophoneDevices.length} valid microphone device(s) remaining`);
+
+      if (validMicrophoneDevices.length === 0) {
+        throw new Error('未找到有效的麦克风设备（所有设备都是系统音频混音设备）');
+      }
+
+      // 第二步：优先选择明确标记为麦克风的设备，并且优先使用具体设备ID（而非 default/communications）
+      // 首先收集所有包含麦克风关键词的设备
+      const microphoneDevices = validMicrophoneDevices.filter(device => {
+        const labelLower = device.label.toLowerCase();
+        return microphoneKeywords.some(keyword =>
+          labelLower.includes(keyword.toLowerCase())
+        );
+      });
+
+      // 在麦克风设备中，优先选择有具体ID的设备（非 default/communications）
+      let microphoneDevice: MediaDeviceInfo | undefined;
+
+      const explicitMicrophoneDevice = microphoneDevices.find(device =>
+        device.deviceId !== 'default' && device.deviceId !== 'communications'
+      );
+
+      if (explicitMicrophoneDevice) {
+        microphoneDevice = explicitMicrophoneDevice;
+        console.log(`[AudioCapture] ✓ Found explicit microphone device with specific ID: "${microphoneDevice.label}"`);
+      } else if (microphoneDevices.length > 0) {
+        // 如果没有具体ID的设备，使用第一个麦克风设备（可能是 default）
+        microphoneDevice = microphoneDevices[0];
+        console.log(`[AudioCapture] ✓ Found microphone device (may have special ID): "${microphoneDevice.label}"`);
+      }
+
+      // 第三步：如果没有找到明确的麦克风，使用第一个有效设备作为备选
+      if (!microphoneDevice) {
+        microphoneDevice = validMicrophoneDevices[0];
+        console.warn(`[AudioCapture] ⚠️ No explicit microphone device found, using: "${microphoneDevice.label}"`);
+        console.warn(`[AudioCapture] Please verify this is your actual microphone in system settings`);
+      }
+
+      // 验证：确保不使用 'default' 或 'communications' 设备 ID
+      // 这些特殊 ID 可能会指向错误的系统音频设备
+      if (microphoneDevice.deviceId === 'default' || microphoneDevice.deviceId === 'communications') {
+        console.warn(`[AudioCapture] ⚠️ WARNING: Selected device has special ID: "${microphoneDevice.deviceId}"`);
+        console.warn(`[AudioCapture] This may cause recording system audio instead of microphone!`);
+
+        // 尝试找到一个非特殊 ID 的同类设备（寻找相同名称的设备）
+        // 提取设备名称的核心部分（去掉前缀如"默认值"、"通信"等）
+        const deviceNameParts = microphoneDevice.label.split('-');
+        const coreDeviceName = deviceNameParts.length > 1
+          ? deviceNameParts.slice(1).join('-').trim()
+          : microphoneDevice.label;
+
+        console.log(`[AudioCapture] Looking for alternative device with core name: "${coreDeviceName}"`);
+
+        const alternativeDevice = validMicrophoneDevices.find(d =>
+          d.deviceId !== 'default' &&
+          d.deviceId !== 'communications' &&
+          d.label.includes(coreDeviceName)
+        );
+
+        if (alternativeDevice) {
+          microphoneDevice = alternativeDevice;
+          console.log(`[AudioCapture] ✓ Switched to alternative device: "${microphoneDevice.label}" (ID: ${microphoneDevice.deviceId})`);
+        } else {
+          console.error(`[AudioCapture] ✗ ERROR: No alternative device found. Recording system audio may occur!`);
+          console.error(`[AudioCapture] Please check Windows Sound Settings and verify the default recording device.`);
+        }
+      }
+
+      // 构建音频约束，指定具体设备
+      const audioConstraints: any = {
+        deviceId: { exact: microphoneDevice.deviceId },
+        channelCount: 1, // 单声道
+        sampleRate: this.sampleRate,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      };
+
+      console.log('[AudioCapture] ✓ Using device:', microphoneDevice.label);
+      console.log('[AudioCapture] Device ID:', microphoneDevice.deviceId);
+
+      // 请求麦克风权限
+      this.microphoneStream = await navigator.mediaDevices.getUserMedia({
+        audio: audioConstraints,
+      });
+
+      console.log('[AudioCapture] ✓ Microphone access granted');
 
       // 创建音频源节点
       if (!this.audioContext) {
@@ -107,9 +260,9 @@ export class AudioCaptureManager {
         this.microphoneStream
       );
 
-      console.log('[AudioCapture] Microphone source node created');
+      console.log('[AudioCapture] ✓ Microphone source node created successfully');
     } catch (error) {
-      console.error('[AudioCapture] Failed to get microphone access:', error);
+      console.error('[AudioCapture] ✗ Failed to get microphone access:', error);
       throw new Error(`麦克风访问失败: ${error}`);
     }
   }

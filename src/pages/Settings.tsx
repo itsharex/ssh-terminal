@@ -307,6 +307,13 @@ export function Settings() {
               <p className="text-sm text-muted-foreground">
                 录制用户通过麦克风说话的声音（需要用户授权）
               </p>
+              <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3">
+                <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                  <strong>⚠️ 重要提示：</strong>系统会自动过滤掉"立体声混音"等系统音频设备。
+                  如果发现录制到了音乐或其他应用的声音，请检查系统音频设置，
+                  确保选择了正确的麦克风设备而非混音设备。
+                </p>
+              </div>
               <Switch
                 checked={config.recordMicrophone}
                 onCheckedChange={(checked) => {
@@ -436,10 +443,16 @@ export function Settings() {
                 <Volume2 className="h-4 w-4" />
                 录制提示
               </h3>
-              <p className="text-sm text-muted-foreground">
-                音频录制需要浏览器权限。启用麦克风录制需要用户授权，
-                扬声器录制仅在支持 WASAPI Loopback Recording 的平台上可用。
-              </p>
+              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                <li>音频录制需要浏览器权限。启用麦克风录制需要用户授权</li>
+                <li>扬声器录制仅在支持 WASAPI Loopback Recording 的平台上可用（Windows）</li>
+                <li>如果麦克风录制到了系统音频（音乐等），请在系统设置中检查默认录音设备</li>
+                <li>建议在 Windows 设置中禁用"立体声混音"设备，避免误选</li>
+              </ul>
+              <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-300">
+                <strong>如何检查麦克风设备：</strong>
+                打开 Windows 设置 → 系统 → 声音 → 输入设备，确认选择了正确的麦克风设备，而非"立体声混音"。
+              </div>
             </div>
           </div>
         </TabsContent>
