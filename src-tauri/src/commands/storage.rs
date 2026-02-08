@@ -14,13 +14,172 @@ pub async fn storage_sessions_save(
 ) -> Result<()> {
     let manager = manager.as_ref();
 
-    // 获取所有会话配置及其ID
-    let session_configs = manager.get_all_session_configs_with_ids().await;
+    // 获取内存中的所有会话配置及其ID
+    let memory_sessions = manager.get_all_session_configs_with_ids().await;
 
-    println!("Saving {} session configs", session_configs.len());
+    println!("Found {} session configs in memory", memory_sessions.len());
 
+    // 先从存储加载已存在的会话
     let storage = Storage::new(Some(&app))?;
-    storage.save_sessions(&session_configs)?;
+    let mut existing_sessions = match storage.load_sessions() {
+        Ok(sessions) => {
+            println!("Loaded {} existing sessions from storage", sessions.len());
+            sessions
+        }
+        Err(e) => {
+            println!("Failed to load existing sessions (file may not exist): {}", e);
+            Vec::new()
+        }
+    };
+
+    // 合并会话：以内存中的会话为准，但保留存储中不在内存中的会话
+    let mut merged_sessions: std::collections::HashMap<String, SessionConfig> =
+        std::collections::HashMap::new();
+
+    // 1. 先添加存储中存在的所有会话
+    for (id, config) in existing_sessions {
+        merged_sessions.insert(id, config);
+    }
+
+    // 2. 用内存中的会话覆盖或添加
+    for (id, config) in memory_sessions {
+        merged_sessions.insert(id, config);
+    }
+
+    // 3. 转换为 Vec 并保存
+    let sessions_to_save: Vec<(String, SessionConfig)> = merged_sessions
+        .into_iter()
+        .collect();
+
+    println!("Saving {} merged session configs to storage", sessions_to_save.len());
+
+    storage.save_sessions(&sessions_to_save)?;
+
+    Ok(())
+}
+
+/// 创建会话并直接保存到存储
+#[tauri::command]
+pub async fn storage_session_create(
+    config: SessionConfig,
+    app: AppHandle,
+) -> Result<String> {
+    let storage = Storage::new(Some(&app))?;
+
+    // 生成新的会话ID
+    let session_id = uuid::Uuid::new_v4().to_string();
+
+    // 加载现有会话
+    let mut existing_sessions = match storage.load_sessions() {
+        Ok(sessions) => sessions,
+        Err(_) => Vec::new(),
+    };
+
+    // 添加新会话
+    existing_sessions.push((session_id.clone(), config));
+
+    // 保存回文件
+    storage.save_sessions(&existing_sessions)?;
+
+    println!("Created and saved session: {}", session_id);
+
+    Ok(session_id)
+}
+
+/// 删除会话并直接更新存储
+#[tauri::command]
+pub async fn storage_session_delete(
+    session_id: String,
+    app: AppHandle,
+) -> Result<()> {
+    let storage = Storage::new(Some(&app))?;
+
+    // 加载现有会话
+    let existing_sessions = match storage.load_sessions() {
+        Ok(sessions) => sessions,
+        Err(_) => Vec::new(),
+    };
+
+    // 过滤掉要删除的会话
+    let updated_sessions: Vec<(String, SessionConfig)> = existing_sessions
+        .into_iter()
+        .filter(|(id, _)| id != &session_id)
+        .collect();
+
+    // 保存回文件
+    storage.save_sessions(&updated_sessions)?;
+
+    println!("Deleted session from storage: {}", session_id);
+
+    Ok(())
+}
+
+/// 更新会话并直接更新存储
+#[tauri::command]
+pub async fn storage_session_update(
+    session_id: String,
+    updates: crate::ssh::session::SessionConfigUpdate,
+    app: AppHandle,
+) -> Result<()> {
+    let storage = Storage::new(Some(&app))?;
+
+    // 加载现有会话
+    let mut existing_sessions = match storage.load_sessions() {
+        Ok(sessions) => sessions,
+        Err(_) => Vec::new(),
+    };
+
+    // 查找并更新会话
+    let mut updated = false;
+    for (id, config) in existing_sessions.iter_mut() {
+        if id == &session_id {
+            // 只更新提供的字段
+            if let Some(name) = updates.name {
+                config.name = name;
+            }
+            if let Some(host) = updates.host {
+                config.host = host;
+            }
+            if let Some(port) = updates.port {
+                config.port = port;
+            }
+            if let Some(username) = updates.username {
+                config.username = username;
+            }
+            if let Some(group) = updates.group {
+                config.group = group;
+            }
+            if let Some(auth_method) = updates.auth_method {
+                config.auth_method = auth_method;
+            }
+            if let Some(terminal_type) = updates.terminal_type {
+                config.terminal_type = Some(terminal_type);
+            }
+            if let Some(columns) = updates.columns {
+                config.columns = Some(columns);
+            }
+            if let Some(rows) = updates.rows {
+                config.rows = Some(rows);
+            }
+            if let Some(strict_host_key_checking) = updates.strict_host_key_checking {
+                config.strict_host_key_checking = strict_host_key_checking;
+            }
+            if let Some(keep_alive_interval) = updates.keep_alive_interval {
+                config.keep_alive_interval = keep_alive_interval;
+            }
+            updated = true;
+            break;
+        }
+    }
+
+    if !updated {
+        return Err(crate::error::SSHError::SessionNotFound(session_id));
+    }
+
+    // 保存回文件
+    storage.save_sessions(&existing_sessions)?;
+
+    println!("Updated session in storage: {}", session_id);
 
     Ok(())
 }
@@ -39,13 +198,6 @@ pub async fn storage_sessions_clear(app: AppHandle) -> std::result::Result<(), S
     let storage = Storage::new(Some(&app)).map_err(|e| e.to_string())?;
     storage.clear().map_err(|e| e.to_string())?;
     Ok(())
-}
-
-/// 从存储中删除单个会话配置
-#[tauri::command]
-pub async fn storage_session_delete(session_name: String, app: AppHandle) -> std::result::Result<bool, String> {
-    let storage = Storage::new(Some(&app)).map_err(|e| e.to_string())?;
-    storage.delete_session(&session_name).map_err(|e| e.to_string())
 }
 
 /// 保存应用配置

@@ -1,6 +1,6 @@
 [package]
 name = "ssh-terminal"
-version = "0.6.1"
+version = "0.6.2"
 description = "SSH Terminal - A modern SSH client"
 authors = ["shenjianZ"]
 edition = "2021"

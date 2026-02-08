@@ -80,6 +80,8 @@ pub fn run() {
             commands::storage_sessions_load,
             commands::storage_sessions_clear,
             commands::storage_session_delete,
+            commands::storage_session_create,
+            commands::storage_session_update,
             commands::storage_config_save,
             commands::storage_config_load,
             commands::storage_config_get_default,

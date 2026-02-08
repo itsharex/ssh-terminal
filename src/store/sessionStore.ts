@@ -86,15 +86,19 @@ export const useSessionStore = create<SessionStore>()(
           keepAliveInterval: config.keepAliveInterval ?? 30,
         };
 
-        const sessionId = await invoke<string>('session_create', {
+        // 直接创建并保存到存储
+        const sessionId = await invoke<string>('storage_session_create', {
           config: sessionConfig,
         });
 
-        // 保存到持久化存储
+        // 同时在内存中创建（用于连接）
         try {
-          await invoke('storage_sessions_save');
+          await invoke('session_create_with_id', {
+            id: sessionId,
+            config: sessionConfig,
+          });
         } catch (error) {
-          console.error('Failed to save sessions to storage:', error);
+          console.error('Failed to create session in memory:', error);
         }
 
         // 创建新的会话对象
@@ -132,8 +136,8 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       updateSession: async (id, config) => {
-        // 更新会话配置
-        await invoke('session_update', {
+        // 直接更新存储中的会话
+        await invoke('storage_session_update', {
           sessionId: id,
           updates: {
             name: config.name,
@@ -150,11 +154,26 @@ export const useSessionStore = create<SessionStore>()(
           }
         });
 
-        // 保存到持久化存储
+        // 同时更新内存中的会话
         try {
-          await invoke('storage_sessions_save');
+          await invoke('session_update', {
+            sessionId: id,
+            updates: {
+              name: config.name,
+              host: config.host,
+              port: config.port,
+              username: config.username,
+              group: config.group || '默认分组',
+              authMethod: config.authMethod,
+              terminalType: config.terminalType,
+              columns: config.columns,
+              rows: config.rows,
+              strictHostKeyChecking: config.strictHostKeyChecking ?? true,
+              keepAliveInterval: config.keepAliveInterval ?? 30,
+            }
+          });
         } catch (error) {
-          console.error('Failed to save sessions to storage:', error);
+          console.error('Failed to update session in memory:', error);
         }
 
         set((state) => ({
@@ -165,15 +184,16 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       deleteSession: async (id) => {
-        await invoke('session_delete', { sessionId: id });
-        
-        // 保存到持久化存储
+        // 直接从存储中删除会话
+        await invoke('storage_session_delete', { sessionId: id });
+
+        // 同时从内存中删除
         try {
-          await invoke('storage_sessions_save');
+          await invoke('session_delete', { sessionId: id });
         } catch (error) {
-          console.error('Failed to save sessions to storage:', error);
+          console.error('Failed to delete session from memory:', error);
         }
-        
+
         set((state) => ({
           sessions: state.sessions.filter((s) => s.id !== id),
         }));
