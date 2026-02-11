@@ -7,7 +7,8 @@
       "Bash(find:*)",
       "Bash(xargs:*)",
       "Bash(pnpm build:*)",
-      "Skill(frontend-design:frontend-design)"
+      "Skill(frontend-design:frontend-design)",
+      "Bash(pnpm list:*)"
     ]
   }
 }

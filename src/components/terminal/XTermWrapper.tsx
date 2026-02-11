@@ -639,9 +639,13 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
     try {
       const text = await navigator.clipboard.readText();
       if (text && terminalRefInstance.current) {
+        // 转换换行符：\n 或 \r\n -> \r
+        // 终端使用 \r（回车符）作为换行
+        const converted = text.replace(/\r\n/g, '\r').replace(/\n/g, '\r');
+
         await invoke('terminal_write', {
-          sessionId: connectionId, // 后端 API 参数名是 sessionId，但值是 connectionId
-          data: new TextEncoder().encode(text),
+          sessionId: connectionId,
+          data: new TextEncoder().encode(converted),
         });
       }
     } catch (err) {

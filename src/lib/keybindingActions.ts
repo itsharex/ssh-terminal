@@ -325,9 +325,13 @@ export class KeybindingActionExecutor {
         return false;
       }
 
+      // 转换换行符：\n 或 \r\n -> \r
+      // 终端使用 \r（回车符）作为换行
+      const converted = text.replace(/\r\n/g, '\r').replace(/\n/g, '\r');
+
       await invoke('terminal_write', {
         sessionId: activeTab.connectionId,
-        data: new TextEncoder().encode(text),
+        data: new TextEncoder().encode(converted),
       });
 
       console.log('[KeybindingExecutor] Pasted text from clipboard');
