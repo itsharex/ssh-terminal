@@ -45,7 +45,6 @@ pub fn run() {
             // 初始化音频捕获器状态
             let audio_capturer = commands::audio::AudioCapturerState {
                 capturer: Arc::new(std::sync::Mutex::new(None)),
-                audio_receiver: Arc::new(std::sync::Mutex::new(None)),
             };
             app.manage(audio_capturer);
 

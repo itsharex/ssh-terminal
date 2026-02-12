@@ -106,16 +106,6 @@ pub async fn ai_history_list_by_server_id(server_id: String) -> Result<Vec<AICon
     Ok(history.list_by_connection_id(&server_id))
 }
 
-/// 获取指定服务器配置的所有对话（按 session_id）
-///
-/// 根据 session_id（服务器配置ID）获取该服务器的所有对话元数据
-/// 返回属于同一个服务器配置的所有连接的对话
-#[tauri::command]
-pub async fn ai_history_list_by_session_id(session_id: String) -> Result<Vec<AIConversationMeta>, String> {
-    let history = AIChatHistory::load()?;
-    Ok(history.list_by_session_id(&session_id))
-}
-
 /// 更新对话的连接状态
 ///
 /// 更新指定对话的连接状态为 Active 或 Inactive

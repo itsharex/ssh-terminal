@@ -1,6 +1,6 @@
 use crate::error::Result;
 use async_trait::async_trait;
-use tokio::io::AsyncRead;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 #[allow(unused_imports)]
 use std::any::Any;
@@ -41,43 +41,28 @@ pub trait SSHBackend: Send {
     ///
     /// 实现时应该返回 `self`
     fn as_any(&self) -> &dyn std::any::Any;
-
-    /// 打开 SFTP 子系统 channel（异步版本）
-    ///
-    /// 默认实现返回不支持错误，只有支持 SFTP 的 backend 需要实现此方法
-    ///
-    /// # 返回
-    /// 实现了 AsyncRead + AsyncWrite 的 channel stream
-    async fn open_sftp_channel_async(&mut self) -> Result<Box<dyn SftpStream>> {
-        Err(crate::error::SSHError::NotSupported("SFTP not supported by this backend".to_string()))
-    }
-
-    /// 打开 SFTP 子系统 channel（同步版本，已废弃）
-    ///
-    /// 默认实现返回不支持错误，只有支持 SFTP 的 backend 需要实现此方法
-    ///
-    /// # 返回
-    /// 实现了 AsyncRead + AsyncWrite 的 channel stream
-    #[deprecated(note = "Use open_sftp_channel_async instead")]
-    fn open_sftp_channel(&mut self) -> Result<Box<dyn SftpStream>> {
-        Err(crate::error::SSHError::NotSupported("SFTP not supported by this backend".to_string()))
-    }
 }
+
+// ============================================================================
+// SFTP 支持
+// 以下 trait 用于 SFTP 子系统的实现
+// ============================================================================
 
 /// SFTP Stream trait
 ///
 /// 用于 SFTP 子系统的数据流，需要支持读写
-pub trait SftpStream: AsyncRead + tokio::io::AsyncWrite + Send + Sync + Unpin {
+#[allow(dead_code)]
+pub trait SftpStream: AsyncRead + AsyncWrite + Send + Sync + Unpin {
     /// as any conversion for downcasting
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
-
 
 /// 异步读取器 trait
 ///
 /// 用于从 SSH 会话读取数据
 pub trait BackendReader: AsyncRead + Send + Unpin {
     /// as any conversion for downcasting
+    #[allow(dead_code)]
     fn as_any(&self) -> &dyn std::any::Any;
 }
 

@@ -3,14 +3,13 @@ use std::sync::{Arc, Mutex};
 use tauri::{State, AppHandle, Emitter};
 use tracing::info;
 use cpal::traits::{HostTrait, DeviceTrait};
-use crossbeam_channel::{Receiver, bounded};
+use crossbeam_channel::bounded;
 use std::thread;
 
 /// 全局音频捕获器状态
 #[derive(Clone)]
 pub struct AudioCapturerState {
     pub capturer: Arc<Mutex<Option<SystemAudioCapturer>>>,
-    pub audio_receiver: Arc<Mutex<Option<Receiver<Vec<f32>>>>>,
 }
 
 /// 开始捕获系统音频

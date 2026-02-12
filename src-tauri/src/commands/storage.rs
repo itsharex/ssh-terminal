@@ -21,7 +21,7 @@ pub async fn storage_sessions_save(
 
     // 先从存储加载已存在的会话
     let storage = Storage::new(Some(&app))?;
-    let mut existing_sessions = match storage.load_sessions() {
+    let existing_sessions = match storage.load_sessions() {
         Ok(sessions) => {
             println!("Loaded {} existing sessions from storage", sessions.len());
             sessions

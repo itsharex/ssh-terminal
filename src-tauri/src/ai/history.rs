@@ -222,13 +222,6 @@ impl AIChatHistory {
             .find(|c| c.meta.id == id)
     }
 
-    /// 获取可变引用的指定会话
-    pub fn get_conversation_mut(&mut self, id: &str) -> Option<&mut AIConversation> {
-        self.conversations
-            .iter_mut()
-            .find(|c| c.meta.id == id)
-    }
-
     /// 按服务器身份分组获取对话历史
     ///
     /// 返回按 session_id（服务器配置）分组的对话列表
@@ -289,17 +282,6 @@ impl AIChatHistory {
         self.conversations
             .iter()
             .filter(|c| c.meta.connection_id == connection_id)
-            .map(|c| c.meta.clone())
-            .collect()
-    }
-
-    /// 获取指定服务器配置的所有对话（按 session_id）
-    ///
-    /// 返回属于同一个服务器配置的所有连接的对话
-    pub fn list_by_session_id(&self, session_id: &str) -> Vec<AIConversationMeta> {
-        self.conversations
-            .iter()
-            .filter(|c| c.meta.server_identity.session_id == session_id)
             .map(|c| c.meta.clone())
             .collect()
     }

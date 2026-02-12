@@ -34,6 +34,7 @@ impl SftpClient {
     /// # 参数
     /// - `stream`: 实现 AsyncRead + AsyncWrite 的数据流（通常是 SSH channel）
     /// - `connection_id`: 关联的连接 ID
+    #[allow(dead_code)]
     pub async fn new<S>(stream: S, connection_id: String) -> Result<Self>
     where
         S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static,
@@ -301,12 +302,18 @@ impl SftpClient {
         Ok(())
     }
 
+    // ============================================================================
+    // 未来特性：带进度回调的文件传输
+    // 以下方法预留用于将来的带进度回调的文件上传/下载功能
+    // ============================================================================
+
     /// 下载文件（带进度回调）
     ///
     /// # 参数
     /// - `remote_path`: 远程文件路径
     /// - `local_path`: 本地保存路径
     /// - `progress_callback`: 进度回调函数 (transferred, total)
+    #[allow(dead_code)]
     pub async fn download_file<F>(
         &mut self,
         remote_path: &str,
@@ -364,6 +371,7 @@ impl SftpClient {
     /// - `local_path`: 本地文件路径
     /// - `remote_path`: 远程保存路径
     /// - `progress_callback`: 进度回调函数 (transferred, total)
+    #[allow(dead_code)]
     pub async fn upload_file<F>(
         &mut self,
         local_path: &Path,
@@ -437,6 +445,7 @@ impl SftpClient {
     /// 确保目录存在（递归创建）
     ///
     /// 如果目录不存在，递归创建父目录，然后创建目标目录
+    #[allow(dead_code)]
     fn ensure_dir_exists<'a>(&'a mut self, path: &'a str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
         Box::pin(async move {
             // 尝试创建目录
@@ -479,6 +488,7 @@ impl SftpClient {
     }
 
     /// 关闭 SFTP 会话
+    #[allow(dead_code)]
     pub async fn close(self) -> Result<()> {
         debug!("Closing SFTP session for connection: {}", self.connection_id);
         self.session.close().await

@@ -19,24 +19,9 @@ pub struct SystemAudioCapturer {
     channels: u16,
     /// WAV 文件写入器（用于 MVP 验证）
     wav_writer: Option<Arc<Mutex<hound::WavWriter<std::io::BufWriter<std::fs::File>>>>>,
-    /// 音频增益倍数（WASAPI Loopback 捕获的音量通常较低）
-    volume_gain: f32,
 }
 
 impl SystemAudioCapturer {
-    /// 使用默认配置创建新的音频捕获器
-    pub fn new() -> Result<Self, String> {
-        Ok(Self {
-            is_recording: Arc::new(AtomicBool::new(false)),
-            audio_sender: None,
-            stream_thread: None,
-            target_sample_rate: 48000, // 目标采样率 48kHz
-            channels: 1,                 // 单声道
-            wav_writer: None,
-            volume_gain: 2.0, // 音频增益 2 倍（WASAPI Loopback 捕获音量较低）
-        })
-    }
-
     /// 使用指定配置创建新的音频捕获器
     pub fn new_with_config(target_sample_rate: u32, channels: u16) -> Result<Self, String> {
         Ok(Self {
@@ -46,7 +31,6 @@ impl SystemAudioCapturer {
             target_sample_rate,
             channels,
             wav_writer: None,
-            volume_gain: 2.0, // 音频增益 2 倍（WASAPI Loopback 捕获音量较低）
         })
     }
 

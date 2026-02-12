@@ -39,7 +39,13 @@ impl From<russh_sftp::protocol::FileAttributes> for SftpFileInfo {
     }
 }
 
+// ============================================================================
+// 未来特性：文件传输进度追踪
+// 以下类型和方法预留用于将来的文件传输进度追踪功能
+// ============================================================================
+
 /// 文件传输操作类型
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TransferOperation {
@@ -49,6 +55,7 @@ pub enum TransferOperation {
 }
 
 /// 传输源
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "camelCase")]
@@ -58,6 +65,7 @@ pub enum TransferSource {
 }
 
 /// 传输状态
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TransferStatus {
@@ -69,6 +77,7 @@ pub enum TransferStatus {
 }
 
 /// 文件传输进度
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransferProgress {

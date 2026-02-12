@@ -141,9 +141,15 @@ impl SftpManager {
         connection.create_sftp_client().await
     }
 
+    // ============================================================================
+    // 未来特性：高级 SFTP 客户端管理
+    // 以下方法预留用于将来的高级 SFTP 会话管理功能
+    // ============================================================================
+
     /// 从 RusshBackend 创建 SFTP 客户端
     ///
     /// 这是一个辅助方法，用于从 RusshBackend 直接创建 SFTP 客户端
+    #[allow(dead_code)]
     pub async fn create_client_from_russh(
         &self,
         handle: &russh::client::Handle<crate::ssh::backends::russh::RusshHandler>,
@@ -170,6 +176,7 @@ impl SftpManager {
     ///
     /// # 参数
     /// - `connection_id`: 连接 ID
+    #[allow(dead_code)]
     pub async fn close_session(&self, connection_id: &str) -> Result<()> {
         debug!("Closing SFTP session for connection: {}", connection_id);
 
@@ -186,6 +193,7 @@ impl SftpManager {
     }
 
     /// 关闭所有 SFTP 会话
+    #[allow(dead_code)]
     pub async fn close_all(&self) -> Result<()> {
         info!("Closing all SFTP sessions");
 

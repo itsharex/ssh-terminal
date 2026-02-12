@@ -569,33 +569,6 @@ impl Storage {
         self.encrypt_session(id, session)
     }
 
-    /// 删除单个会话配置（根据名称匹配）
-    pub fn delete_session(&self, session_name: &str) -> Result<bool> {
-        if !self.storage_path.exists() {
-            return Ok(false);
-        }
-
-        // 加载现有会话
-        let sessions = self.load_sessions()?;
-        let original_count = sessions.len();
-
-        // 过滤掉要删除的会话（访问元组的第二个元素 .1.name）
-        let updated_sessions: Vec<_> = sessions
-            .into_iter()
-            .filter(|s| s.1.name != session_name)
-            .collect();
-
-        // 如果会话数量没变，说明没找到
-        if updated_sessions.len() == original_count {
-            return Ok(false);
-        }
-
-        // 保存更新后的列表
-        self.save_sessions(&updated_sessions)?;
-
-        Ok(true)
-    }
-
     /// 直接删除会话（优化版：无需解密/加密）
     pub fn delete_session_by_id(&self, session_id: &str) -> Result<bool> {
         if !self.storage_path.exists() {

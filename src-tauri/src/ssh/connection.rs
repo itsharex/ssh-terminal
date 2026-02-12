@@ -1,19 +1,8 @@
 use crate::ssh::backend::{SSHBackend, BackendReader};
 use crate::ssh::session::{SessionConfig, SessionStatus, SessionInfo};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use chrono::{DateTime, Utc};
-
-/// 连接实例信息（用于前端显示）
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ConnectionInfo {
-    pub id: String,
-    pub session_id: String,  // 关联的session配置ID
-    pub name: String,
-    pub status: SessionStatus,
-    pub connected_at: Option<DateTime<Utc>>,
-}
 
 /// 实际的SSH连接实例
 #[derive(Clone)]
@@ -27,22 +16,6 @@ pub struct ConnectionInstance {
     // 后端连接
     pub backend: Arc<Mutex<Option<Box<dyn SSHBackend>>>>,
     pub backend_reader: Arc<Mutex<Option<Box<dyn BackendReader + Send>>>>,
-
-    // 保留PTY相关字段以兼容（移动端使用 Send + Sync 类型）
-    #[cfg(not(target_os = "android"))]
-    pub pty_pair: Arc<Mutex<Option<Box<dyn portable_pty::MasterPty + Send>>>>,
-    #[cfg(target_os = "android")]
-    pub pty_pair: Arc<Mutex<Option<Box<dyn std::any::Any + Send + Sync>>>>,
-
-    #[cfg(not(target_os = "android"))]
-    pub pty_writer: Arc<Mutex<Option<Box<dyn std::io::Write + Send>>>>,
-    #[cfg(target_os = "android")]
-    pub pty_writer: Arc<Mutex<Option<Box<dyn std::any::Any + Send + Sync>>>>,
-
-    #[cfg(not(target_os = "android"))]
-    pub child: Arc<Mutex<Option<Box<dyn portable_pty::Child + Send>>>>,
-    #[cfg(target_os = "android")]
-    pub child: Arc<Mutex<Option<Box<dyn std::any::Any + Send + Sync>>>>,
 }
 
 impl ConnectionInstance {
@@ -55,23 +28,7 @@ impl ConnectionInstance {
             connected_at: Arc::new(Mutex::new(None)),
             backend: Arc::new(Mutex::new(None)),
             backend_reader: Arc::new(Mutex::new(None)),
-            #[cfg(not(target_os = "android"))]
-            pty_pair: Arc::new(Mutex::new(None)),
-            #[cfg(target_os = "android")]
-            pty_pair: Arc::new(Mutex::new(None)),
-            #[cfg(not(target_os = "android"))]
-            pty_writer: Arc::new(Mutex::new(None)),
-            #[cfg(target_os = "android")]
-            pty_writer: Arc::new(Mutex::new(None)),
-            #[cfg(not(target_os = "android"))]
-            child: Arc::new(Mutex::new(None)),
-            #[cfg(target_os = "android")]
-            child: Arc::new(Mutex::new(None)),
         }
-    }
-
-    pub fn id(&self) -> &str {
-        &self.id
     }
 
     pub async fn status(&self) -> SessionStatus {
@@ -80,16 +37,6 @@ impl ConnectionInstance {
 
     pub async fn set_status(&self, status: SessionStatus) {
         *self.status.lock().await = status;
-    }
-
-    pub async fn info(&self) -> ConnectionInfo {
-        ConnectionInfo {
-            id: self.id.clone(),
-            session_id: self.session_id.clone(),
-            name: self.config.name.clone(),
-            status: self.status().await,
-            connected_at: *self.connected_at.lock().await,
-        }
     }
 
     /// 返回SessionInfo（用于兼容旧API）

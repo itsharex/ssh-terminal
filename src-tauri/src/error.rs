@@ -29,17 +29,11 @@ pub enum SSHError {
     #[error("SSH错误: {0}")]
     Ssh(String),
 
-    #[error("配置错误: {0}")]
-    Config(String),
-
     #[error("加密错误: {0}")]
     Crypto(String),
 
     #[error("存储错误: {0}")]
     Storage(String),
-
-    #[error("超时")]
-    Timeout,
 }
 
 impl serde::Serialize for SSHError {
