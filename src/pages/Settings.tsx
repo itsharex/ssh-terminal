@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Palette,
   Terminal,
@@ -8,8 +8,11 @@ import {
   Volume2,
   Github,
   RotateCcw,
-  Bot
+  Bot,
+  Cloud,
+  Globe
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -24,6 +27,7 @@ import { soundManager, playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
 import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import { useAIStore } from '@/store/aiStore';
+import { useAppSettingsStore } from '@/store/appSettingsStore';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { invoke } from '@tauri-apps/api/core';
 import type { TerminalConfig } from '@/types/terminal';
@@ -32,12 +36,33 @@ export function Settings() {
   const { config, setConfig, loadConfig } = useTerminalConfigStore();
   const { loadConfig: loadAIConfig } = useAIStore();
   const { setTheme } = useTheme();
+  const {
+    settings: appSettings,
+    isLoading: appSettingsLoading,
+    loadSettings: loadAppSettings,
+    updateServerUrl,
+    updateAutoSync,
+    updateSyncInterval,
+    updateLanguage,
+    clearError: clearAppSettingsError
+  } = useAppSettingsStore();
+
+  const [serverUrlInput, setServerUrlInput] = useState('');
+  const [isSavingServerUrl, setIsSavingServerUrl] = useState(false);
 
   // 加载配置
   useEffect(() => {
     loadConfig();
     loadAIConfig();
-  }, [loadConfig, loadAIConfig]);
+    loadAppSettings();
+  }, [loadConfig, loadAIConfig, loadAppSettings]);
+
+  // 当 appSettings 加载完成后，更新 serverUrlInput
+  useEffect(() => {
+    if (appSettings) {
+      setServerUrlInput(appSettings.serverUrl);
+    }
+  }, [appSettings]);
 
   const handleSwitchChange = async (key: string, value: boolean) => {
     // 如果是音效设置，更新音效管理器
@@ -63,11 +88,58 @@ export function Settings() {
     }
   };
 
+  const handleSaveServerUrl = async () => {
+    setIsSavingServerUrl(true);
+    clearAppSettingsError();
+    try {
+      await updateServerUrl(serverUrlInput.trim());
+      playSound(SoundEffect.SUCCESS);
+    } catch (error) {
+      playSound(SoundEffect.ERROR);
+    } finally {
+      setIsSavingServerUrl(false);
+    }
+  };
+
+  const handleAutoSyncChange = async (enabled: boolean) => {
+    playSound(SoundEffect.TOGGLE_SWITCH);
+    try {
+      await updateAutoSync(enabled);
+      playSound(SoundEffect.SUCCESS);
+    } catch (error) {
+      playSound(SoundEffect.ERROR);
+    }
+  };
+
+  const handleSyncIntervalChange = async (interval: number) => {
+    playSound(SoundEffect.BUTTON_CLICK);
+    try {
+      await updateSyncInterval(interval);
+      playSound(SoundEffect.SUCCESS);
+    } catch (error) {
+      playSound(SoundEffect.ERROR);
+    }
+  };
+
+  const handleLanguageChange = async (language: string) => {
+    playSound(SoundEffect.BUTTON_CLICK);
+    try {
+      await updateLanguage(language);
+      playSound(SoundEffect.SUCCESS);
+    } catch (error) {
+      playSound(SoundEffect.ERROR);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       {/* 设置选项卡 */}
       <Tabs defaultValue="appearance" className="space-y-4 sm:space-y-6">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-6 gap-1 h-auto">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-7 gap-1 h-auto">
+          <TabsTrigger value="account" className="gap-2">
+            <Cloud className="h-4 w-4" />
+            账号与服务
+          </TabsTrigger>
           <TabsTrigger value="appearance" className="gap-2">
             <Palette className="h-4 w-4" />
             外观
@@ -93,6 +165,108 @@ export function Settings() {
             关于
           </TabsTrigger>
         </TabsList>
+
+        {/* 账号与服务设置 */}
+        <TabsContent value="account" className="space-y-6">
+          <h2 className="text-xl font-semibold">账号与服务</h2>
+          <div className="space-y-4">
+            {/* 服务器地址 */}
+            <div className="space-y-2">
+              <Label htmlFor="server-url">服务器地址</Label>
+              <p className="text-sm text-muted-foreground">
+                SSH 会话云同步服务器地址
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  id="server-url"
+                  type="url"
+                  placeholder="http://localhost:3000"
+                  value={serverUrlInput}
+                  onChange={(e) => setServerUrlInput(e.target.value)}
+                  disabled={isSavingServerUrl}
+                />
+                <Button
+                  onClick={handleSaveServerUrl}
+                  disabled={isSavingServerUrl || !serverUrlInput.trim()}
+                  size="sm"
+                >
+                  {isSavingServerUrl ? '保存中...' : '保存'}
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* 自动同步 */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="auto-sync">自动同步</Label>
+                <p className="text-sm text-muted-foreground">
+                  自动同步 SSH 会话到云服务器
+                </p>
+              </div>
+              <Switch
+                id="auto-sync"
+                checked={appSettings?.autoSyncEnabled || false}
+                onCheckedChange={handleAutoSyncChange}
+                disabled={appSettingsLoading}
+              />
+            </div>
+
+            <Separator />
+
+            {/* 同步间隔 */}
+            <div className="space-y-2">
+              <Label>同步间隔</Label>
+              <p className="text-sm text-muted-foreground">
+                自动同步的时间间隔（分钟）
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[1, 5, 10, 30, 60].map((interval) => (
+                  <Button
+                    key={interval}
+                    variant={appSettings?.syncIntervalMinutes === interval ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleSyncIntervalChange(interval)}
+                    disabled={appSettingsLoading}
+                  >
+                    {interval} 分钟
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* 语言设置 */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                语言
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                选择应用界面语言
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'zh-CN', label: '简体中文' },
+                  { value: 'en-US', label: 'English' },
+                  { value: 'ja-JP', label: '日本語' },
+                ].map((lang) => (
+                  <Button
+                    key={lang.value}
+                    variant={appSettings?.language === lang.value ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleLanguageChange(lang.value)}
+                    disabled={appSettingsLoading}
+                  >
+                    {lang.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
 
         {/* 外观设置 */}
         <TabsContent value="appearance" className="space-y-6">

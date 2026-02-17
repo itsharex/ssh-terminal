@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { cn } from "@/lib/utils";
+import { UserArea } from "@/components/user/UserArea";
+import { useAuthStore } from "@/store/authStore";
 
 interface NavigationItem {
   name: string;
@@ -55,6 +57,7 @@ const navigationItems: NavigationSection[] = [
 
 export function Sidebar() {
   const { isCollapsed, toggleSidebar } = useSidebarStore();
+  const { isAuthenticated } = useAuthStore();
 
   // 处理导航项点击（移除特殊逻辑，使用默认导航行为）
 
@@ -146,12 +149,15 @@ export function Sidebar() {
 
       {/* Status Section */}
       <div className="p-4 border-t border-border">
-        <div className={cn(
-          "text-xs text-muted-foreground",
-          isCollapsed ? "text-center" : ""
-        )}>
-          {!isCollapsed ? "SSH Ready" : "🔌"}
-        </div>
+        {isCollapsed ? (
+          // 折叠状态：显示简单的状态
+          <div className="text-xs text-muted-foreground text-center">
+            {isAuthenticated ? "✓" : "🔌"}
+          </div>
+        ) : (
+          // 展开状态：显示用户区域
+          <UserArea />
+        )}
       </div>
     </aside>
   );

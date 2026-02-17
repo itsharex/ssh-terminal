@@ -6,11 +6,13 @@ import { SessionManager } from "@/pages/SessionManager";
 import { Settings } from "@/pages/Settings";
 import { SftpManager } from "@/pages/SftpManager";
 import { AIChatPage } from "@/pages/AIChatPage";
+import { UserProfile } from "@/pages/UserProfile";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { useTerminalConfigStore } from "@/store/terminalConfigStore";
 import { useAIStore } from "@/store/aiStore";
 import { useSidebarStore } from "@/store/sidebarStore";
+import { useAuthStore } from "@/store/authStore";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { MobileSessionList } from "@/components/mobile/MobileSessionList";
 import { MobileTerminalPage } from "@/components/mobile/MobileTerminalPage";
@@ -23,11 +25,33 @@ function AppContent() {
   const loadConfig = useTerminalConfigStore(state => state.loadConfig);
   const loadAIConfig = useAIStore(state => state.loadConfig);
   const toggleSidebar = useSidebarStore(state => state.toggleSidebar);
+  const { autoLogin, getCurrentUser } = useAuthStore();
 
   useEffect(() => {
     loadConfig();
     loadAIConfig();
   }, [loadConfig, loadAIConfig]);
+
+  // 应用启动时尝试自动登录
+  useEffect(() => {
+    const tryAutoLogin = async () => {
+      try {
+        // 先检查是否有保存的用户
+        const hasUser = await useAuthStore.getState().hasCurrentUser();
+        if (hasUser) {
+          await autoLogin();
+        } else {
+          // 如果没有保存的用户，尝试获取当前用户信息（可能已经登录但没有记录在 store 中）
+          await getCurrentUser();
+        }
+      } catch (error) {
+        // 自动登录失败，静默处理不影响应用启动
+        console.log('Auto login failed or no saved user, ignoring');
+      }
+    };
+
+    tryAutoLogin();
+  }, []); // 只在组件挂载时执行一次
 
   // 更新全局快捷键处理器的当前路径
   useEffect(() => {
@@ -115,6 +139,7 @@ function AppContent() {
           <Route path="/sessions" element={<SessionManager />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/sftp" element={<SftpManager />} />
+          <Route path="/user-profile" element={<UserProfile />} />
           <Route path="/ai-chat" element={<AIChatPage />} />
           <Route path="/ai-chat/:conversationId" element={<AIChatPage />} />
         </Routes>

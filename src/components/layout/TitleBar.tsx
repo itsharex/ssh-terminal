@@ -1,0 +1,123 @@
+import { useState, useEffect } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { Minus, Square, X, Terminal } from 'lucide-react';
+import { UserArea } from '@/components/user/UserArea';
+import { SyncButton } from '@/components/sync/SyncButton';
+import { useAuthStore } from '@/store/authStore';
+import './TitleBar.css';
+
+const appWindow = getCurrentWindow();
+
+export function TitleBar() {
+  const [isMaximized, setIsMaximized] = useState(false);
+  const { getCurrentUser } = useAuthStore();
+
+  useEffect(() => {
+    const checkMaximized = async () => {
+      const maximized = await appWindow.isMaximized();
+      setIsMaximized(maximized);
+    };
+
+    checkMaximized();
+    const unlisten = appWindow.onResized(() => checkMaximized());
+    return () => {
+      unlisten.then((fn) => fn?.());
+    };
+  }, []);
+
+  // 应用启动时检查登录状态
+  useEffect(() => {
+    getCurrentUser();
+  }, [getCurrentUser]);
+
+  const minimize = () => {
+    appWindow.minimize();
+  };
+
+  const toggleMaximize = () => {
+    if (isMaximized) {
+      appWindow.unmaximize();
+    } else {
+      appWindow.maximize();
+    }
+  };
+
+  const close = () => {
+    appWindow.close();
+  };
+
+  // Windows 风格的还原图标
+  const RestoreIcon = ({ size = 18 }: { size?: number }) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* 外层窗口（只画 上边 + 右边） */}
+      <path
+        d="M7 5 H18 A2.5 2.5 0 0 1 20.5 7.5 V18"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* 内层窗口（完整矩形） */}
+      <rect
+        x="5"
+        y="7.5"
+        width="12"
+        height="12"
+        rx="1.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+
+  return (
+    <div className="titlebar">
+      {/* 拖拽区域 - 左侧 */}
+      <div data-tauri-drag-region className="titlebar-drag-area">
+        <Terminal className="titlebar-icon" size={16} />
+        <span className="titlebar-title">SSH Terminal</span>
+      </div>
+
+      {/* 中间拖拽区域 */}
+      <div data-tauri-drag-region className="titlebar-drag-spacer" />
+
+      {/* 用户区域 */}
+      <div className="titlebar-user-area">
+        <SyncButton />
+        <UserArea />
+      </div>
+
+      {/* 窗口控制按钮 */}
+      <div className="window-controls">
+        <button
+          onClick={minimize}
+          className="control-btn control-btn-minimize"
+          title="最小化"
+        >
+          <Minus size={14} />
+        </button>
+        <button
+          onClick={toggleMaximize}
+          className="control-btn control-btn-maximize"
+          title={isMaximized ? '还原' : '最大化'}
+        >
+          {isMaximized ? <RestoreIcon size={18} /> : <Square size={18} />}
+        </button>
+        <button
+          onClick={close}
+          className="control-btn control-btn-close"
+          title="关闭"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}

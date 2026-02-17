@@ -45,6 +45,8 @@ aes-gcm = "0.10"
 argon2 = "0.5"
 rand = { version = "0.8", features = ["getrandom"] }
 base64 = "0.21"
+pbkdf2 = "0.12"
+sha2 = "0.10"
 
 # AWS 加密库 - Android 兼容性修复
 aws-lc-sys = "0.36"
@@ -63,8 +65,13 @@ crossbeam-channel = "0.5"  # 高性能线程通信
 hound = "3.5"           # WAV 文件写入（开发调试用）
 
 # AI 相关
-reqwest = { version = "0.11", features = ["json", "stream"] }  # HTTP 客户端（AI API 调用）
+reqwest = { version = "0.12", features = ["json", "stream"] }  # HTTP 客户端（AI API 调用）
 futures = "0.3"  # 异步流处理
+jsonwebtoken = "9"  # JWT 解析
+
+# 数据库相关
+r2d2 = "0.8.10"
+r2d2_sqlite = { version = "0.32.0", features = ["bundled"] }
 
 # 桌面平台依赖
 [target.'cfg(not(target_os = "android"))'.dependencies]

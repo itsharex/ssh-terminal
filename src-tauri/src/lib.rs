@@ -5,13 +5,22 @@ mod config;
 mod sftp;
 mod audio;
 mod ai;
+mod database;
+mod models;
+mod services;
+mod utils;
+mod types;
 
 use commands::session::SSHManagerState;
 use commands::sftp::SftpManagerState;
+use commands::auth::ApiClientStateWrapper;
 use ssh::manager::SSHManager;
 use sftp::manager::SftpManager;
 use std::sync::Arc;
 use tauri::Manager;
+
+use crate::database::repositories::{UserAuthRepository, AppSettingsRepository};
+use crate::services::{ApiClient, CryptoService};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -34,6 +43,68 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
+            // 初始化数据库连接池
+            let db_pool = database::init_db_pool()
+                .map_err(|e| {
+                    tracing::error!("Failed to initialize database: {}", e);
+                    e
+                })?;
+
+            // 克隆 db_pool 供后续使用
+            let db_pool_for_init = db_pool.clone();
+
+            app.manage(db_pool);
+
+            // 初始化 API Client 状态（全局单例）
+            let api_client_state = Arc::new(commands::auth::ApiClientState::new());
+            app.manage(api_client_state.clone() as ApiClientStateWrapper);
+
+            // 在应用启动时初始化 API Client
+            // 1. 获取服务器地址
+            let app_settings_repo = AppSettingsRepository::new(db_pool_for_init.clone());
+            let server_url = match app_settings_repo.get_server_url() {
+                Ok(url) => url,
+                Err(e) => {
+                    tracing::warn!("Failed to get server_url: {}", e);
+                    return Err(e.into());
+                }
+            };
+
+            // 2. 检查是否有当前用户登录
+            let user_auth_repo = UserAuthRepository::new(db_pool_for_init);
+            if let Some(current_user) = user_auth_repo.find_current().ok().flatten() {
+                tracing::info!("Found current user, initializing API client");
+
+                // 3. 创建并初始化 ApiClient
+                match ApiClient::new(server_url) {
+                    Ok(client) => {
+                        // 4. 解密并设置 token
+                        match CryptoService::decrypt_token(
+                            &current_user.access_token_encrypted,
+                            &current_user.device_id
+                        ) {
+                            Ok(token) => {
+                                client.set_token(token);
+                                api_client_state.set_client(client);
+                                tracing::info!("API client initialized successfully");
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to decrypt token: {}, clearing current user state", e);
+                                // 解密失败时清除当前用户登录状态，避免用户看到不一致的状态
+                                let _ = user_auth_repo.clear_current();
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to create API client: {}, clearing current user state", e);
+                        // 创建 client 失败时也清除当前用户登录状态
+                        let _ = user_auth_repo.clear_current();
+                    }
+                }
+            } else {
+                tracing::info!("No current user found, skipping API client initialization");
+            }
+
             // 初始化SSH管理器，传入AppHandle
             let ssh_manager = Arc::new(SSHManager::new(app.handle().clone()));
             app.manage(ssh_manager.clone() as SSHManagerState);
@@ -143,6 +214,35 @@ pub fn run() {
             commands::storage_ai_config_get_default,
             // 文件系统命令
             commands::fs_write_file,
+            // 认证命令
+            commands::auth_login,
+            commands::auth_register,
+            commands::auth_logout,
+            commands::auth_get_current_user,
+            commands::auth_list_accounts,
+            commands::auth_switch_account,
+            commands::auth_refresh_token,
+            commands::auth_auto_login,
+            commands::auth_has_current_user,
+            commands::auth_delete_account,
+            // 同步命令
+            commands::sync_now,
+            commands::sync_get_status,
+            commands::sync_resolve_conflict,
+            // 用户资料命令
+            commands::user_profile_get,
+            commands::user_profile_update,
+            commands::user_profile_delete,
+            // 应用设置命令
+            commands::app_settings_get_server_url,
+            commands::app_settings_set_server_url,
+            commands::app_settings_get_auto_sync_enabled,
+            commands::app_settings_set_auto_sync_enabled,
+            commands::app_settings_get_sync_interval,
+            commands::app_settings_set_sync_interval,
+            commands::app_settings_get_language,
+            commands::app_settings_set_language,
+            commands::app_settings_get_all,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

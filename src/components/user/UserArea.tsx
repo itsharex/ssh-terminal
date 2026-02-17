@@ -1,0 +1,55 @@
+import { useState } from 'react';
+import { User as UserIcon, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuthStore } from '@/store/authStore';
+import { LoginForm } from './LoginForm';
+import { UserAvatarDropdown } from './UserAvatarDropdown';
+
+export function UserArea() {
+  const { isAuthenticated, isLoading } = useAuthStore();
+  const [showLogin, setShowLogin] = useState(false);
+
+  const handleLoginClick = () => {
+    setShowLogin(true);
+  };
+
+  const handleLoginClose = () => {
+    setShowLogin(false);
+  };
+
+  // 加载中显示
+  if (isLoading) {
+    return (
+      <div className="h-8 w-8 flex items-center justify-center">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // 已登录显示用户头像下拉菜单
+  if (isAuthenticated) {
+    return <UserAvatarDropdown />;
+  }
+
+  // 未登录显示登录按钮
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onClick={handleLoginClick}
+        title="登录"
+      >
+        <UserIcon className="h-4 w-4" />
+      </Button>
+
+      {showLogin && (
+        <LoginForm
+          isOpen={showLogin}
+          onClose={handleLoginClose}
+        />
+      )}
+    </>
+  );
+}

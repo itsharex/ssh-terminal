@@ -1,19 +1,27 @@
 {
-    "$schema": "../gen/schemas/desktop-schema.json",
+    "$schema": "https://tauri.app/schemas/2.0/capability.json",
     "identifier": "default",
-    "description": "Capability for the main window",
-    "windows": [
-        "main"
-    ],
+    "description": "Default permissions for the application",
+    "windows": ["main"],
     "permissions": [
         "core:default",
+        "core:webview:default",
+        "core:window:default",
+        "core:event:default",
+        "core:window:allow-create",
+        "core:window:allow-close",
+        "core:window:allow-show",
+        "core:window:allow-hide",
+        "core:window:allow-set-focus",
+        "core:window:allow-unminimize",
+        "core:window:allow-unmaximize",
+        "core:window:allow-maximize",
+        "core:window:allow-minimize",
+        "core:window:allow-start-dragging",
+        "core:window:allow-is-maximized",
+        "core:window:allow-center",
         "opener:default",
-        "dialog:allow-save",
         "dialog:default",
-        "fs:allow-write-text-file",
-        "fs:allow-read-file",
-        "fs:allow-read-dir",
-        "fs:allow-exists",
         "fs:default"
     ]
 }

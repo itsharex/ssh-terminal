@@ -1,0 +1,59 @@
+import { create } from 'zustand';
+import { invoke } from '@tauri-apps/api/core';
+import type { UserProfile, UpdateProfileRequest } from '@/types/userProfile';
+
+interface UserProfileState {
+  profile: UserProfile | null;
+  isLoading: boolean;
+  error: string | null;
+
+  loadProfile: () => Promise<void>;
+  updateProfile: (req: UpdateProfileRequest) => Promise<UserProfile>;
+  deleteProfile: () => Promise<void>;
+  clearError: () => void;
+}
+
+export const useUserProfileStore = create<UserProfileState>((set) => ({
+  profile: null,
+  isLoading: false,
+  error: null,
+
+  loadProfile: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const profile = await invoke<UserProfile>('user_profile_get');
+      set({ profile, isLoading: false });
+    } catch (error) {
+      const errorMessage = error as string;
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  updateProfile: async (req) => {
+    set({ isLoading: true, error: null });
+    try {
+      const profile = await invoke<UserProfile>('user_profile_update', { req });
+      set({ profile, isLoading: false });
+      return profile;
+    } catch (error) {
+      const errorMessage = error as string;
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  deleteProfile: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      await invoke('user_profile_delete');
+      set({ profile: null, isLoading: false });
+    } catch (error) {
+      const errorMessage = error as string;
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  clearError: () => set({ error: null }),
+}));

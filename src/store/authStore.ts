@@ -1,0 +1,149 @@
+import { create } from 'zustand';
+import { invoke } from '@tauri-apps/api/core';
+import type { User, LoginRequest, RegisterRequest, AuthResponse } from '@/types/auth';
+
+interface AuthState {
+  isAuthenticated: boolean;
+  currentUser: User | null;
+  isLoading: boolean;
+  error: string | null;
+
+  // Actions
+  login: (req: LoginRequest) => Promise<void>;
+  register: (req: RegisterRequest) => Promise<void>;
+  logout: () => Promise<void>;
+  hasCurrentUser: () => Promise<boolean>;
+  autoLogin: () => Promise<void>;
+  getCurrentUser: () => Promise<void>;
+  switchAccount: (userId: string) => Promise<void>;
+  refreshToken: () => Promise<void>;
+  clearError: () => void;
+}
+
+// 辅助函数：从本地 app_settings 获取 serverUrl
+const getServerUrl = async (): Promise<string> => {
+  try {
+    return await invoke<string>('app_settings_get_server_url');
+  } catch (error) {
+    console.error('Failed to get server url:', error);
+    return ''; // 默认返回空字符串
+  }
+};
+
+const createUserWithServerUrl = async (res: AuthResponse): Promise<User> => {
+  const serverUrl = await getServerUrl();
+  return {
+    id: res.userId,
+    email: res.email,
+    serverUrl,
+    deviceId: res.deviceId,
+    lastSyncAt: undefined,
+  };
+};
+
+export const useAuthStore = create<AuthState>((set) => ({
+  isAuthenticated: false,
+  currentUser: null,
+  isLoading: false,
+  error: null,
+
+  login: async (req) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await invoke<AuthResponse>('auth_login', { req });
+      const user: User = await createUserWithServerUrl(res);
+      set({ isAuthenticated: true, currentUser: user, isLoading: false });
+    } catch (error) {
+      const errorMessage = error as string;
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  register: async (req) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await invoke<AuthResponse>('auth_register', { req });
+      const user: User = await createUserWithServerUrl(res);
+      set({ isAuthenticated: true, currentUser: user, isLoading: false });
+    } catch (error) {
+      const errorMessage = error as string;
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  logout: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      await invoke('auth_logout');
+      set({ isAuthenticated: false, currentUser: null, isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  /// 检查是否有当前用户密码（用于判断是否需要自动登录或显示登录界面）
+  hasCurrentUser: async () => {
+    try {
+      const hasUser = await invoke<boolean>('auth_has_current_user');
+      return hasUser;
+    } catch (error) {
+      console.error('Failed to check current user:', error);
+      return false;
+    }
+  },
+
+  /// 自动登录（从数据库读取加密密码后自动登录）
+  autoLogin: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await invoke<AuthResponse>('auth_auto_login');
+      const user: User = await createUserWithServerUrl(res);
+      set({ isAuthenticated: true, currentUser: user, isLoading: false });
+    } catch (error) {
+      // 不设置 error 状态，因为这是静默自动登录，失败应该不显示错误
+      set({ isLoading: false });
+      // 抛出错误让调用者知道自动登录失败
+      throw error;
+    }
+  },
+
+  getCurrentUser: async () => {
+    try {
+      const user = await invoke<any>('auth_get_current_user');
+      if (user) {
+        // 如果有用户数据，也补充 serverUrl
+        const serverUrl = await getServerUrl();
+        user.serverUrl = serverUrl;
+      }
+      set({ isAuthenticated: !!user, currentUser: user });
+    } catch (error) {
+      console.error('Failed to get current user:', error);
+    }
+  },
+
+  switchAccount: async (userId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await invoke('auth_switch_account', { userId });
+      // 切换后需要重新登录，因为密码不会自动恢复
+      set({ isAuthenticated: false, currentUser: null, isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  refreshToken: async () => {
+    try {
+      await invoke('auth_refresh_token');
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      throw error;
+    }
+  },
+
+  clearError: () => set({ error: null }),
+}));
