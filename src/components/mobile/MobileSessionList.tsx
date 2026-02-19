@@ -78,8 +78,8 @@ export function MobileSessionList() {
         port: config.port,
         username: config.username,
         authMethod: config.password
-          ? { password: { password: config.password } }
-          : { publicKey: { privateKeyPath: config.privateKeyPath || '', passphrase: config.passphrase } },
+          ? { Password: { password: config.password } }
+          : { PublicKey: { privateKeyPath: config.privateKeyPath || '', passphrase: config.passphrase } },
       });
 
       playSound(SoundEffect.SUCCESS);

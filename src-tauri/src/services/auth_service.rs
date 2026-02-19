@@ -8,11 +8,34 @@ use crate::models::user_auth::*;
 use crate::services::CryptoService;
 use crate::services::api_client::ApiClient;
 use crate::commands::auth::ApiClientStateWrapper;
+use crate::services::api_client::TOKEN_REFRESH_FAILED;
 
 /// 认证服务
 pub struct AuthService {
     pool: DbPool,
     api_client_state: Option<ApiClientStateWrapper>,
+}
+
+/// 辅助函数：更新数据库中的 token
+/// 被 ApiClient 的 token 刷新回调调用
+async fn update_tokens_in_db(
+    pool: DbPool,
+    user_id: String,
+    device_id: String,
+    access_token: String,
+    refresh_token: String,
+    expires_at: Option<i64>,
+) -> Result<()> {
+    // 加密 access_token（本地安全存储）
+    let token_encrypted = CryptoService::encrypt_token(&access_token, &device_id)?;
+    // refresh_token 不加密（服务器返回的 refresh_token 本身已加密）
+    let refresh_plain = refresh_token;
+
+    let repo = UserAuthRepository::new(pool);
+    let expires = expires_at.unwrap_or_else(|| chrono::Utc::now().timestamp() + 24 * 60 * 60);
+    repo.update_token(&user_id, &token_encrypted, Some(&refresh_plain), expires)?;
+
+    Ok(())
 }
 
 impl AuthService {
@@ -92,9 +115,10 @@ impl AuthService {
         // 设置 token 到 API 客户端（server_result.access_token 是服务端返回的字段名）
         self.update_client_token(server_result.access_token.clone());
 
-        // 加密 token
+        // 加密 access_token（本地安全存储）
         let token_encrypted = CryptoService::encrypt_token(&server_result.access_token, &device_id)?;
-        let refresh_token_encrypted = CryptoService::encrypt_token(&server_result.refresh_token, &device_id)?;
+        // refresh_token 不加密存储（服务器返回的 refresh_token 本身已加密，可直接用于刷新）
+        let refresh_token_plain = server_result.refresh_token.clone();
 
         // 加密用户密码（使用 device_id 作为密钥，固定在设备上）
         let password_encrypted = CryptoService::encrypt_password(&req.password, &device_id)?;
@@ -108,7 +132,7 @@ impl AuthService {
             password_encrypted: password_encrypted.0,
             password_nonce: password_encrypted.1,
             access_token_encrypted: token_encrypted,
-            refresh_token_encrypted: Some(refresh_token_encrypted),
+            refresh_token_encrypted: Some(refresh_token_plain),
             token_expires_at: Some(expires_at),
             device_id: device_id.clone(),
             last_sync_at: None,
@@ -176,9 +200,10 @@ impl AuthService {
         let now = chrono::Utc::now().timestamp();
         let expires_at = now + 24 * 60 * 60;
 
-        // 加密 token
+        // 加密 access_token（本地安全存储）
         let token_encrypted = CryptoService::encrypt_token(&server_result.access_token, &device_id)?;
-        let refresh_token_encrypted = CryptoService::encrypt_token(&server_result.refresh_token, &device_id)?;
+        // refresh_token 不加密存储（服务器返回的 refresh_token 本身已加密，可直接用于刷新）
+        let refresh_token_plain = server_result.refresh_token.clone();
 
         // 加密用户密码
         let password_encrypted = CryptoService::encrypt_password(&req.password, &device_id)?;
@@ -192,7 +217,7 @@ impl AuthService {
             password_encrypted: password_encrypted.0,
             password_nonce: password_encrypted.1,
             access_token_encrypted: token_encrypted,
-            refresh_token_encrypted: Some(refresh_token_encrypted),
+            refresh_token_encrypted: Some(refresh_token_plain),
             token_expires_at: Some(expires_at),
             device_id: device_id.clone(),
             last_sync_at: None,
@@ -224,9 +249,9 @@ impl AuthService {
         Ok(auth_response)
     }
 
-    /// 自动登录（启动时调用，使用数据库保存的加密密码）
+    /// 自动登录（启动时调用，不再调用 /auth/login，直接使用本地 token）
     pub async fn auto_login(&self) -> Result<AuthResponse> {
-        tracing::info!("Attempting auto login");
+        tracing::info!("Attempting auto login from local storage");
 
         let auth_repo = UserAuthRepository::new(self.pool.clone());
 
@@ -234,62 +259,93 @@ impl AuthService {
         let auth = auth_repo.find_current()?
             .ok_or_else(|| anyhow!("No current user found in database"))?;
 
-        // 解密用户密码
-        let password = CryptoService::decrypt_password(&auth.password_encrypted, &auth.password_nonce, &auth.device_id)?;
+        // 解密 access_token 和 refresh_token
+        let token = CryptoService::decrypt_token(&auth.access_token_encrypted, &auth.device_id)?;
+        let refresh_token_encrypted = auth.refresh_token_encrypted
+            .clone()
+            .unwrap_or_default();
 
         // 创建 API 客户端
         let api_client = ApiClient::new(auth.server_url.clone())?;
 
-        // 设置到全局状态（如果有）
+        // 设置 access_token
+        api_client.set_token(token.clone());
+
+        // 设置 refresh_token 和 device_id（用于自动刷新）
+        if !refresh_token_encrypted.is_empty() {
+            api_client.set_refresh_token(refresh_token_encrypted);
+        }
+        api_client.set_device_id(auth.device_id.clone());
+
+        // 设置 token 刷新回调（更新数据库）
+        let pool = self.pool.clone();
+        let user_id = auth.user_id.clone();
+        let device_id = auth.device_id.clone();
+        api_client.set_token_update_callback(move |access_token, refresh_token, expires_at| {
+            let pool = pool.clone();
+            let user_id = user_id.clone();
+            let device_id = device_id.clone();
+            tokio::spawn(async move {
+                if let Err(e) = update_tokens_in_db(pool, user_id, device_id, access_token, refresh_token, expires_at).await {
+                    tracing::error!("Failed to update tokens in db: {}", e);
+                }
+            });
+        });
+
+        // 设置到全局状态
         if let Some(state) = &self.api_client_state {
             state.set_client(api_client.clone());
         }
 
+        // 同步用户资料（优先本地，不存在则服务器）
+        // ApiClient 会自动处理 token 过期和刷新
+        match self.sync_user_profile(api_client.clone()).await {
+            Ok(_) => {
+                // 成功返回
+                Ok(AuthResponse {
+                    token,
+                    refresh_token: auth.refresh_token_encrypted
+                        .as_ref()
+                        .and_then(|t| CryptoService::decrypt_token(t, &auth.device_id).ok())
+                        .unwrap_or_default(),
+                    user_id: auth.user_id.clone(),
+                    email: auth.email.clone(),
+                    device_id: auth.device_id.clone(),
+                    server_url: auth.server_url.clone(),
+                    expires_at: auth.token_expires_at.unwrap_or(0),
+                })
+            }
+            Err(e) if e.to_string().contains(TOKEN_REFRESH_FAILED) => {
+                // refresh_token 失效，清除当前登录状态
+                tracing::warn!("Refresh token expired, clearing current user");
 
-        // 构建服务器 API 所需的请求
-        let api_req = crate::models::user_auth::ServerLoginRequest {
-            email: auth.email.clone(),
-            password: password.clone(),
-        };
+                // 清除 is_current 标记
+                let _ = auth_repo.clear_current();
 
-        // 调用服务器登录 API（返回 ServerLoginResult）
-        let server_result = api_client.login(&api_req).await?;
+                // 清除全局 API Client
+                if let Some(state) = &self.api_client_state {
+                    state.clear();
+                }
 
-        // 设置 token 到 API 客户端（server_result.access_token 是服务端返回的字段名）
-        self.update_client_token(server_result.access_token.clone());
-
-        // 使用数据库中存储的 device_id（保持一致）
-        let device_id = auth.device_id.clone();
-
-        // 计算 token 过期时间（24小时后）
-        let now = chrono::Utc::now().timestamp();
-        let expires_at = now + 24 * 60 * 60;
-
-        // 加密新 token
-        let token_encrypted = CryptoService::encrypt_token(&server_result.access_token, &device_id)?;
-        let refresh_token_encrypted = CryptoService::encrypt_token(&server_result.refresh_token, &device_id)?;
-
-        // 更新 token
-        auth_repo.update_token(&auth.user_id, &token_encrypted, Some(&refresh_token_encrypted), expires_at)?;
-
-        // 同步用户资料
-        self.sync_user_profile(api_client.clone()).await?;
-
-        // 重要：密码只在这次登录过程中使用，之后立即从内存中清除
-        drop(password);
-
-        // 构建客户端期望的 AuthResponse
-        let auth_response = AuthResponse {
-            token: server_result.access_token,
-            refresh_token: server_result.refresh_token,
-            user_id: auth.user_id.clone(),
-            email: auth.email.clone(),
-            device_id,
-            server_url: auth.server_url.clone(),
-            expires_at,
-        };
-
-        Ok(auth_response)
+                Err(anyhow!("Token expired, please login again"))
+            }
+            Err(e) => {
+                // 其他错误（如网络问题），依然返回用户信息
+                tracing::warn!("Sync failed but login succeeded: {}", e);
+                Ok(AuthResponse {
+                    token,
+                    refresh_token: auth.refresh_token_encrypted
+                        .as_ref()
+                        .and_then(|t| CryptoService::decrypt_token(t, &auth.device_id).ok())
+                        .unwrap_or_default(),
+                    user_id: auth.user_id.clone(),
+                    email: auth.email.clone(),
+                    device_id: auth.device_id.clone(),
+                    server_url: auth.server_url.clone(),
+                    expires_at: auth.token_expires_at.unwrap_or(0),
+                })
+            }
+        }
     }
 
     /// 检查是否有当前用户（用于前端判断是否显示登录界面）
@@ -347,9 +403,30 @@ impl AuthService {
         // 创建并初始化 ApiClient
         let api_client = ApiClient::new(auth.server_url.clone())?;
 
-        // 解密并设置 token
+        // 解密并设置 access_token
         let token = CryptoService::decrypt_token(&auth.access_token_encrypted, &auth.device_id)?;
         api_client.set_token(token);
+
+        // 设置 refresh_token 和 device_id（用于自动刷新）
+        if let Some(refresh_token) = &auth.refresh_token_encrypted {
+            api_client.set_refresh_token(refresh_token.clone());
+        }
+        api_client.set_device_id(auth.device_id.clone());
+
+        // 设置 token 刷新回调（更新数据库）
+        let pool = self.pool.clone();
+        let user_id = auth.user_id.clone();
+        let device_id = auth.device_id.clone();
+        api_client.set_token_update_callback(move |access_token, refresh_token, expires_at| {
+            let pool = pool.clone();
+            let user_id = user_id.clone();
+            let device_id = device_id.clone();
+            tokio::spawn(async move {
+                if let Err(e) = update_tokens_in_db(pool, user_id, device_id, access_token, refresh_token, expires_at).await {
+                    tracing::error!("Failed to update tokens in db: {}", e);
+                }
+            });
+        });
 
         // 设置到全局状态
         if let Some(state) = &self.api_client_state {
@@ -391,16 +468,16 @@ impl AuthService {
         // 更新全局和本地 API 客户端的 token
         self.update_client_token(server_result.access_token.clone());
 
-        // 加密新 token
+        // 加密 access_token（本地安全存储）
         let token_encrypted = CryptoService::encrypt_token(&server_result.access_token, &auth.device_id)?;
-        let refresh_token_encrypted =
-            CryptoService::encrypt_token(&server_result.refresh_token, &auth.device_id)?;
+        // refresh_token 不加密（服务器返回的 refresh_token 本身已加密）
+        let refresh_token_plain = server_result.refresh_token.clone();
 
         // 计算 token 过期时间（24小时后）
         let now = chrono::Utc::now().timestamp();
         let expires_at = now + 24 * 60 * 60;
 
-        repo.update_token(&auth.user_id, &token_encrypted, Some(&refresh_token_encrypted), expires_at)?;
+        repo.update_token(&auth.user_id, &token_encrypted, Some(&refresh_token_plain), expires_at)?;
         tracing::info!("Token refreshed successfully");
 
         Ok(())

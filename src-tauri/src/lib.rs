@@ -142,6 +142,12 @@ pub fn run() {
             commands::session_get,
             commands::session_delete,
             commands::session_update,
+            // 数据库 SSH Session 命令
+            commands::db_ssh_session_create,
+            commands::db_ssh_session_update,
+            commands::db_ssh_session_delete,
+            commands::db_ssh_session_list,
+            commands::db_ssh_session_get_by_id,
             // Terminal 终端命令
             commands::terminal_write,
             commands::terminal_resize,

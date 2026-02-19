@@ -5,7 +5,7 @@ use crate::models::sync::*;
 use crate::services::SyncService;
 use crate::commands::auth::ApiClientStateWrapper;
 
-/// 立即执行同步
+/// 立即执行同步（默认同步所有内容）
 #[tauri::command]
 pub async fn sync_now(
     pool: State<'_, DbPool>,
@@ -13,7 +13,7 @@ pub async fn sync_now(
 ) -> Result<SyncReport, String> {
     let service = SyncService::new(pool.inner().clone(), Some(api_client_state.inner().clone()));
     service
-        .full_sync()
+        .sync_all()
         .await
         .map_err(|e| e.to_string())
 }

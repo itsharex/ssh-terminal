@@ -1,23 +1,56 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-// ==================== 客户端类型（用于 Tauri 命令） ====================
+// ==================== 服务器请求类型（snake_case 格式）====================
 
-/// 同步请求
+/// 统一同步请求（发送给服务器）
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct SyncRequest {
-    pub sessions: Option<Vec<crate::models::SshSession>>,
+    /// 最后同步时间（用于拉取）
     pub last_sync_at: Option<i64>,
-    pub device_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub user_profile: Option<crate::models::UserProfile>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub deleted_session_ids: Option<Vec<String>>,
-    /// 指定需要同步的实体类型（用于服务器端 sync/pull 请求）
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub entity_types: Option<Vec<String>>,
+    /// 设备 ID
+    pub device_id: String,
+    /// 用户资料更新（可选）
+    pub user_profile: Option<UpdateProfileRequest>,
+    /// SSH 会话更新
+    pub ssh_sessions: Vec<SshSessionPushItem>,
+    /// 删除的会话 ID
+    pub deleted_session_ids: Vec<String>,
 }
+
+/// SSH 会话推送项（snake_case 格式，用于与服务器通信）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SshSessionPushItem {
+    pub id: String,
+    pub name: String,
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub group_name: String,
+    pub terminal_type: Option<String>,
+    pub columns: Option<u16>,
+    pub rows: Option<u16>,
+    pub auth_method_encrypted: String,
+    pub auth_nonce: String,
+    pub auth_key_salt: Option<String>,
+    pub client_ver: i32,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+/// 更新用户资料请求
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateProfileRequest {
+    pub username: Option<String>,
+    pub phone: Option<String>,
+    pub qq: Option<String>,
+    pub wechat: Option<String>,
+    pub bio: Option<String>,
+    pub avatar_data: Option<String>,
+    pub avatar_mime_type: Option<String>,
+}
+
+// ==================== 客户端类型（用于 Tauri 命令）====================
 
 /// 同步报告
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,9 +102,8 @@ impl Default for ConflictStrategy {
     }
 }
 
-/// 冲突解决请求
+/// 冲突解决请求（发送给服务器）
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ResolveConflictRequest {
     pub conflict_id: String,
     pub strategy: ConflictStrategy,
@@ -79,34 +111,28 @@ pub struct ResolveConflictRequest {
     pub client_data: Option<serde_json::Value>,
 }
 
-// ==================== 服务器返回类型（服务器使用 camelCase 序列化）====================
+// ==================== 服务器响应类型（snake_case 格式）====================
 
-/// 服务器 Pull 响应
+/// 统一同步响应（来自服务器）
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ServerPullResponse {
+pub struct ServerSyncResponse {
+    /// 服务器时间
     pub server_time: i64,
+    /// 最后同步时间
     pub last_sync_at: i64,
-    pub user_profile: Option<crate::models::UserProfile>,
-    pub ssh_sessions: Vec<crate::models::ServerSshSession>,
-    pub deleted_session_ids: Vec<String>,
-    pub conflicts: Vec<ServerConflictInfo>,
-}
-
-/// 服务器 Push 响应
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ServerPushResponse {
+    /// Push 结果
     pub updated_session_ids: Vec<String>,
     pub deleted_session_ids: Vec<String>,
     pub server_versions: HashMap<String, i32>,
+    /// Pull 结果
+    pub user_profile: Option<crate::models::UserProfile>,
+    pub ssh_sessions: Vec<crate::models::ServerSshSession>,
+    /// 冲突信息
     pub conflicts: Vec<ServerConflictInfo>,
-    pub last_sync_at: i64,
 }
 
 /// 服务器冲突信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ServerConflictInfo {
     pub id: String,
     pub entity_type: String,
@@ -119,38 +145,9 @@ pub struct ServerConflictInfo {
 
 /// 服务器解决冲突响应
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ServerResolveConflictResponse {
     pub conflict_id: String,
     pub resolved: bool,
     pub new_id: Option<String>,
     pub message: String,
-}
-
-// ==================== 内部同步响应（合并服务端结果）====================
-
-/// 内部同步响应（用于合并 pull 和 push 的结果）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SyncResponse {
-    pub status: String,
-    pub server_time: i64,
-    pub last_sync_at: i64,
-
-    // 更新的数据
-    pub upserted_sessions: Vec<crate::models::SshSession>,
-
-    // 删除的 ID
-    pub deleted_session_ids: Vec<String>,
-
-    // 推送统计
-    pub pushed_sessions: usize,
-    pub pushed_total: usize,
-
-    // 拉取统计
-    pub pulled_sessions: usize,
-    pub pulled_total: usize,
-
-    // 冲突信息
-    pub conflicts: Vec<ConflictInfo>,
 }

@@ -3,7 +3,6 @@ use validator::Validate;
 
 /// 创建 SSH 会话请求
 #[derive(Debug, Deserialize, Validate)]
-#[serde(rename_all = "camelCase")]
 pub struct CreateSshSessionRequest {
     #[validate(length(min = 1))]
     pub name: String,
@@ -35,7 +34,6 @@ pub struct CreateSshSessionRequest {
 
 /// 更新 SSH 会话请求
 #[derive(Debug, Deserialize, Validate)]
-#[serde(rename_all = "camelCase")]
 pub struct UpdateSshSessionRequest {
     pub name: Option<String>,
     pub host: Option<String>,
@@ -52,7 +50,6 @@ pub struct UpdateSshSessionRequest {
 
 /// 分页查询请求
 #[derive(Debug, Deserialize, Validate)]
-#[serde(rename_all = "camelCase")]
 pub struct ListSshSessionsRequest {
     pub page: Option<u64>,
     pub page_size: Option<u64>,

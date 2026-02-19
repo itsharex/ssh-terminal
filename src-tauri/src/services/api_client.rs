@@ -1,4 +1,5 @@
 use anyhow::Result;
+use anyhow::anyhow;
 use reqwest::{Client, header};
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::{Arc, Mutex};
@@ -7,9 +8,15 @@ use crate::models::user_auth::*;
 use crate::models::user_profile::*;
 use crate::models::sync::{
     SyncRequest, ResolveConflictRequest,
-    ServerPullResponse, ServerPushResponse, ServerResolveConflictResponse,
+    ServerSyncResponse, ServerResolveConflictResponse,
 };
 use crate::types::response::ServerApiResponse;
+
+/// Token 更新回调类型：接收新token、新refresh_token和过期时间
+type TokenUpdateCallback = Arc<Mutex<Option<Box<dyn Fn(String, String, Option<i64>) + Send + Sync>>>>;
+
+/// Token 刷新失败的特殊错误码
+pub const TOKEN_REFRESH_FAILED: &str = "TOKEN_REFRESH_FAILED";
 
 /// HTTP API 客户端
 /// 用于与服务器进行通信
@@ -18,6 +25,9 @@ pub struct ApiClient {
     client: Client,
     server_url: String,
     access_token: Arc<Mutex<Option<String>>>,
+    refresh_token_encrypted: Arc<Mutex<Option<String>>>,
+    device_id: Arc<Mutex<Option<String>>>,
+    token_update_callback: TokenUpdateCallback,
 }
 
 impl ApiClient {
@@ -34,6 +44,9 @@ impl ApiClient {
             client,
             server_url,
             access_token: Arc::new(Mutex::new(None)),
+            refresh_token_encrypted: Arc::new(Mutex::new(None)),
+            device_id: Arc::new(Mutex::new(None)),
+            token_update_callback: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -44,11 +57,48 @@ impl ApiClient {
         *guard = Some(token);
     }
 
+    /// 设置刷新令牌（明文存储，服务器返回的 refresh_token 本身已加密）
+    pub fn set_refresh_token(&self, refresh_token: String) {
+        let mut guard = self.refresh_token_encrypted.lock().unwrap();
+        *guard = Some(refresh_token);
+    }
+
+    /// 设置设备 ID
+    pub fn set_device_id(&self, device_id: String) {
+        let mut guard = self.device_id.lock().unwrap();
+        *guard = Some(device_id);
+    }
+
+    /// 设置 token 更新回调函数
+    /// 当 token 刷新成功时，会调用此回调更新数据库
+    pub fn set_token_update_callback<F: Fn(String, String, Option<i64>) + Send + Sync + 'static>(
+        &self,
+        callback: F,
+    ) {
+        let mut guard = self.token_update_callback.lock().unwrap();
+        *guard = Some(Box::new(callback));
+    }
+
     /// 清除访问令牌
     pub fn clear_token(&self) {
         let mut guard = self.access_token.lock()
             .expect("Failed to acquire token lock");
         *guard = None;
+    }
+
+    /// 清除刷新令牌
+    pub fn clear_refresh_token(&self) {
+        let mut guard = self.refresh_token_encrypted.lock().unwrap();
+        *guard = None;
+    }
+
+    /// 判断错误是否是 token 刷新失败（refresh_token 也失效）
+    pub fn is_refresh_failure(error: &anyhow::Error) -> bool {
+        let error_str = error.to_string();
+        error_str.contains("Token 解码失败")
+            || error_str.contains("InvalidToken")
+            || error_str.contains("Token refresh failed (400")
+            || error_str.contains(TOKEN_REFRESH_FAILED)
     }
 
     /// 获取当前令牌
@@ -141,30 +191,114 @@ impl ApiClient {
         self.handle_response(response).await
     }
 
-    /// 处理 HTTP 响应
+    /// 处理 HTTP 响应（带 token 自动刷新）
     async fn handle_response<T: DeserializeOwned>(&self, response: reqwest::Response) -> Result<T> {
         let status = response.status();
 
         if status.is_success() {
-            let text = response.text().await?;
-            tracing::debug!("API response: {}", text);
-
-            // 解析服务器响应格式: { "code": 200, "message": "...", "data": {...} }
-            let server_response: ServerApiResponse<T> = serde_json::from_str(&text)
-                .map_err(|e| anyhow::anyhow!("Failed to parse JSON: {}", e))?;
-
-            if server_response.is_success() {
-                server_response.data()
-                    .ok_or_else(|| anyhow::anyhow!("Server response missing data"))
-            } else {
-                Err(anyhow::anyhow!("Server returned error: {}", server_response.message))
-            }
+            self.parse_success_response(response).await
         } else if status.as_u16() == 401 {
-            Err(anyhow::anyhow!("Authentication failed: Invalid or expired token"))
+            // Token 过期，尝试自动刷新
+            tracing::warn!("Token expired, attempting to refresh");
+
+            if let Err(e) = self.try_refresh_token().await {
+                tracing::error!("Token refresh failed: {}", e);
+
+                // 如果是 refresh_token 失效，返回特殊错误码
+                if Self::is_refresh_failure(&e) {
+                    // 清除本地状态
+                    self.clear_token();
+                    self.clear_refresh_token();
+                    return Err(anyhow!("{}: Token expired, please login again", TOKEN_REFRESH_FAILED));
+                }
+
+                Err(anyhow!("Authentication failed: Token refresh failed - {}", e))
+            } else {
+                // 刷新成功，但需要重试请求
+                // 当前简单返回错误，由调用方决定是否重试
+                Err(anyhow!("Token refreshed, please retry the request"))
+            }
         } else {
             let text = response.text().await.unwrap_or_else(|_| String::from("Failed to read error body"));
             tracing::error!("API error ({}): {}", status, text);
-            Err(anyhow::anyhow!("API error ({}): {}", status, text))
+            Err(anyhow!("API error ({}): {}", status, text))
+        }
+    }
+
+    /// 解析成功的 HTTP 响应
+    async fn parse_success_response<T: DeserializeOwned>(&self, mut response: reqwest::Response) -> Result<T> {
+        let text = response.text().await?;
+        tracing::debug!("API response: {}", text);
+
+        // 解析服务器响应格式: { "code": 200, "message": "...", "data": {...} }
+        let server_response: ServerApiResponse<T> = serde_json::from_str(&text)
+            .map_err(|e| anyhow!("Failed to parse JSON: {}", e))?;
+
+        if server_response.is_success() {
+            server_response.data()
+                .ok_or_else(|| anyhow!("Server response missing data"))
+        } else {
+            Err(anyhow!("Server returned error: {}", server_response.message))
+        }
+    }
+
+    /// 尝试刷新 token
+    async fn try_refresh_token(&self) -> Result<()> {
+        let refresh_token = self.refresh_token_encrypted.lock()
+            .expect("Failed to acquire refresh_token lock")
+            .as_ref()
+            .ok_or_else(|| anyhow!("No refresh token available"))?
+            .clone();
+
+        let _device_id = self.device_id.lock()
+            .expect("Failed to acquire device_id lock")
+            .as_ref()
+            .ok_or_else(|| anyhow!("No device_id available"))?
+            .clone();
+
+        // 调用刷新接口（公开接口，不需要 token）
+        let url = self.build_url("auth/refresh");
+
+        let response = self.client
+            .post(&url)
+            .header(header::CONTENT_TYPE, "application/json")
+            .json(&serde_json::json!({ "refresh_token": refresh_token }))
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            let text = response.text().await?;
+            let server_response: ServerApiResponse<ServerRefreshResult> = serde_json::from_str(&text)
+                .map_err(|e| anyhow::anyhow!("Failed to parse refresh response: {}", e))?;
+
+            if server_response.is_success() {
+                if let Some(result) = server_response.data() {
+                    // 更新 access_token
+                    if let Ok(mut guard) = self.access_token.lock() {
+                        *guard = Some(result.access_token.clone());
+                    }
+
+                    // 调用回调更新数据库
+                    if let Some(guard) = self.token_update_callback.lock().ok() {
+                        if let Some(callback) = guard.as_ref() {
+                            let now = chrono::Utc::now().timestamp();
+                            let expires_at = now + 24 * 60 * 60;
+                            callback(result.access_token.clone(), result.refresh_token.clone(), Some(expires_at));
+                        }
+                    }
+
+                    tracing::info!("Token refreshed successfully");
+                    Ok(())
+                } else {
+                    Err(anyhow!("Server returned invalid data"))
+                }
+            } else {
+                Err(anyhow!("Token refresh failed: {}", server_response.message))
+            }
+        } else {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            Err(anyhow!("Token refresh failed ({}): {}", status, text))
         }
     }
 
@@ -212,16 +346,10 @@ impl ApiClient {
 
     // ==================== 同步 API ====================
 
-    /// 拉取服务器数据
-    pub async fn sync_pull(&self, req: &SyncRequest) -> Result<ServerPullResponse> {
-        tracing::info!("API: sync_pull");
-        self.post_auth("api/sync/pull", req).await
-    }
-
-    /// 推送本地更改到服务器
-    pub async fn sync_push(&self, req: &SyncRequest) -> Result<ServerPushResponse> {
-        tracing::info!("API: sync_push");
-        self.post_auth("api/sync/push", req).await
+    /// 统一同步
+    pub async fn sync(&self, req: &SyncRequest) -> Result<ServerSyncResponse> {
+        tracing::info!("API: sync");
+        self.post_auth("api/sync", req).await
     }
 
     /// 解决冲突

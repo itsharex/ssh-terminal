@@ -131,13 +131,13 @@ export function EditSessionDialog({
       if (formData.authMethod === 'password') {
         if (formData.password) {
           updates.authMethod = {
-            password: { password: formData.password }
+            Password: { password: formData.password }
           };
         }
         // 如果没有输入新密码，保持原有的认证方式
       } else if (formData.authMethod === 'publicKey') {
         updates.authMethod = {
-          publicKey: {
+          PublicKey: {
             privateKeyPath: formData.privateKeyPath,
             passphrase: formData.passphrase || undefined,
           }

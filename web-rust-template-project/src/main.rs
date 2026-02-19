@@ -131,8 +131,7 @@ async fn main() -> anyhow::Result<()> {
             delete(handlers::ssh_session::delete_session_handler),
         )
         // 同步 API 路由
-        .route("/api/sync/pull", post(handlers::sync::pull_handler))
-        .route("/api/sync/push", post(handlers::sync::push_handler))
+        .route("/api/sync", post(handlers::sync::sync_handler))
         .route(
             "/api/sync/resolve-conflict",
             post(handlers::sync::resolve_conflict_handler),

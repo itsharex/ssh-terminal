@@ -4,8 +4,23 @@ use anyhow::anyhow;
 use crate::database::repositories::{SshSessionRepository, SyncStateRepository, UserAuthRepository};
 use crate::database::DbPool;
 use crate::models::sync::*;
+use crate::models::SshSession;
 use crate::services::api_client::ApiClient;
 use crate::commands::auth::ApiClientStateWrapper;
+
+/// 同步选项
+#[derive(Debug, Clone, Default)]
+pub enum SyncOptions {
+    /// 同步会话
+    #[default]
+    SyncSessions,
+    /// 同步用户资料
+    SyncProfile,
+    /// 同步所有内容
+    SyncAll,
+    /// 不推送任何内容，仅拉取
+    PullOnly,
+}
 
 /// 同步服务
 pub struct SyncService {
@@ -34,32 +49,96 @@ impl SyncService {
         }
     }
 
-    /// 完整同步（推送 + 拉取）
-    pub async fn full_sync(&self) -> Result<SyncReport> {
-        tracing::info!("Starting full sync");
+    /// 通用同步方法（根据选项同步不同内容）
+    pub async fn full_sync(&self, options: SyncOptions) -> Result<SyncReport> {
+        tracing::info!("Starting sync with options: {:?}", options);
 
         // 1. 检查是否有用户登录
         let auth_repo = UserAuthRepository::new(self.pool.clone());
         let current_user = auth_repo.find_current()?
             .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
 
-        // 2. 构建同步请求
-        let request = self.build_sync_request(&current_user.user_id)?;
-
-        // 3. 发送同步请求（stub 实现）
-        let response = self.send_sync_request(&request).await?;
-
-        // 4. 应用服务器响应
-        self.apply_sync_response(&response, &current_user.user_id)?;
-
-        // 5. 清理脏标记
-        let sync_time = response.last_sync_at;
-        self.clear_dirty_markers(&request, sync_time, &current_user.user_id)?;
-
-        // 6. 更新同步状态
+        // 2. 获取最后同步时间和脏数据
         let state_repo = SyncStateRepository::new(self.pool.clone());
-        state_repo.update_last_sync(sync_time)?;
-        state_repo.update_pending_count(0)?;
+        let last_sync_at = state_repo.get()?.last_sync_at;
+        let device_id = auth_repo.find_current()?
+            .map(|u| u.device_id)
+            .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
+
+        // 3. 根据选项获取需要推送的数据
+        let session_repo = SshSessionRepository::new(self.pool.clone());
+        let (dirty_sessions, deleted_session_ids, user_profile_update) = match options {
+            SyncOptions::SyncSessions => {
+                let sessions = session_repo.get_dirty_sessions(&current_user.user_id)?;
+                let deleted = session_repo.get_deleted_sessions(&current_user.user_id)?;
+                (sessions, deleted, None)
+            }
+            SyncOptions::SyncProfile => {
+                // 获取用户资料更新
+                let profile_repo = crate::database::repositories::UserProfileRepository::new(self.pool.clone());
+                let profile = profile_repo.find_by_user_id(&current_user.user_id)?
+                    .map(|p| UpdateProfileRequest {
+                        username: p.username,
+                        phone: p.phone,
+                        qq: p.qq,
+                        wechat: p.wechat,
+                        bio: p.bio,
+                        avatar_data: p.avatar_data,
+                        avatar_mime_type: p.avatar_mime_type,
+                    });
+                (vec![], vec![], profile)
+            }
+            SyncOptions::SyncAll => {
+                let sessions = session_repo.get_dirty_sessions(&current_user.user_id)?;
+                let deleted = session_repo.get_deleted_sessions(&current_user.user_id)?;
+                let profile_repo = crate::database::repositories::UserProfileRepository::new(self.pool.clone());
+                let profile = profile_repo.find_by_user_id(&current_user.user_id)?
+                    .map(|p| UpdateProfileRequest {
+                        username: p.username,
+                        phone: p.phone,
+                        qq: p.qq,
+                        wechat: p.wechat,
+                        bio: p.bio,
+                        avatar_data: p.avatar_data,
+                        avatar_mime_type: p.avatar_mime_type,
+                    });
+                (sessions, deleted, profile)
+            }
+            SyncOptions::PullOnly => {
+                // 不推送任何内容，只拉取
+                (vec![], vec![], None)
+            }
+        };
+
+        // 4. 构建统一请求
+        let request = self.build_sync_request_with_options(
+            &current_user.user_id,
+            last_sync_at,
+            device_id,
+            dirty_sessions,
+            user_profile_update,
+            deleted_session_ids,
+        )?;
+
+        // 5. 调用统一同步 API
+        let response = self.get_api_client()?.sync(&request).await?;
+
+        // 6. 应用 Pull 结果
+        let ssh_sessions_len = response.ssh_sessions.len();
+        self.apply_pull_data(&response, &current_user.user_id)?;
+
+        // 7. 处理 Push 结果
+        self.apply_push_result(&response, &current_user.user_id)?;
+
+        // 8. 清理脏标记
+        if matches!(options, SyncOptions::SyncSessions | SyncOptions::SyncAll) {
+            let dirty_sessions = SshSessionRepository::new(self.pool.clone())
+                .get_dirty_sessions(&current_user.user_id)?;
+            self.clear_dirty_markers(&dirty_sessions, response.last_sync_at, &current_user.user_id)?;
+        }
+
+        // 9. 更新同步状态
+        state_repo.update_last_sync(response.last_sync_at)?;
         state_repo.update_conflict_count(response.conflicts.len() as i32)?;
         state_repo.update_last_error(None)?;
 
@@ -67,110 +146,93 @@ impl SyncService {
 
         Ok(SyncReport {
             success: true,
-            last_sync_at: sync_time,
-            pushed_sessions: request.sessions.as_ref().map(|s| s.len()).unwrap_or(0),
-            pulled_sessions: response.upserted_sessions.len(),
+            last_sync_at: response.last_sync_at,
+            pushed_sessions: response.updated_session_ids.len(),
+            pulled_sessions: ssh_sessions_len,
             conflict_count: response.conflicts.len(),
             error: None,
-            updated_session_ids: None,
+            updated_session_ids: Some(response.updated_session_ids),
         })
     }
 
-    /// 构建同步请求
-    fn build_sync_request(&self, user_id: &str) -> Result<SyncRequest> {
-        let session_repo = SshSessionRepository::new(self.pool.clone());
-        let state_repo = SyncStateRepository::new(self.pool.clone());
+    /// 只同步会话
+    pub async fn sync_sessions(&self) -> Result<SyncReport> {
+        self.full_sync(SyncOptions::SyncSessions).await
+    }
 
-        // 获取所有脏数据
-        let dirty_sessions = session_repo.get_dirty_sessions(user_id)?;
+    /// 只同步用户资料
+    pub async fn sync_profile(&self) -> Result<SyncReport> {
+        self.full_sync(SyncOptions::SyncProfile).await
+    }
 
-        // 获取最后同步时间
-        let sync_state = state_repo.get()?;
-        let last_sync_at = sync_state.last_sync_at;
+    /// 同步所有内容
+    pub async fn sync_all(&self) -> Result<SyncReport> {
+        self.full_sync(SyncOptions::SyncAll).await
+    }
 
-        // 获取设备 ID
-        let auth_repo = UserAuthRepository::new(self.pool.clone());
-        let device_id = auth_repo.find_current()?
-            .map(|u| u.device_id)
-            .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
+    /// 只拉取，不推送
+    pub async fn pull_only(&self) -> Result<SyncReport> {
+        self.full_sync(SyncOptions::PullOnly).await
+    }
+
+    /// 构建统一同步请求
+    fn build_sync_request(
+        &self,
+        user_id: &str,
+        last_sync_at: Option<i64>,
+        device_id: String,
+        dirty_sessions: Vec<SshSession>,
+    ) -> Result<SyncRequest> {
+        self.build_sync_request_with_options(user_id, last_sync_at, device_id, dirty_sessions, None, Vec::new())
+    }
+
+    /// 构建统一同步请求（带用户资料选项）
+    fn build_sync_request_with_options(
+        &self,
+        user_id: &str,
+        last_sync_at: Option<i64>,
+        device_id: String,
+        dirty_sessions: Vec<SshSession>,
+        user_profile: Option<UpdateProfileRequest>,
+        deleted_session_ids: Vec<String>,
+    ) -> Result<SyncRequest> {
+        // 转换脏会话
+        let ssh_sessions: Vec<SshSessionPushItem> = dirty_sessions
+            .into_iter()
+            .map(|s| SshSessionPushItem {
+                id: s.id,
+                name: s.name,
+                host: s.host,
+                port: s.port,
+                username: s.username,
+                group_name: s.group_name,
+                terminal_type: s.terminal_type,
+                columns: s.columns,
+                rows: s.rows,
+                auth_method_encrypted: s.auth_method_encrypted,
+                auth_nonce: s.auth_nonce,
+                auth_key_salt: s.auth_key_salt,
+                client_ver: s.client_ver,
+                created_at: s.created_at,
+                updated_at: s.updated_at,
+            })
+            .collect();
 
         Ok(SyncRequest {
-            sessions: if dirty_sessions.is_empty() { None } else { Some(dirty_sessions) },
             last_sync_at,
-            device_id: Some(device_id),
-            user_profile: None,
-            deleted_session_ids: None,
-            entity_types: None, // entity_types 只用于 pull 请求，不在 build_sync_request 中设置
+            device_id,
+            user_profile,
+            ssh_sessions,
+            deleted_session_ids,
         })
     }
 
-    /// 发送同步请求（stub 实现，预留服务器接口）
-    async fn send_sync_request(&self, request: &SyncRequest) -> Result<SyncResponse> {
-        // 获取 API 客户端
-        let api_client = self.get_api_client()?;
-
-        // 构建 pull 请求（添加 entity_types 字段）
-        let pull_request = SyncRequest {
-            sessions: None,
-            last_sync_at: request.last_sync_at,
-            device_id: request.device_id.clone(),
-            user_profile: request.user_profile.clone(),
-            deleted_session_ids: None,
-            entity_types: Some(vec!["userProfile".to_string(), "sshSession".to_string()]),
-        };
-
-        // 先执行 pull
-        let pull_response = api_client.sync_pull(&pull_request).await?;
-
-        // 获取会话数量
-        let ssh_sessions_len = pull_response.ssh_sessions.len();
-
-        // 转换为内部 SyncResponse（ServerSshSession -> SshSession）
-        let mut response = SyncResponse {
-            status: "ok".to_string(),
-            server_time: pull_response.server_time,
-            last_sync_at: pull_response.last_sync_at,
-            upserted_sessions: pull_response.ssh_sessions.into_iter().map(|s| s.into()).collect(),  // 转换 ServerSshSession -> SshSession
-            deleted_session_ids: pull_response.deleted_session_ids,
-            pushed_sessions: 0,
-            pushed_total: 0,
-            pulled_sessions: ssh_sessions_len,
-            pulled_total: ssh_sessions_len,
-            conflicts: pull_response.conflicts.into_iter().map(|c| ConflictInfo {
-                id: c.id,
-                entity_type: c.entity_type,
-                local_version: c.client_ver,
-                server_version: c.server_ver,
-                message: c.message,
-            }).collect(),
-        };
-
-        // 如果有本地数据需要推送，执行 push
-        if request.sessions.is_some() {
-            let push_response = api_client.sync_push(request).await?;
-
-            // 合并响应
-            response.deleted_session_ids.extend(push_response.deleted_session_ids);
-            response.conflicts.extend(push_response.conflicts.into_iter().map(|c| ConflictInfo {
-                id: c.id,
-                entity_type: c.entity_type,
-                local_version: c.client_ver,
-                server_version: c.server_ver,
-                message: c.message,
-            }));
-            response.pushed_sessions = push_response.updated_session_ids.len();
-            response.pushed_total = push_response.updated_session_ids.len();
-        }
-
-        Ok(response)
-    }
-
-    /// 应用服务器响应
-    fn apply_sync_response(&self, response: &SyncResponse, user_id: &str) -> Result<()> {
+    /// 应用 Pull 数据
+    fn apply_pull_data(&self, response: &ServerSyncResponse, user_id: &str) -> Result<()> {
         let session_repo = SshSessionRepository::new(self.pool.clone());
 
-        // 1. 应用 upserted 数据
-        for server_session in &response.upserted_sessions {
+        // 1. 应用 SSH 会话数据
+        for server_session in &response.ssh_sessions {
             // 检查本地版本
             if let Some(local_session) = session_repo.find_by_id(&server_session.id)? {
                 // 版本冲突检测
@@ -181,35 +243,55 @@ impl SyncService {
             }
 
             // 应用服务器版本
-            session_repo.update(server_session)?;
+            let local_session: crate::models::SshSession = server_session.clone().into();
+            if let Some(existing) = session_repo.find_by_id(&server_session.id)? {
+                // 更新现有会话（保留本地 is_dirty 和 is_deleted 状态）
+                let mut updated = local_session;
+                updated.is_dirty = existing.is_dirty;
+                updated.is_deleted = existing.is_deleted;
+                updated.deleted_at = existing.deleted_at;
+                let _ = session_repo.update(&updated);
+            } else {
+                // 创建新会话
+                let _ = session_repo.create(&local_session);
+            }
         }
 
-        // 2. 应用删除（软删除）
-        for session_id in &response.deleted_session_ids {
-            session_repo.delete(session_id)?;
-        }
-
-        // 3. 处理冲突（stub 实现，创建冲突副本）
-        for conflict in &response.conflicts {
-            self.resolve_conflict(conflict, user_id)?;
+        // 2. 应用用户资料
+        if let Some(server_profile) = &response.user_profile {
+            let profile_repo = crate::database::repositories::UserProfileRepository::new(self.pool.clone());
+            let _ = profile_repo.save(server_profile);
         }
 
         Ok(())
     }
 
-    /// 清理脏标记
-    fn clear_dirty_markers(
-        &self,
-        request: &SyncRequest,
-        sync_time: i64,
-        user_id: &str,
-    ) -> Result<()> {
+    /// 应用 Push 结果
+    fn apply_push_result(&self, response: &ServerSyncResponse, user_id: &str) -> Result<()> {
         let session_repo = SshSessionRepository::new(self.pool.clone());
 
-        if let Some(sessions) = &request.sessions {
-            for session in sessions {
-                session_repo.clear_dirty_marker(&session.id, sync_time)?;
+        // 更新服务器版本号
+        for (id, server_ver) in &response.server_versions {
+            if let Some(mut session) = session_repo.find_by_id(id)? {
+                session.server_ver = *server_ver;
+                session.last_synced_at = Some(response.last_sync_at);
+                let _ = session_repo.update(&session);
             }
+        }
+
+        // 更新同步状态
+        let state_repo = SyncStateRepository::new(self.pool.clone());
+        state_repo.update_conflict_count(response.conflicts.len() as i32)?;
+
+        Ok(())
+    }
+
+    /// 清理脏标记
+    fn clear_dirty_markers(&self, sessions: &[SshSession], sync_time: i64, user_id: &str) -> Result<()> {
+        let session_repo = SshSessionRepository::new(self.pool.clone());
+
+        for session in sessions {
+            session_repo.clear_dirty_marker(&session.id, sync_time)?;
         }
 
         // 更新用户的最后同步时间
@@ -259,59 +341,54 @@ impl SyncService {
             updated_session_ids: None,
         };
 
-        // 获取当前用户 ID
+        // 获取当前用户 ID 和设备 ID
         let auth_repo = UserAuthRepository::new(self.pool.clone());
         let current_user = auth_repo.find_current()?
+            .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
+        let device_id = auth_repo.find_current()?
+            .map(|u| u.device_id)
             .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
 
         // 如果冲突已解决，重新拉取数据
         if resolve_response.resolved {
-            // 构建一个简单的 pull 请求
-            // 获取设备 ID
-            let auth_repo2 = UserAuthRepository::new(self.pool.clone());
-            let device_id = auth_repo2.find_current()?
-                .map(|u| u.device_id);
+            // 获取脏会话
+            let session_repo = SshSessionRepository::new(self.pool.clone());
+            let dirty_sessions = session_repo.get_dirty_sessions(&current_user.user_id)?;
 
-            let pull_request = SyncRequest {
-                sessions: None,
-                last_sync_at: None,
+            // 获取已删除会话
+            let deleted_session_ids = session_repo.get_deleted_sessions(&current_user.user_id)?;
+
+            // 构建统一请求（不指定 last_sync_at，拉取所有数据）
+            let request = self.build_sync_request_with_options(
+                &current_user.user_id,
+                None,
                 device_id,
-                user_profile: None,
-                deleted_session_ids: None,
-                entity_types: Some(vec!["userProfile".to_string(), "sshSession".to_string()]),
-            };
+                dirty_sessions,
+                None,
+                deleted_session_ids,
+            )?;
 
-            let pull_response = api_client.sync_pull(&pull_request).await?;
+            let sync_response = api_client.sync(&request).await?;
 
-            // 应用拉取的数据（转换 ServerSshSession -> SshSession）
-            let ssh_sessions_len = pull_response.ssh_sessions.len();
-            let sync_response = SyncResponse {
-                status: "ok".to_string(),
-                server_time: pull_response.server_time,
-                last_sync_at: pull_response.last_sync_at,
-                upserted_sessions: pull_response.ssh_sessions.into_iter().map(|s| s.into()).collect(),
-                deleted_session_ids: pull_response.deleted_session_ids,
-                pushed_sessions: 0,
-                pushed_total: 0,
-                pulled_sessions: ssh_sessions_len,
-                pulled_total: ssh_sessions_len,
-                conflicts: Vec::new(),
-            };
+            // 应用拉取的数据
+            let ssh_sessions_len = sync_response.ssh_sessions.len();
+            self.apply_pull_data(&sync_response, &current_user.user_id)?;
 
-            self.apply_sync_response(&sync_response, &current_user.user_id)?;
+            // 处理 Push 结果
+            self.apply_push_result(&sync_response, &current_user.user_id)?;
 
             // 更新同步状态
             let state_repo = SyncStateRepository::new(self.pool.clone());
-            state_repo.update_last_sync(pull_response.last_sync_at)?;
-            state_repo.update_conflict_count(pull_response.conflicts.len() as i32)?;
+            state_repo.update_last_sync(sync_response.last_sync_at)?;
+            state_repo.update_conflict_count(sync_response.conflicts.len() as i32)?;
             state_repo.update_last_error(None)?;
 
             report = SyncReport {
                 success: true,
-                last_sync_at: pull_response.last_sync_at,
-                pushed_sessions: 0,
+                last_sync_at: sync_response.last_sync_at,
+                pushed_sessions: sync_response.updated_session_ids.len(),
                 pulled_sessions: ssh_sessions_len,
-                conflict_count: pull_response.conflicts.len(),
+                conflict_count: sync_response.conflicts.len(),
                 error: None,
                 updated_session_ids: resolve_response.new_id.map(|id| vec![id]),
             };

@@ -1,6 +1,17 @@
+// Rust 枚举 serde 序列化格式: { "Password": { "password": "..." } }
+export type AuthMethodPassword = {
+  password: string;
+};
+
+// Rust 枚举 serde 序列化格式: { "PublicKey": { "privateKeyPath": "...", "passphrase": "..." } }
+export type AuthMethodPublicKey = {
+  privateKeyPath: string;
+  passphrase?: string;
+};
+
 export type AuthMethod =
-  | { password: { password: string } }
-  | { publicKey: { privateKeyPath: string; passphrase?: string } };
+  | { Password: AuthMethodPassword }
+  | { PublicKey: AuthMethodPublicKey };
 
 export interface SessionConfig {
   id?: string;

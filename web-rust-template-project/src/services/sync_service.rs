@@ -16,52 +16,23 @@ impl SyncService {
         Self { db }
     }
 
-    /// Pull - 拉取服务器数据
-    pub async fn pull(&self, request: PullRequest, user_id: &str) -> Result<PullResponse> {
+    /// 统一同步 - 先 Push，后 Pull
+    pub async fn sync(&self, request: SyncRequest, user_id: &str) -> Result<SyncResponse> {
         let ssh_repo = SshSessionRepository::new(self.db.clone());
         let profile_repo = UserProfileRepository::new(self.db.clone());
 
+        // === 统一的服务器时间 ===
         let server_time = Utc::now().timestamp();
-        let last_sync_at = server_time;
+        let last_sync_at = server_time; // 所有记录使用统一时间
 
-        // 查询 SSH 会话
-        let sessions = ssh_repo.find_by_user_id(user_id).await?;
-        let ssh_sessions_vo: Vec<crate::domain::vo::ssh::SshSessionVO> = sessions
-            .into_iter()
-            .map(|s| self.session_to_vo(s))
-            .collect();
-
-        // 查询用户资料
-        let user_profile_vo = match profile_repo.find_by_user_id(user_id).await {
-            Ok(Some(profile)) => Some(self.profile_to_vo(profile)),
-            _ => None,
-        };
-
-        Ok(PullResponse {
-            server_time,
-            last_sync_at,
-            user_profile: user_profile_vo,
-            ssh_sessions: ssh_sessions_vo,
-            deleted_session_ids: vec![],
-            conflicts: vec![],
-        })
-    }
-
-    /// Push - 推送本地更改
-    pub async fn push(&self, request: PushRequest, user_id: &str) -> Result<PushResponse> {
-        let ssh_repo = SshSessionRepository::new(self.db.clone());
-        let profile_repo = UserProfileRepository::new(self.db.clone());
-
+        // === 第一阶段：Push - 处理客户端推送 ===
         let mut updated_session_ids = Vec::new();
         let mut deleted_session_ids = Vec::new();
         let mut server_versions = std::collections::HashMap::new();
         let mut conflicts = Vec::new();
 
-        // 使用统一的时间戳，确保所有记录的 updated_at 保持一致
-        let last_sync_at = Utc::now().timestamp();
-
         // 1. 处理用户资料更新
-        if let Some(profile_req) = request.user_profile {
+        let profile_updated = if let Some(profile_req) = request.user_profile {
             match profile_repo.find_by_user_id(user_id).await {
                 Ok(Some(existing)) => {
                     // 更新用户资料：保持原有的 created_at，只更新 updated_at
@@ -82,11 +53,15 @@ impl SyncService {
                     };
 
                     let _ = profile_repo.update(user_id, updated_profile).await;
+                    true // 已更新
                 }
                 Ok(None) => {
                     // 创建新用户资料
+                    // 确保使用正数 ID（避免 i64 溢出）
+                    let random_id = rand::random::<u64>();
+                    let safe_id = (random_id % (i64::MAX as u64)) as i64;
                     let new_profile = crate::domain::entities::user_profiles::Model {
-                        id: rand::random::<u64>() as i64,  // 使用 u64 确保为正数
+                        id: safe_id,
                         user_id: user_id.to_string(),
                         username: profile_req.username,
                         phone: profile_req.phone,
@@ -102,14 +77,18 @@ impl SyncService {
                     };
 
                     let _ = profile_repo.create(new_profile).await;
+                    true // 已创建
                 }
                 Err(e) => {
                     tracing::error!("Failed to update user profile: {}", e);
+                    false // 未更新
                 }
             }
-        }
+        } else {
+            false // 请求中没有 user_profile 更新
+        };
 
-        // 2. 处理 SSH 会话更新
+        // 2. 处理 SSH 会话更新（使用统一的 last_sync_at）
         for session_item in &request.ssh_sessions {
             match ssh_repo.find_by_id(&session_item.id).await {
                 Ok(Some(existing)) => {
@@ -137,7 +116,7 @@ impl SyncService {
                             client_ver: session_item.client_ver,
                             last_synced_at: existing.last_synced_at,
                             created_at: existing.created_at,
-                            updated_at: existing.updated_at,
+                            updated_at: last_sync_at,
                             deleted_at: existing.deleted_at,
                         };
 
@@ -204,12 +183,42 @@ impl SyncService {
             }
         }
 
-        Ok(PushResponse {
+        // === 第二阶段：Pull - 拉取最新的服务器数据 ===
+        // 只在请求中包含 SSH 会话的更新或删除时才返回 SSH 会话列表
+        let ssh_sessions_vo = if !request.ssh_sessions.is_empty() || !request.deleted_session_ids.is_empty() {
+            // 如果有 SSH 会话的更新或删除，返回最新的会话列表
+            let sessions = ssh_repo.find_by_user_id(user_id).await?;
+            sessions
+                .into_iter()
+                .map(|s| self.session_to_vo(s))
+                .collect()
+        } else {
+            // 没有更新就不返回 SSH 会话
+            vec![]
+        };
+
+        // 只在更新了 user_profile 时才返回用户资料
+        let user_profile_vo = if profile_updated {
+            // 如果更新了 user_profile，返回最新的用户资料
+            match profile_repo.find_by_user_id(user_id).await {
+                Ok(Some(profile)) => Some(self.profile_to_vo(profile)),
+                _ => None,
+            }
+        } else {
+            // 没有更新就不返回用户资料
+            None
+        };
+
+        // === 返回统一响应 ===
+        Ok(SyncResponse {
+            server_time,
+            last_sync_at,
             updated_session_ids,
             deleted_session_ids,
             server_versions,
+            user_profile: user_profile_vo,
+            ssh_sessions: ssh_sessions_vo,
             conflicts,
-            last_sync_at,
         })
     }
 

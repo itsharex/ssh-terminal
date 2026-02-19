@@ -69,7 +69,7 @@ export function SessionManager() {
       ...config,
       keepAliveInterval: terminalConfig.keepAliveInterval,
     });
-    await loadSessions();
+    // 不需要调用 loadSessions()，因为 createSession 已经更新了本地状态
   };
 
   const handleEditSession = (session: SessionInfo) => {

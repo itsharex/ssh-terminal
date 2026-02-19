@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
 pub struct SshSessionVO {
     pub id: String,
     pub user_id: String,
@@ -26,7 +25,6 @@ pub struct SshSessionVO {
 
 /// 分页响应
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct PaginatedSshSessions {
     pub data: Vec<SshSessionVO>,
     pub total: u64,

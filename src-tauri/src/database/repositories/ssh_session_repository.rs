@@ -301,6 +301,24 @@ impl SshSessionRepository {
         Ok(sessions)
     }
 
+    /// 获取已删除的会话 ID
+    pub fn get_deleted_sessions(&self, user_id: &str) -> Result<Vec<String>> {
+        let conn = self.get_conn()?;
+
+        let mut stmt = conn.prepare(
+            "SELECT id FROM ssh_sessions WHERE user_id = ?1 AND is_deleted = 1"
+        )?;
+
+        let rows = stmt.query_map([user_id], |row| row.get::<_, String>(0))?;
+
+        let mut ids = Vec::new();
+        for row in rows {
+            ids.push(row?);
+        }
+
+        Ok(ids)
+    }
+
     /// 根据 user_id 获取 SSH 会话列表
     pub fn find_by_user_id(&self, user_id: &str) -> Result<Vec<SshSession>> {
         self.find_by_user(user_id)

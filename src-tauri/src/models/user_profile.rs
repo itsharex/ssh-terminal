@@ -22,9 +22,8 @@ pub struct UserProfile {
 
 // ==================== 请求类型（发送给服务端）====================
 
-/// 用户资料更新请求（camelCase 格式）
+/// 用户资料更新请求（snake_case 格式）
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct UpdateProfileRequest {
     pub username: Option<String>,
     pub phone: Option<String>,

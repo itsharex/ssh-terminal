@@ -4,15 +4,6 @@ import { invoke } from '@tauri-apps/api/core';
 import type { SessionConfig, SessionInfo } from '@/types/ssh';
 import { useAIStore } from './aiStore';
 
-// 将前端扁平化的认证配置转换为后端 AuthMethod 枚举格式
-function convertAuthMethod(config: SessionConfig) {
-  if ('Password' in config.authMethod) {
-    return config.authMethod;
-  } else {
-    return config.authMethod;
-  }
-}
-
 interface SessionStore {
   sessions: SessionInfo[];
   isStorageLoaded: boolean; // 标记是否已从存储加载
@@ -50,7 +41,7 @@ export const useSessionStore = create<SessionStore>()(
           host: config.host,
           port: config.port,
           username: config.username,
-          authMethod: convertAuthMethod(config),
+          authMethod: config.authMethod,
           terminalType: config.terminalType,
           columns: config.columns,
           rows: config.rows,
@@ -74,13 +65,13 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       createSession: async (config) => {
-        // 创建持久化会话配置
+        // 使用数据库命令创建持久化会话
         const sessionConfig = {
           name: config.name,
           host: config.host,
           port: config.port,
           username: config.username,
-          authMethod: convertAuthMethod(config),
+          authMethod: config.authMethod,
           terminalType: config.terminalType,
           columns: config.columns,
           rows: config.rows,
@@ -89,20 +80,14 @@ export const useSessionStore = create<SessionStore>()(
           keepAliveInterval: config.keepAliveInterval ?? 30,
         };
 
-        // 直接创建并保存到存储
-        const sessionId = await invoke<string>('storage_session_create', {
+        console.log('[sessionStore] Creating session with config:', sessionConfig);
+
+        // 调用数据库命令创建session
+        const sessionId = await invoke<string>('db_ssh_session_create', {
           config: sessionConfig,
         });
 
-        // 同时在内存中创建（用于连接）
-        try {
-          await invoke('session_create_with_id', {
-            id: sessionId,
-            config: sessionConfig,
-          });
-        } catch (error) {
-          console.error('Failed to create session in memory:', error);
-        }
+        console.log('[sessionStore] Session created with ID:', sessionId);
 
         // 缓存配置
         set((state) => {
@@ -130,10 +115,37 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       createConnection: async (sessionId) => {
-        // 直接调用connect_session创建新的连接实例
+        // 需要先获取session配置用于连接
+        const sessionData = await invoke<any>('db_ssh_session_get_by_id', { sessionId });
+        if (!sessionData) {
+          throw new Error(`Session not found: ${sessionId}`);
+        }
+
+        // 转换为内存session配置格式
+        const sessionConfig = {
+          name: sessionData.name,
+          host: sessionData.host,
+          port: sessionData.port,
+          username: sessionData.username,
+          authMethod: sessionData.authMethod,
+          terminalType: sessionData.terminalType,
+          columns: sessionData.columns,
+          rows: sessionData.rows,
+          strictHostKeyChecking: sessionData.strictHostKeyChecking ?? true,
+          group: sessionData.groupName,
+          keepAliveInterval: sessionData.keepAliveInterval ?? 30,
+        };
+
+        // 在内存中创建session
+        await invoke('session_create_with_id', {
+          id: sessionId,
+          config: sessionConfig,
+        });
+
+        // 调用connect创建连接实例
         const connectionId = await invoke<string>('session_connect', { sessionId });
 
-        // 重新加载sessions列表，包含新创建的连接实例
+        // 重新加载sessions列表
         const sessions = await invoke<SessionInfo[]>('session_list');
         set({ sessions });
 
@@ -146,48 +158,29 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       updateSession: async (id, config) => {
-        // 直接更新存储中的会话
-        await invoke('storage_session_update', {
+        // 使用数据库命令更新会话
+        const updates: any = {};
+        if (config.name !== undefined) updates.name = config.name;
+        if (config.host !== undefined) updates.host = config.host;
+        if (config.port !== undefined) updates.port = config.port;
+        if (config.username !== undefined) updates.username = config.username;
+        if (config.group !== undefined) updates.group = config.group || '默认分组';
+        if (config.authMethod !== undefined) updates.authMethod = config.authMethod;
+        if (config.terminalType !== undefined) updates.terminalType = config.terminalType;
+        if (config.columns !== undefined) updates.columns = config.columns;
+        if (config.rows !== undefined) updates.rows = config.rows;
+        if (config.strictHostKeyChecking !== undefined) updates.strictHostKeyChecking = config.strictHostKeyChecking;
+        if (config.keepAliveInterval !== undefined) updates.keepAliveInterval = config.keepAliveInterval;
+
+        await invoke('db_ssh_session_update', {
           sessionId: id,
-          updates: {
-            name: config.name,
-            host: config.host,
-            port: config.port,
-            username: config.username,
-            group: config.group || '默认分组',
-            authMethod: config.authMethod,
-            terminalType: config.terminalType,
-            columns: config.columns,
-            rows: config.rows,
-            strictHostKeyChecking: config.strictHostKeyChecking ?? true,
-            keepAliveInterval: config.keepAliveInterval ?? 30,
-          }
+          updates,
         });
 
-        // 同时更新内存中的会话
-        try {
-          await invoke('session_update', {
-            sessionId: id,
-            updates: {
-              name: config.name,
-              host: config.host,
-              port: config.port,
-              username: config.username,
-              group: config.group || '默认分组',
-              authMethod: config.authMethod,
-              terminalType: config.terminalType,
-              columns: config.columns,
-              rows: config.rows,
-              strictHostKeyChecking: config.strictHostKeyChecking ?? true,
-              keepAliveInterval: config.keepAliveInterval ?? 30,
-            }
-          });
-        } catch (error) {
-          console.error('Failed to update session in memory:', error);
-        }
+        console.log('[sessionStore] Session updated:', id);
 
         // 更新缓存中的配置
-        if (config.authMethod) {
+        if (config.authMethod || config.name || config.host || config.port || config.username) {
           set((state) => {
             const newMap = new Map(state.sessionConfigs);
             const existingConfig = newMap.get(id);
@@ -209,15 +202,10 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       deleteSession: async (id) => {
-        // 直接从存储中删除会话
-        await invoke('storage_session_delete', { sessionId: id });
+        // 使用数据库命令删除会话
+        await invoke('db_ssh_session_delete', { sessionId: id });
 
-        // 同时从内存中删除
-        try {
-          await invoke('session_delete', { sessionId: id });
-        } catch (error) {
-          console.error('Failed to delete session from memory:', error);
-        }
+        console.log('[sessionStore] Session deleted:', id);
 
         // 从缓存中删除配置
         set((state) => {
@@ -279,11 +267,32 @@ export const useSessionStore = create<SessionStore>()(
 
       loadSessions: async () => {
         try {
-          const sessions = await invoke<SessionInfo[]>('session_list');
-          set({ sessions });
+          // 合并内存会话和数据库会话
+          const memorySessions = await invoke<SessionInfo[]>('session_list');
+          const dbSessions = await invoke<any[]>('db_ssh_session_list');
+
+          // 转换数据库会话为 SessionInfo 格式
+          const dbSessionInfos: SessionInfo[] = dbSessions.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            host: s.host,
+            port: s.port,
+            username: s.username,
+            status: 'disconnected',
+            group: s.groupName,
+          }));
+
+          // 合并会话：内存会话（优先）+ 数据库会话配置（没有内存实例的）
+          const memoryIds = new Set(memorySessions.map(s => s.id));
+          const mergedSessions = [
+            ...memorySessions,
+            ...dbSessionInfos.filter(db => !memoryIds.has(db.id))
+          ];
+
+          set({ sessions: mergedSessions });
 
           // 初始化 AI Store 的活跃连接列表
-          const activeConnectionIds = sessions
+          const activeConnectionIds = mergedSessions
             .filter(s => s.status === 'connected')
             .map(s => s.connectionId)
             .filter((id): id is string => id !== undefined);
@@ -302,79 +311,65 @@ export const useSessionStore = create<SessionStore>()(
           return;
         }
 
-        console.log('[sessionStore] Starting to load sessions from storage...');
+        console.log('[sessionStore] Starting to load sessions from database...');
         // 立即标记为已加载（防止并发调用）
         set({ isStorageLoaded: true });
 
         try {
-          // 1. 先从后端加载所有已存在的会话
-          const existingSessions = await invoke<SessionInfo[]>('session_list');
-          console.log('[sessionStore] Existing sessions from backend:', existingSessions.length);
+          // 1. 从数据库加载所有会话
+          const dbSessions = await invoke<any[]>('db_ssh_session_list');
+          console.log('[sessionStore] Loaded sessions from database:', dbSessions.length);
 
-          // 2. 从存储加载配置及其ID
-          const sessionConfigs = await invoke<[string, SessionConfig][]>('storage_sessions_load');
-          console.log('[sessionStore] Loaded session configs from storage:', sessionConfigs.length);
+          // 转换为SessionInfo格式
+          const sessionInfos: SessionInfo[] = dbSessions.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            host: s.host,
+            port: s.port,
+            username: s.username,
+            status: 'disconnected',
+            group: s.groupName,
+          }));
 
-          // 3. 缓存所有会话配置到 Map
+          // 2. 缓存会话配置
           const configMap = new Map<string, SessionConfig>();
-          for (const [id, config] of sessionConfigs) {
-            configMap.set(id, config);
-          }
-          set({ sessionConfigs: configMap });
-
-          if (sessionConfigs.length === 0) {
-            console.log('[sessionStore] No session configs in storage, skipping creation');
-            // 重新加载会话列表
-            const sessions = await invoke<SessionInfo[]>('session_list');
-            set({ sessions });
-            return;
-          }
-
-          // 4. 为每个配置创建session（使用保存的ID）
-          let createdCount = 0;
-          let skippedCount = 0;
-          for (const [id, config] of sessionConfigs) {
-            // 检查是否已存在（通过ID匹配）
-            const alreadyExists = existingSessions.some(s => s.id === id);
-
-            if (!alreadyExists) {
-              try {
-                // 使用保存的ID创建session
-                await invoke('session_create_with_id', {
-                  id: id,
-                  config: config,
+          for (const dbSession of dbSessions) {
+            // 获取完整的session配置（包含认证信息）
+            try {
+              const fullConfig = await invoke<any>('db_ssh_session_get_by_id', { sessionId: dbSession.id });
+              if (fullConfig) {
+                configMap.set(dbSession.id, {
+                  id: dbSession.id,
+                  name: fullConfig.name,
+                  host: fullConfig.host,
+                  port: fullConfig.port,
+                  username: fullConfig.username,
+                  authMethod: fullConfig.authMethod,
+                  terminalType: fullConfig.terminalType,
+                  columns: fullConfig.columns,
+                  rows: fullConfig.rows,
+                  strictHostKeyChecking: fullConfig.strictHostKeyChecking ?? true,
+                  group: fullConfig.groupName,
+                  keepAliveInterval: fullConfig.keepAliveInterval ?? 30,
                 });
-                createdCount++;
-                console.log(`[sessionStore] Created new session with saved ID: ${id} (${config.name})`);
-              } catch (error) {
-                console.log(`[sessionStore] Failed to create session ${config.name}:`, error);
               }
-            } else {
-              skippedCount++;
-              console.log(`[sessionStore] Session already exists, skipping creation: ${id} (${config.name})`);
+            } catch (error) {
+              console.error(`[sessionStore] Failed to load config for session ${dbSession.id}:`, error);
             }
           }
+          set({ sessionConfigs: configMap, sessions: sessionInfos });
 
-          console.log(`[sessionStore] Session creation summary: ${createdCount} created, ${skippedCount} skipped`);
-
-          // 5. 重新加载会话列表
-          const sessions = await invoke<SessionInfo[]>('session_list');
-          set({ sessions });
-          console.log('[sessionStore] Final loaded sessions:', sessions.length);
+          console.log('[sessionStore] Final loaded sessions:', sessionInfos.length);
         } catch (error) {
-          console.error('[sessionStore] Failed to load sessions from storage:', error);
+          console.error('[sessionStore] Failed to load sessions from database:', error);
           // 如果加载失败，重置标志，允许重试
           set({ isStorageLoaded: false });
         }
       },
 
       saveSessions: async () => {
-        try {
-          await invoke('storage_sessions_save');
-        } catch (error) {
-          console.error('Failed to save sessions:', error);
-          throw error;
-        }
+        // 数据库会话会自动保存，无需手动保存
+        console.log('[sessionStore] saveSessions is a no-op for database sessions');
       },
 
       getSession: (id) => {

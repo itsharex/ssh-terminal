@@ -1,42 +1,28 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-/// Pull 请求
+/// 统一同步请求
 #[derive(Debug, Deserialize, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct PullRequest {
-    /// 最后同步时间（Unix 时间戳，秒）
+pub struct SyncRequest {
+    /// 最后同步时间（用于拉取，Unix 时间戳，秒）
     pub last_sync_at: Option<i64>,
-    
-    /// 设备 ID
-    #[validate(length(min = 1))]
-    pub device_id: String,
-    
-    /// 指定需要拉取的实体类型
-    pub entity_types: Vec<String>,
-}
 
-/// Push 请求
-#[derive(Debug, Deserialize, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct PushRequest {
     /// 设备 ID
     #[validate(length(min = 1))]
     pub device_id: String,
-    
+
     /// 用户资料更新（可选）
     pub user_profile: Option<UpdateProfileRequest>,
-    
+
     /// SSH 会话更新
     pub ssh_sessions: Vec<SshSessionPushItem>,
-    
+
     /// 删除的会话 ID
     pub deleted_session_ids: Vec<String>,
 }
 
 /// SSH 会话推送项
 #[derive(Debug, Deserialize, Validate, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
 pub struct SshSessionPushItem {
     pub id: String,
     pub name: String,
@@ -57,7 +43,6 @@ pub struct SshSessionPushItem {
 
 /// 更新用户资料请求
 #[derive(Debug, Deserialize, Validate, Clone)]
-#[serde(rename_all = "camelCase")]
 pub struct UpdateProfileRequest {
     pub username: Option<String>,
     pub phone: Option<String>,
@@ -70,7 +55,6 @@ pub struct UpdateProfileRequest {
 
 /// 解决冲突请求
 #[derive(Debug, Deserialize, Validate)]
-#[serde(rename_all = "camelCase")]
 pub struct ResolveConflictRequest {
     /// 冲突 ID
     #[validate(length(min = 1))]

@@ -3,7 +3,6 @@ use validator::Validate;
 
 /// 更新用户资料请求
 #[derive(Debug, Deserialize, Validate)]
-#[serde(rename_all = "camelCase")]
 pub struct UpdateProfileRequest {
     pub username: Option<String>,
     pub phone: Option<String>,

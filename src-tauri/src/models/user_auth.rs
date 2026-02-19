@@ -83,7 +83,6 @@ pub struct ServerRefreshResult {
 
 /// 服务器登录请求（不含 server_url）
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ServerLoginRequest {
     pub email: String,
     pub password: String,
@@ -91,7 +90,6 @@ pub struct ServerLoginRequest {
 
 /// 服务器注册请求（不含 server_url）
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ServerRegisterRequest {
     pub email: String,
     pub password: String,
