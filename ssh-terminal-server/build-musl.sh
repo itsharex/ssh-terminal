@@ -113,6 +113,120 @@ if [ -f "${OUTPUT_DIR}/${BINARY_NAME}" ]; then
     echo "  - 不要将包含真实密码的配置文件提交到 Git 仓库"
     echo "  - 使用 .gitignore 排除配置文件：config/production.toml"
     echo "  - 生产环境务必修改 JWT_SECRET 为强随机字符串"
+    echo ""
+    echo "========================================="
+    echo "  构建 Docker 镜像"
+    echo "========================================="
+    echo ""
+
+    # 创建 Dockerfile
+    DOCKERFILE_PATH="${PROJECT_DIR}/Dockerfile"
+    echo "创建 Dockerfile..."
+
+    cat > "${DOCKERFILE_PATH}" <<'EOF'
+# 使用 scratch 基础镜像（最小化，仅包含二进制文件）
+FROM scratch
+
+# 复制静态链接的二进制文件
+COPY ssh-terminal-server /ssh-terminal-server
+
+# 暴露端口
+EXPOSE 3000
+
+# 设置工作目录
+WORKDIR /
+
+# 设置环境变量（默认值，可被 docker run -e 覆盖）
+ENV DATABASE_TYPE=postgresql \
+    DATABASE_HOST=localhost \
+    DATABASE_PORT=5432 \
+    DATABASE_USER=postgres \
+    DATABASE_PASSWORD=changeme \
+    DATABASE_DATABASE=ssh_terminal_server \
+    REDIS_HOST=localhost \
+    REDIS_PORT=6379 \
+    REDIS_PASSWORD=changeme \
+    JWT_SECRET=changeme_please_modify_in_production \
+    APP_ENV=production \
+    RUST_LOG=info
+
+# 运行二进制文件
+ENTRYPOINT ["/ssh-terminal-server"]
+CMD ["-e", "production"]
+EOF
+
+    echo "✓ Dockerfile 已创建"
+    echo ""
+
+    # 临时复制二进制文件到项目根目录
+    echo "准备镜像构建..."
+    cp "${OUTPUT_DIR}/${BINARY_NAME}" "${PROJECT_DIR}/${BINARY_NAME}"
+
+    # 构建镜像
+    IMAGE_TAG="ssh-terminal-server:latest"
+    echo "构建 Docker 镜像: ${IMAGE_TAG}"
+    docker build -t "${IMAGE_TAG}" -f "${DOCKERFILE_PATH}" "${PROJECT_DIR}"
+
+    # 清理临时文件
+    rm "${PROJECT_DIR}/${BINARY_NAME}"
+
+    echo ""
+    echo "========================================="
+    echo "  镜像构建完成!"
+    echo "========================================="
+    echo ""
+
+    # 显示镜像信息
+    echo "镜像信息:"
+    docker images "${IMAGE_TAG}"
+    echo ""
+
+    echo "========================================="
+    echo "  使用说明"
+    echo "========================================="
+    echo ""
+    echo "运行容器（使用环境变量配置）："
+    echo ""
+    echo "  docker run -d \\"
+    echo "    --name ssh-terminal \\"
+    echo "    -p 3000:3000 \\"
+    echo "    -e DATABASE_TYPE=postgresql \\"
+    echo "    -e DATABASE_HOST=your_db_host \\"
+    echo "    -e DATABASE_PORT=5432 \\"
+    echo "    -e DATABASE_USER=your_db_user \\"
+    echo "    -e DATABASE_PASSWORD=your_db_password \\"
+    echo "    -e DATABASE_DATABASE=ssh_terminal_server \\"
+    echo "    -e REDIS_HOST=your_redis_host \\"
+    echo "    -e REDIS_PORT=6379 \\"
+    echo "    -e REDIS_PASSWORD=your_redis_password \\"
+    echo "    -e JWT_SECRET=your_jwt_secret \\"
+    echo "    ssh-terminal-server:latest"
+    echo ""
+    echo "使用 SQLite 数据库（最简单）："
+    echo ""
+    echo "  docker run -d \\"
+    echo "    --name ssh-terminal \\"
+    echo "    -p 3000:3000 \\"
+    echo "    -e DATABASE_TYPE=sqlite \\"
+    echo "    -e DATABASE_PATH=/data/app.db \\"
+    echo "    -v /path/to/data:/data \\"
+    echo "    ssh-terminal-server:latest"
+    echo ""
+    echo "查看日志："
+    echo "  docker logs -f ssh-terminal"
+    echo ""
+    echo "停止容器："
+    echo "  docker stop ssh-terminal"
+    echo ""
+    echo "删除容器："
+    echo "  docker rm ssh-terminal"
+    echo ""
+    echo "📦 导出镜像为 tar 文件："
+    echo "  docker save -o ssh-terminal-server.tar ssh-terminal-server:latest"
+    echo ""
+    echo "📦 在其他机器上导入镜像："
+    echo "  docker load -i ssh-terminal-server.tar"
+    echo ""
 else
     echo "✗ 构建失败: 未找到二进制文件"
     exit 1
