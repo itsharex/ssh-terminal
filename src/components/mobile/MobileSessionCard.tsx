@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Terminal, Trash2, Play, Edit, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +18,7 @@ interface MobileSessionCardProps {
 }
 
 export function MobileSessionCard({ sessionId, onEdit }: MobileSessionCardProps) {
+  const { t } = useTranslation();
   const [connecting, setConnecting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const navigate = useNavigate();
@@ -174,12 +176,12 @@ export function MobileSessionCard({ sessionId, onEdit }: MobileSessionCardProps)
             {isConnected ? (
               <Badge variant="default" className="bg-green-500 hover:bg-green-600">
                 <Wifi className="h-3 w-3 mr-1" />
-                已连接
+                {t('session.status.connected')}
               </Badge>
             ) : (
               <Badge variant="secondary" className="opacity-70">
                 <WifiOff className="h-3 w-3 mr-1" />
-                未连接
+                {t('session.status.disconnected')}
               </Badge>
             )}
           </div>

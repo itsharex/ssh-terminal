@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { User, Mail, Loader2, Upload, Phone, MessageCircle, Save, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,12 +41,13 @@ function fileToBase64(file: File): Promise<string> {
 /**
  * 验证图片文件
  */
-function validateImageFile(file: File): { valid: boolean; error?: string } {
+function validateImageFile(file: File): { valid: boolean; errorKey?: string; errorParams?: Record<string, any> } {
   // 检查文件类型
   if (!SUPPORTED_FORMATS.includes(file.type)) {
     return {
       valid: false,
-      error: `不支持的图片格式：${file.type}。仅支持 JPEG、PNG、GIF、WebP、BMP、SVG 格式`,
+      errorKey: 'user.profile.validation.unsupportedFormat',
+      errorParams: { format: file.type },
     };
   }
 
@@ -53,7 +55,8 @@ function validateImageFile(file: File): { valid: boolean; error?: string } {
   if (file.size > MAX_AVATAR_SIZE) {
     return {
       valid: false,
-      error: `图片过大：${(file.size / 1024 / 1024).toFixed(2)}MB（最大 5MB）`,
+      errorKey: 'user.profile.validation.imageTooLarge',
+      errorParams: { size: (file.size / 1024 / 1024).toFixed(2) },
     };
   }
 
@@ -61,6 +64,7 @@ function validateImageFile(file: File): { valid: boolean; error?: string } {
 }
 
 export function UserProfile() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { profile, isLoading, loadProfile, updateProfile, syncProfile, clearError } = useUserProfileStore();
   const { currentUser } = useAuthStore();
@@ -138,14 +142,14 @@ export function UserProfile() {
 
       await updateProfile(submitData);
       playSound(SoundEffect.SUCCESS);
-      toast.success('保存成功', {
-        description: '个人资料已更新',
+      toast.success(t('user.profile.toast.saveSuccess'), {
+        description: t('user.profile.toast.saveSuccessDescription'),
       });
       setEditMode(false);
     } catch (error) {
       playSound(SoundEffect.ERROR);
-      toast.error('保存失败', {
-        description: error instanceof Error ? error.message : '未知错误',
+      toast.error(t('user.profile.toast.saveFailed'), {
+        description: error instanceof Error ? error.message : t('common.unknownError'),
       });
     } finally {
       setIsUpdating(false);
@@ -157,15 +161,15 @@ export function UserProfile() {
     try {
       await syncProfile();
       playSound(SoundEffect.SUCCESS);
-      toast.success('同步成功', {
-        description: '个人资料已同步到服务器',
+      toast.success(t('user.profile.toast.syncSuccess'), {
+        description: t('user.profile.toast.syncSuccessDescription'),
       });
     } catch (error) {
       playSound(SoundEffect.ERROR);
       const errorMessage = typeof error === 'string' 
         ? extractMessageFromError(error).message 
-        : (error instanceof Error ? error.message : '未知错误');
-      toast.error('同步失败', {
+        : (error instanceof Error ? error.message : t('common.unknownError'));
+      toast.error(t('user.profile.toast.syncFailed'), {
         description: errorMessage,
       });
     } finally {
@@ -184,8 +188,8 @@ export function UserProfile() {
     // 验证文件
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      toast.error('图片验证失败', {
-        description: validation.error,
+      toast.error(t('user.profile.validation.imageValidationFailed'), {
+        description: validation.errorKey ? t(validation.errorKey, validation.errorParams) : undefined,
       });
       return;
     }
@@ -200,13 +204,13 @@ export function UserProfile() {
         avatarMimeType: file.type,
       }));
 
-      toast.success('图片已选择', {
-        description: '点击"保存"按钮以更新头像',
+      toast.success(t('user.profile.toast.imageSelected'), {
+        description: t('user.profile.toast.imageSelectedDescription'),
       });
     } catch (error) {
       console.error('[UserProfile.tsx] 图片处理失败:', error);
-      toast.error('图片处理失败', {
-        description: error instanceof Error ? error.message : '未知错误',
+      toast.error(t('user.profile.toast.imageProcessingFailed'), {
+        description: error instanceof Error ? error.message : t('common.unknownError'),
       });
     }
 
@@ -259,7 +263,7 @@ export function UserProfile() {
               </Button>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                个人中心
+                {t('user.profile.title')}
               </CardTitle>
             </div>
             <Button
@@ -269,7 +273,7 @@ export function UserProfile() {
               className="flex items-center gap-2"
             >
               <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? '同步中...' : '同步到服务器'}
+              {isSyncing ? t('user.profile.syncing') : t('user.profile.syncToServer')}
             </Button>
           </div>
         </CardHeader>
@@ -286,7 +290,7 @@ export function UserProfile() {
               <h3 className="text-2xl font-semibold">{displayName}</h3>
               <p className="text-sm text-muted-foreground flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                {currentUser?.email || '未登录'}
+                {currentUser?.email || t('user.profile.avatarSection.notLoggedIn')}
               </p>
             </div>
             <input
@@ -299,7 +303,7 @@ export function UserProfile() {
             {editMode && (
               <Button variant="outline" type="button" onClick={handleAvatarClick}>
                 <Upload className="mr-2 h-4 w-4" />
-                更换头像
+                {t('user.profile.avatarSection.changeAvatar')}
               </Button>
             )}
           </div>
@@ -309,21 +313,21 @@ export function UserProfile() {
           {/* 表单部分 */}
           <div className="space-y-6">
             <div className="space-y-4">
-              <h3 className="text-xl font-semibold">基本信息</h3>
+              <h3 className="text-xl font-semibold">{t('user.profile.basicInfo.title')}</h3>
 
               <div className="space-y-2">
-                <Label htmlFor="username">用户名</Label>
+                <Label htmlFor="username">{t('user.profile.basicInfo.username')}</Label>
                 <Input
                   id="username"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   disabled={!editMode}
-                  placeholder="输入用户名"
+                  placeholder={t('user.profile.basicInfo.usernamePlaceholder')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">邮箱</Label>
+                <Label htmlFor="email">{t('user.profile.basicInfo.email')}</Label>
                 <Input
                   id="email"
                   value={currentUser?.email || ''}
@@ -331,30 +335,30 @@ export function UserProfile() {
                   className="bg-muted"
                 />
                 <p className="text-xs text-muted-foreground">
-                  邮箱不可修改，如需更改请联系客服
+                  {t('user.profile.basicInfo.emailLocked')}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bio">个人简介</Label>
+                <Label htmlFor="bio">{t('user.profile.basicInfo.bio')}</Label>
                 <Input
                   id="bio"
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                   disabled={!editMode}
-                  placeholder="介绍一下自己..."
+                  placeholder={t('user.profile.basicInfo.bioPlaceholder')}
                 />
               </div>
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-xl font-semibold">联系方式</h3>
+              <h3 className="text-xl font-semibold">{t('user.profile.contactInfo.title')}</h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone">
                     <Phone className="inline mr-2 h-4 w-4" />
-                    手机号
+                    {t('user.profile.contactInfo.phone')}
                   </Label>
                   <Input
                     id="phone"
@@ -362,32 +366,32 @@ export function UserProfile() {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     disabled={!editMode}
-                    placeholder="输入手机号"
+                    placeholder={t('user.profile.contactInfo.phonePlaceholder')}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="qq">QQ</Label>
+                  <Label htmlFor="qq">{t('user.profile.contactInfo.qq')}</Label>
                   <Input
                     id="qq"
                     value={formData.qq}
                     onChange={(e) => setFormData({ ...formData, qq: e.target.value })}
                     disabled={!editMode}
-                    placeholder="输入QQ号"
+                    placeholder={t('user.profile.contactInfo.qqPlaceholder')}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="wechat">
                     <MessageCircle className="inline mr-2 h-4 w-4" />
-                    微信号
+                    {t('user.profile.contactInfo.wechat')}
                   </Label>
                   <Input
                     id="wechat"
                     value={formData.wechat}
                     onChange={(e) => setFormData({ ...formData, wechat: e.target.value })}
                     disabled={!editMode}
-                    placeholder="输入微信号"
+                    placeholder={t('user.profile.contactInfo.wechatPlaceholder')}
                   />
                 </div>
               </div>
@@ -404,7 +408,7 @@ export function UserProfile() {
                     onClick={handleCancel}
                     disabled={isUpdating}
                   >
-                    取消
+                    {t('user.profile.actions.cancel')}
                   </Button>
                   <Button
                     onClick={handleSave}
@@ -414,19 +418,19 @@ export function UserProfile() {
                     {isUpdating ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        保存中
+                        {t('user.profile.actions.saving')}
                       </>
                     ) : (
                       <>
                         <Save className="mr-2 h-4 w-4" />
-                        保存
+                        {t('user.profile.actions.save')}
                       </>
                     )}
                   </Button>
                 </>
               ) : (
                 <Button onClick={handleEdit}>
-                  编辑资料
+                  {t('user.profile.actions.edit')}
                 </Button>
               )}
             </div>
@@ -435,8 +439,8 @@ export function UserProfile() {
           {/* 更新时间 */}
           {profile && (
             <div className="text-xs text-muted-foreground pt-2 border-t">
-              <p>创建时间: {new Date(profile.createdAt * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>
-              <p>更新时间: {new Date(profile.updatedAt * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>
+              <p>{t('user.profile.timestamps.createdAt')}: {new Date(profile.createdAt * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>
+              <p>{t('user.profile.timestamps.updatedAt')}: {new Date(profile.updatedAt * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>
             </div>
           )}
         </CardContent>

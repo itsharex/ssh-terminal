@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -34,13 +35,14 @@ export function SaveSessionDialog({
   onSave,
 }: SaveSessionDialogProps) {
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const [formData, setFormData] = useState({
     name: '',
     host: '',
     port: '22',
     username: '',
-    group: '默认分组',
+    group: t('session.defaultGroup'),
     authMethod: 'password',
     password: '',
     privateKeyPath: '',
@@ -55,7 +57,7 @@ export function SaveSessionDialog({
       host: '',
       port: '22',
       username: '',
-      group: '默认分组',
+      group: t('session.defaultGroup'),
       authMethod: 'password',
       password: '',
       privateKeyPath: '',
@@ -69,7 +71,7 @@ export function SaveSessionDialog({
     if (!open) {
       resetForm();
     }
-  }, [open]);
+  }, [open, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,17 +101,17 @@ export function SaveSessionDialog({
           ? { Password: { password: formData.password || '' } }
           : { PublicKey: { privateKeyPath: formData.privateKeyPath || '', passphrase: formData.passphrase } },
         terminalType: formData.terminalType,
-        group: formData.group || '默认分组',
+        group: formData.group || t('session.defaultGroup'),
       });
 
       // 保存成功后关闭对话框并重置表单
-      toast.success('会话保存成功');
+      toast.success(t('session.success.saved'));
       resetForm();
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to save session:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error('会话保存失败', {
+      toast.error(t('session.error.saveFailed'), {
         description: errorMessage,
       });
     } finally {
@@ -133,60 +135,60 @@ export function SaveSessionDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Save className="h-5 w-5 text-primary" />
-            保存会话配置
+            {t('session.save.title')}
           </DialogTitle>
           <DialogDescription>
-            保存 SSH 会话配置到本地，方便日后快速连接
+            {t('session.save.description')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="basic" className="space-y-4">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="basic">基本配置</TabsTrigger>
-              <TabsTrigger value="advanced">高级选项</TabsTrigger>
+              <TabsTrigger value="basic">{t('session.save.tab.basic')}</TabsTrigger>
+              <TabsTrigger value="advanced">{t('session.save.tab.advanced')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-4">
               {/* 会话名称 */}
               <div className="space-y-2">
                 <Label htmlFor="save-name">
-                  会话名称 <span className="text-destructive">*</span>
+                  {t('session.field.name')} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="save-name"
-                  placeholder="例如: 生产服务器"
+                  placeholder={t('session.field.namePlaceholder')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  为此连接配置指定一个易记的名称
+                  {t('session.field.nameHint')}
                 </p>
               </div>
 
               {/* 分组 */}
               <div className="space-y-2">
-                <Label htmlFor="save-group">分组</Label>
+                <Label htmlFor="save-group">{t('session.field.group')}</Label>
                 <Input
                   id="save-group"
-                  placeholder="例如: 生产环境、测试环境"
+                  placeholder={t('session.field.groupPlaceholder')}
                   value={formData.group}
                   onChange={(e) => setFormData({ ...formData, group: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  将会话分组管理，方便查找（默认：默认分组）
+                  {t('session.field.groupHint')}
                 </p>
               </div>
 
               {/* 主机地址 */}
               <div className="space-y-2">
                 <Label htmlFor="save-host">
-                  主机地址 <span className="text-destructive">*</span>
+                  {t('session.field.host')} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="save-host"
-                  placeholder="192.168.1.100 或 example.com"
+                  placeholder={t('session.field.hostPlaceholder')}
                   value={formData.host}
                   onChange={(e) => setFormData({ ...formData, host: e.target.value })}
                   onBlur={generateName}
@@ -198,7 +200,7 @@ export function SaveSessionDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="save-port">
-                    端口 <span className="text-destructive">*</span>
+                    {t('session.field.port')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="save-port"
@@ -213,11 +215,11 @@ export function SaveSessionDialog({
 
                 <div className="space-y-2">
                   <Label htmlFor="save-username">
-                    用户名 <span className="text-destructive">*</span>
+                    {t('session.field.username')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="save-username"
-                    placeholder="root"
+                    placeholder={t('session.field.usernamePlaceholder')}
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     onBlur={generateName}
@@ -229,7 +231,7 @@ export function SaveSessionDialog({
               {/* 认证方式 */}
               <div className="space-y-2">
                 <Label htmlFor="save-auth">
-                  认证方式 <span className="text-destructive">*</span>
+                  {t('session.field.authMethod')} <span className="text-destructive">*</span>
                 </Label>
                 <Select
                   value={formData.authMethod}
@@ -239,8 +241,8 @@ export function SaveSessionDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="password">密码</SelectItem>
-                    <SelectItem value="publicKey">公钥</SelectItem>
+                    <SelectItem value="password">{t('session.auth.password')}</SelectItem>
+                    <SelectItem value="publicKey">{t('session.auth.publicKey')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -249,18 +251,18 @@ export function SaveSessionDialog({
               {formData.authMethod === 'password' && (
                 <div className="space-y-2">
                   <Label htmlFor="save-password">
-                    密码 <span className="text-destructive">*</span>
+                    {t('session.field.password')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="save-password"
                     type="password"
-                    placeholder="输入 SSH 密码"
+                    placeholder={t('session.field.passwordPlaceholder')}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    密码将被加密后保存到本地
+                    {t('session.field.passwordSecurityHint')}
                   </p>
                 </div>
               )}
@@ -270,11 +272,11 @@ export function SaveSessionDialog({
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="save-key">
-                      私钥路径 <span className="text-destructive">*</span>
+                      {t('session.field.privateKeyPath')} <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="save-key"
-                      placeholder="~/.ssh/id_rsa"
+                      placeholder={t('session.field.privateKeyPathPlaceholder')}
                       value={formData.privateKeyPath}
                       onChange={(e) => setFormData({ ...formData, privateKeyPath: e.target.value })}
                       required
@@ -282,11 +284,11 @@ export function SaveSessionDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="save-passphrase">私钥密码（可选）</Label>
+                    <Label htmlFor="save-passphrase">{t('session.field.passphrase')}</Label>
                     <Input
                       id="save-passphrase"
                       type="password"
-                      placeholder="如果私钥有密码保护"
+                      placeholder={t('session.field.passphrasePlaceholder')}
                       value={formData.passphrase}
                       onChange={(e) => setFormData({ ...formData, passphrase: e.target.value })}
                     />
@@ -298,7 +300,7 @@ export function SaveSessionDialog({
             <TabsContent value="advanced" className="space-y-4">
               {/* 终端类型 */}
               <div className="space-y-2">
-                <Label htmlFor="save-terminal">终端类型</Label>
+                <Label htmlFor="save-terminal">{t('session.field.terminalType')}</Label>
                 <Select
                   value={formData.terminalType}
                   onValueChange={(value) => setFormData({ ...formData, terminalType: value })}
@@ -314,17 +316,17 @@ export function SaveSessionDialog({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  指定终端模拟的类型，通常使用默认值即可
+                  {t('session.field.terminalTypeHint')}
                 </p>
               </div>
 
               <div className="rounded-lg border p-4 bg-muted/20">
-                <h4 className="font-semibold mb-2">💡 保存说明</h4>
+                <h4 className="font-semibold mb-2">💡 {t('session.save.info.title')}</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• 会话配置将加密保存到本地存储</li>
-                  <li>• 密码使用 AES 加密后存储</li>
-                  <li>• 保存后可在会话管理页面查看</li>
-                  <li>• 支持编辑和删除已保存的会话</li>
+                  <li>• {t('session.save.info.encryption')}</li>
+                  <li>• {t('session.save.info.aesEncryption')}</li>
+                  <li>• {t('session.save.info.viewInManager')}</li>
+                  <li>• {t('session.save.info.editAndDelete')}</li>
                 </ul>
               </div>
             </TabsContent>
@@ -337,18 +339,18 @@ export function SaveSessionDialog({
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
-              取消
+              {t('dialog.cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  保存中...
+                  {t('session.status.saving')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  保存会话
+                  {t('session.action.save')}
                 </>
               )}
             </Button>

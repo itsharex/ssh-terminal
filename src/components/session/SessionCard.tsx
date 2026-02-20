@@ -1,4 +1,5 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Terminal, Trash2, Play, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +20,7 @@ interface SessionCardProps {
 export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
   const [connecting, setConnecting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { connectSession, disconnectSession, deleteSession, sessions, createConnection } = useSessionStore();
   const { addTab, removeTab, getTabsByConnection } = useTerminalStore();
@@ -58,7 +60,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
         playSound(SoundEffect.ERROR);
         console.error('Failed to create connection:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
-        toast.error('创建新连接失败', {
+        toast.error(t('session.error.createConnectionFailed'), {
           description: errorMessage,
         });
       } finally {
@@ -78,7 +80,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
         playSound(SoundEffect.ERROR);
         console.error('Failed to connect:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
-        toast.error('连接失败', {
+        toast.error(t('session.error.connectionFailed'), {
           description: errorMessage,
         });
       } finally {
@@ -106,12 +108,12 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
       }
 
       playSound(SoundEffect.SUCCESS);
-      toast.success('断开连接成功');
+      toast.success(t('session.success.disconnected'));
     } catch (error) {
       playSound(SoundEffect.ERROR);
       console.error('Failed to disconnect:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error('断开连接失败', {
+      toast.error(t('session.error.disconnectFailed'), {
         description: errorMessage,
       });
     }
@@ -127,8 +129,8 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
 
     if (hasActiveConnection) {
       playSound(SoundEffect.ERROR);
-      toast.error('无法删除会话', {
-        description: '该会话存在活跃连接，请先断开所有连接后再删除',
+      toast.error(t('session.error.cannotDelete'), {
+        description: t('session.error.hasActiveConnections'),
       });
       return;
     }
@@ -137,13 +139,13 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
       console.log(`正在删除会话: ${session.name} (${session.id})`);
       await deleteSession(session.id);
       playSound(SoundEffect.SUCCESS);
-      toast.success('删除会话成功');
+      toast.success(t('session.success.deleted'));
       console.log(`会话删除成功: ${session.name}`);
     } catch (error) {
       playSound(SoundEffect.ERROR);
       console.error('删除会话失败:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error('删除会话失败', {
+      toast.error(t('session.error.deleteFailed'), {
         description: errorMessage,
       });
     }
@@ -186,7 +188,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
               onClick={handleDisconnect}
               className="flex-1"
             >
-              断开
+              {t('session.action.disconnect')}
             </Button>
             <Button
               size="sm"
@@ -194,7 +196,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
               className="flex-1"
             >
               <Terminal className="h-4 w-4 mr-1" />
-              打开终端
+              {t('session.action.openTerminal')}
             </Button>
           </>
         ) : (
@@ -205,7 +207,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
               onClick={handleEdit}
             >
               <Edit className="h-4 w-4 mr-1" />
-              编辑
+              {t('session.action.edit')}
             </Button>
             <Button
               size="sm"
@@ -216,12 +218,12 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
               {connecting ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                  连接中
+                  {t('session.status.connecting')}
                 </>
               ) : (
                 <>
                   <Play className="h-4 w-4 mr-1" />
-                  连接
+                  {t('session.action.connect')}
                 </>
               )}
             </Button>
@@ -240,22 +242,22 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-background border rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-2">确认删除</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('dialog.confirmDelete.title')}</h3>
             <p className="text-muted-foreground mb-4">
-              确定要删除会话 "{session.name}" 吗？此操作无法撤销。
+              {t('dialog.confirmDelete.message', { name: session.name })}
             </p>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => setShowDeleteConfirm(false)}
               >
-                取消
+                {t('dialog.cancel')}
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleDelete}
               >
-                删除
+                {t('dialog.delete')}
               </Button>
             </div>
           </div>

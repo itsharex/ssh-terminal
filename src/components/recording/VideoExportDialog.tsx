@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { X, Download, Video } from 'lucide-react';
@@ -17,6 +18,8 @@ export function VideoExportDialog({
   onOpenChange,
   recordingFileItem,
 }: VideoExportDialogProps) {
+  const { t } = useTranslation();
+
   const [progress, setProgress] = useState<VideoExportProgress>({
     totalFrames: 0,
     currentFrame: 0,
@@ -202,11 +205,11 @@ export function VideoExportDialog({
 
   const getStatusText = (status: VideoExportProgress['status']) => {
     const statusMap = {
-      preparing: '准备中...',
-      encoding: '编码中...',
-      finalizing: '完成中...',
-      completed: '已完成',
-      error: '导出失败',
+      preparing: t('recording.export.statusPreparing'),
+      encoding: t('recording.export.statusEncoding'),
+      finalizing: t('recording.export.statusFinalizing'),
+      completed: t('recording.export.statusCompleted'),
+      error: t('recording.export.statusError'),
     };
     return statusMap[status];
   };
@@ -226,7 +229,7 @@ export function VideoExportDialog({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Video className="w-5 h-5" />
-            <h3 className="text-lg font-semibold">导出为视频</h3>
+            <h3 className="text-lg font-semibold">{t('recording.export.title')}</h3>
           </div>
           <Button
             variant="ghost"
@@ -241,10 +244,10 @@ export function VideoExportDialog({
         {/* 视频信息说明 */}
         <div className="rounded-lg border p-4 bg-muted/20 mb-6">
           <p className="text-sm text-muted-foreground">
-            此录制包含预先录制的视频。导出的视频将使用录制时的格式和质量设置。
+            {t('recording.export.description')}
             <br />
             <span className="text-xs">
-              格式和质量在"设置 → 会话"中配置。支持 WebM 和 MP4 格式。
+              {t('recording.export.formatHint')}
             </span>
           </p>
         </div>
@@ -276,11 +279,14 @@ export function VideoExportDialog({
             <div className="text-xs text-muted-foreground">
               {progress.totalFrames > 0 ? (
                 <>
-                  {progress.currentFrame} / {progress.totalFrames} 帧
-                  ({progress.percentage}%)
+                  {t('recording.export.framesProgress', {
+                    current: progress.currentFrame,
+                    total: progress.totalFrames,
+                    percentage: progress.percentage
+                  })}
                 </>
               ) : (
-                '准备中...'
+                t('recording.export.statusPreparing')
               )}
             </div>
           </div>
@@ -294,11 +300,11 @@ export function VideoExportDialog({
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                关闭
+                {t('recording.export.actionClose')}
               </Button>
               <Button onClick={handleDownload} className="gap-2">
                 <Download className="w-4 h-4" />
-                下载视频
+                {t('recording.export.actionDownload')}
               </Button>
             </>
           ) : (
@@ -307,12 +313,12 @@ export function VideoExportDialog({
                 variant="outline"
                 onClick={isExporting ? handleCancelExport : () => onOpenChange(false)}
               >
-                {isExporting ? '取消' : '关闭'}
+                {isExporting ? t('recording.export.actionCancel') : t('recording.export.actionClose')}
               </Button>
               {canExport && (
                 <Button onClick={handleStartExport} className="gap-2">
                   <Video className="w-4 h-4" />
-                  开始导出
+                  {t('recording.export.actionStart')}
                 </Button>
               )}
             </>
@@ -322,7 +328,7 @@ export function VideoExportDialog({
         {/* 信息提示 */}
         {canExport && (
           <div className="mt-4 text-xs text-muted-foreground">
-            ⚠️ 如果没有预先录制的视频，导出可能需要较长时间，请耐心等待。导出期间请不要关闭窗口。
+            ⚠️ {t('recording.export.warning')}
           </div>
         )}
       </div>

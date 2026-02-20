@@ -1,0 +1,1190 @@
+﻿{
+  "app": {
+    "name": "SSH Terminal"
+  },
+  "nav": {
+    "section": {
+      "connection": "连接",
+      "ai": "AI 助手",
+      "tools": "工具",
+      "config": "配置"
+    },
+    "item": {
+      "terminal": "终端",
+      "sessions": "会话管理",
+      "aiChat": "AI 对话",
+      "sftp": "文件管理器",
+      "settings": "设置",
+      "userProfile": "用户资料"
+    }
+  },
+  "userMenu": {
+    "profile": "个人资料",
+    "settings": "设置",
+    "logout": "登出",
+    "login": "登录"
+  },
+  "terminal": {
+    "newConnection": "新建连接",
+    "sessionManager": "会话管理",
+    "recordingManager": "录制管理",
+    "loading": "正在加载会话...",
+    "noActiveSession": "没有活动的 SSH 会话",
+    "noActiveSessionHint": "点击下方按钮创建新的 SSH 连接，或从侧边栏选择其他功能",
+    "selectOrCreateTab": "选择或创建一个标签页开始使用"
+  },
+  "page": {
+    "terminal": "终端",
+    "sessions": "会话管理",
+    "settings": "设置",
+    "sftp": "文件管理器"
+  },
+  "action": {
+    "keybinding": {
+      "global": {
+        "newConnection": {
+          "name": "新建连接",
+          "description": "快速创建新的SSH连接"
+        },
+        "openSettings": {
+          "name": "打开设置",
+          "description": "打开应用设置页面"
+        },
+        "toggleSidebar": {
+          "name": "切换侧边栏",
+          "description": "显示或隐藏侧边栏"
+        }
+      },
+      "terminal": {
+        "newTab": {
+          "name": "新建标签页",
+          "description": "复制当前终端连接，创建新标签页（如果没有活动标签页则打开快速连接）"
+        },
+        "closeTab": {
+          "name": "关闭标签页",
+          "description": "关闭当前标签页"
+        },
+        "nextTab": {
+          "name": "下一个标签页",
+          "description": "切换到下一个标签页"
+        },
+        "previousTab": {
+          "name": "上一个标签页",
+          "description": "切换到上一个标签页"
+        },
+        "find": {
+          "name": "查找",
+          "description": "在终端中搜索文本"
+        },
+        "clear": {
+          "name": "清屏",
+          "description": "清除终端屏幕内容"
+        },
+        "paste": {
+          "name": "粘贴",
+          "description": "粘贴剪贴板内容"
+        },
+        "zoomIn": {
+          "name": "放大字体",
+          "description": "增加终端字体大小"
+        },
+        "zoomOut": {
+          "name": "缩小字体",
+          "description": "减小终端字体大小"
+        },
+        "zoomReset": {
+          "name": "重置字体",
+          "description": "重置字体大小为默认值"
+        },
+        "openNLToCmd": {
+          "name": "AI 生成命令",
+          "description": "打开 AI 自然语言转命令面板（Shift+#）"
+        },
+        "explainCommand": {
+          "name": "AI 解释命令",
+          "description": "解释选中的命令（需要先在终端中选中命令）"
+        },
+        "analyzeError": {
+          "name": "AI 分析错误",
+          "description": "分析选中的错误信息（需要先在终端中选中错误文本）"
+        },
+        "openAIChat": {
+          "name": "AI 对话助手",
+          "description": "打开/关闭 AI 对话面板"
+        }
+      },
+      "sftp": {
+        "upload": {
+          "name": "上传文件",
+          "description": "上传选中的本地文件"
+        },
+        "download": {
+          "name": "下载文件",
+          "description": "下载选中的远程文件"
+        },
+        "refresh": {
+          "name": "刷新文件列表",
+          "description": "刷新当前文件列表"
+        }
+      },
+      "session": {
+        "quickConnect": {
+          "name": "新建会话",
+          "description": "在会话管理页面创建新会话"
+        }
+      }
+    },
+    "openTerminal": "打开终端",
+    "newSession": "新建会话",
+    "resetAll": "重置所有"
+  },
+  "session": {
+    "error": {
+      "createConnectionFailed": "创建新连接失败",
+      "connectionFailed": "连接失败",
+      "disconnectFailed": "断开连接失败",
+      "cannotDelete": "无法删除会话",
+      "hasActiveConnections": "该会话存在活跃连接，请先断开所有连接后再删除",
+      "deleteFailed": "删除会话失败",
+      "updateFailed": "会话更新失败",
+      "saveFailed": "会话保存失败",
+      "quickConnectFailed": "快速连接失败"
+    },
+    "success": {
+      "disconnected": "断开连接成功",
+      "deleted": "删除会话成功",
+      "updated": "会话更新成功",
+      "saved": "会话保存成功"
+    },
+    "action": {
+      "keybinding": {
+      "global": {
+          "newConnection": {
+            "name": "新建连接",
+            "description": "快速创建新的SSH连接"
+          },
+          "openSettings": {
+            "name": "打开设置",
+            "description": "打开应用设置页面"
+          },
+          "toggleSidebar": {
+            "name": "切换侧边栏",
+            "description": "显示或隐藏侧边栏"
+          }
+        },
+        "terminal": {
+          "newTab": {
+            "name": "新建标签页",
+            "description": "复制当前终端连接，创建新标签页（如果没有活动标签页则打开快速连接）"
+          },
+          "closeTab": {
+            "name": "关闭标签页",
+            "description": "关闭当前标签页"
+          },
+          "nextTab": {
+            "name": "下一个标签页",
+            "description": "切换到下一个标签页"
+          },
+          "previousTab": {
+            "name": "上一个标签页",
+            "description": "切换到上一个标签页"
+          },
+          "find": {
+            "name": "查找",
+            "description": "在终端中搜索文本"
+          },
+          "clear": {
+            "name": "清屏",
+            "description": "清除终端屏幕内容"
+          },
+          "paste": {
+            "name": "粘贴",
+            "description": "粘贴剪贴板内容"
+          },
+          "zoomIn": {
+            "name": "放大字体",
+            "description": "增加终端字体大小"
+          },
+          "zoomOut": {
+            "name": "缩小字体",
+            "description": "减小终端字体大小"
+          },
+          "zoomReset": {
+            "name": "重置字体",
+            "description": "重置字体大小为默认值"
+          },
+          "openNLToCmd": {
+            "name": "AI 生成命令",
+            "description": "打开 AI 自然语言转命令面板（Shift+#）"
+          },
+          "explainCommand": {
+            "name": "AI 解释命令",
+            "description": "解释选中的命令（需要先在终端中选中命令）"
+          },
+          "analyzeError": {
+            "name": "AI 分析错误",
+            "description": "分析选中的错误信息（需要先在终端中选中错误文本）"
+          },
+          "openAIChat": {
+            "name": "AI 对话助手",
+            "description": "打开/关闭 AI 对话面板"
+          }
+        },
+        "sftp": {
+          "upload": {
+            "name": "上传文件",
+            "description": "上传选中的本地文件"
+          },
+          "download": {
+            "name": "下载文件",
+            "description": "下载选中的远程文件"
+          },
+          "refresh": {
+            "name": "刷新文件列表",
+            "description": "刷新当前文件列表"
+          }
+        },
+        "session": {
+          "quickConnect": {
+            "name": "新建会话",
+            "description": "在会话管理页面创建新会话"
+          }
+        }
+      },
+      "disconnect": "断开",
+      "openTerminal": "打开终端",
+      "edit": "编辑",
+      "connect": "连接",
+      "saveChanges": "保存更改",
+      "connectNow": "立即连接",
+      "save": "保存会话"
+    },
+    "status": {
+      "connected": "已连接",
+      "connecting": "连接中",
+      "disconnected": "已断开",
+      "error": "错误",
+      "saving": "保存中..."
+    },
+    "defaultGroup": "默认分组",
+    "edit": {
+      "title": "编辑会话",
+      "description": "修改会话配置信息"
+    },
+    "quickConnect": {
+      "title": "快速连接",
+      "description": "快速建立 SSH 连接，不保存配置信息",
+      "button": "快速连接"
+    },
+    "save": {
+      "title": "保存会话配置",
+      "description": "保存 SSH 会话配置到本地，方便日后快速连接",
+      "tab": {
+        "basic": "基本配置",
+        "advanced": "高级选项"
+      },
+      "info": {
+        "title": "保存说明",
+        "encryption": "会话配置将加密保存到本地存储",
+        "aesEncryption": "密码使用 AES 加密后存储",
+        "viewInManager": "保存后可在会话管理页面查看",
+        "editAndDelete": "支持编辑和删除已保存的会话"
+      }
+    },
+    "field": {
+      "name": "会话名称",
+      "namePlaceholder": "例如: 生产服务器",
+      "nameHint": "为此连接配置指定一个易记的名称",
+      "host": "主机地址",
+      "hostPlaceholder": "192.168.1.100 或 example.com",
+      "port": "端口",
+      "username": "用户名",
+      "usernamePlaceholder": "例如: root",
+      "group": "分组",
+      "groupPlaceholder": "例如: 生产环境、测试环境",
+      "groupHint": "将会话分组管理，方便查找（默认：默认分组）",
+      "authMethod": "认证方式",
+      "password": "密码",
+      "passwordPlaceholder": "输入 SSH 密码",
+      "passwordHint": "请输入密码以完成认证配置",
+      "passwordSecurityHint": "密码将被加密后保存到本地",
+      "privateKeyPath": "私钥路径",
+      "privateKeyPathPlaceholder": "~/.ssh/id_rsa",
+      "passphrase": "私钥密码（可选）",
+      "passphrasePlaceholder": "如果私钥有密码保护",
+      "terminalType": "终端类型",
+      "terminalTypeHint": "指定终端模拟的类型，通常使用默认值即可"
+    },
+    "auth": {
+      "password": "密码",
+      "publicKey": "公钥"
+    },
+    "search": {
+      "placeholder": "搜索会话..."
+    },
+    "filter": {
+      "all": "全部",
+      "connected": "已连接",
+      "disconnected": "已断开"
+    }
+  },
+  "dialog": {
+    "confirmDelete": {
+      "title": "确认删除",
+      "message": "确定要删除会话 \"{{name}}\" 吗？此操作无法撤销。"
+    },
+    "cancel": "取消",
+    "delete": "删除",
+    "confirm": "确定",
+    "close": "关闭",
+    "save": "保存",
+    "create": "新建",
+    "add": "添加",
+    "remove": "移除",
+    "import": "导入",
+    "export": "导出",
+    "refresh": "刷新",
+    "search": "搜索",
+    "filter": "筛选",
+    "clear": "清空",
+    "reset": "重置",
+    "apply": "应用",
+    "skip": "跳过",
+    "done": "完成",
+    "next": "下一步",
+    "previous": "上一步",
+    "edit": "编辑"
+  },
+  "common": {
+    "cancel": "取消",
+    "confirm": "确认",
+    "close": "关闭",
+    "save": "保存",
+    "delete": "删除",
+    "loading": "加载中...",
+    "processing": "处理中...",
+    "saving": "保存中...",
+    "deleting": "删除中...",
+    "success": "操作成功",
+    "error": "操作失败",
+    "unknownError": "未知错误",
+    "networkError": "网络错误",
+    "permissionDenied": "权限不足",
+    "invalidParams": "参数错误",
+    "notFound": "未找到"
+  },
+  "validation": {
+    "requiredFields": "请填写必填字段",
+    "passwordRequired": "请输入密码",
+    "keyPathRequired": "请输入私钥路径"
+  },
+  "settings": {
+    "title": "设置",
+    "terminal": {
+      "title": "终端设置",
+      "reset": "恢复默认",
+      "theme": "主题",
+      "font": "字体",
+      "fontFamily": "字体家族",
+      "fontSize": "字号",
+      "fontWeight": "字重",
+      "lineHeight": "行高",
+      "letterSpacing": "字间距",
+      "cursor": "光标",
+      "cursorBlink": "光标闪烁",
+      "cursorStyle": "光标样式",
+      "cursorBlock": "方块",
+      "cursorUnderline": "下划线",
+      "cursorBar": "竖线",
+      "connection": "连接",
+      "keepAliveInterval": "心跳间隔",
+      "keepAliveIntervalDescription": "保持 SSH 连接活跃的间隔秒数: {{value}}s",
+      "keepAliveIntervalDisabled": "禁用",
+      "keepAliveIntervalTip": "启用心跳功能可以防止长时间空闲导致 SSH 连接断开。建议设置为 30-60 秒以平衡性能和连接稳定性。设置为 0 可以禁用心跳功能。",
+      "other": "其他",
+      "padding": "内边距",
+      "scrollback": "滚动缓冲"
+    },
+    "ai": {
+      "title": "AI 设置",
+      "reset": "恢复默认",
+      "save": "保存配置",
+      "saving": "保存中...",
+      "saveSuccess": "AI 配置已保存",
+      "saveFailed": "保存配置失败",
+      "resetSuccess": "已恢复默认配置",
+      "defaultProvider": {
+        "title": "默认 AI 服务",
+        "label": "选择默认使用的 AI 服务",
+        "hint": "启用的服务将作为 AI 功能的默认提供者"
+      },
+      "providers": {
+        "title": "已配置的 AI 服务",
+        "add": "添加新服务",
+        "addDialogTitle": "添加 AI 服务",
+        "addDialogDescription": "选择服务类型并输入名称",
+        "type": "服务类型",
+        "typePlaceholder": "例如: openai, ollama, qwen, claude",
+        "mode": "服务形式",
+        "modeApi": "API 服务（需要 API Key）",
+        "modeLocal": "本地服务（不需要 API Key）",
+        "modeLocalHint": "本地服务运行在内网，不需要配置 API Key",
+        "modeApiHint": "API 服务需要配置 API Key 进行身份验证",
+        "name": "服务名称",
+        "namePlaceholder": "例如: 我的 OpenAI",
+        "test": "测试连接",
+        "testSuccess": "连接测试成功",
+        "testFailed": "连接测试失败",
+        "notFound": "Provider not found",
+        "testFailedWithReason": "连接测试失败: {{error}}",
+        "apiKey": "API Key",
+        "baseUrl": "Base URL（可选）",
+        "baseUrlOllamaHint": "Ollama 服务的地址（本地安装后默认为 http://localhost:11434）",
+        "baseUrlHint": "API 的基础地址（通常不需要修改）",
+        "model": "模型",
+        "modelPlaceholder": "输入模型名称",
+        "modelRecommended": "推荐模型: {{models}}",
+        "temperature": "Temperature ({{value}})",
+        "temperatureHint": "控制响应的随机性（0-2，值越高越随机）",
+        "maxTokens": "Max Tokens ({{value}})",
+        "maxTokensHint": "单次响应的最大 token 数（1-32000）",
+        "validationTypeRequired": "请输入服务类型",
+        "validationNameRequired": "请输入服务名称",
+        "addSuccess": "已添加新服务（请填写配置后点击\"保存配置\"）",
+        "deleteSuccess": "已删除服务",
+        "saveFailed": "保存配置失败"
+      },
+      "providerType": {
+        "openai": "OpenAI",
+        "ollama": "Ollama (本地)",
+        "qwen": "通义千问",
+        "wenxin": "文心一言"
+      },
+      "usageTips": {
+        "title": "使用提示",
+        "openai": "OpenAI：需要 API Key，响应速度快，质量高，按使用量付费",
+        "ollama": "Ollama：本地运行，完全免费，数据隐私安全，需要先安装 Ollama",
+        "testFirst": "建议先测试连接，确保配置正确后再使用 AI 功能",
+        "multipleProviders": "可以同时配置多个 Provider，随时切换使用",
+        "rememberToSave": "修改配置后记得点击\"保存配置\"按钮"
+      },
+      "shortcuts": {
+        "title": "AI 功能快捷键：",
+        "explainCommand": "命令解释：选中命令后按 Ctrl+Shift+A",
+        "nlToCommand": "自然语言转命令：输入 # + 描述",
+        "openChat": "AI 对话面板：按 Ctrl+Shift+I",
+        "errorAnalysis": "错误分析：自动检测并提供解决方案"
+      }
+    },
+    "keybindings": {
+      "title": "快捷键设置",
+      "description": "自定义应用快捷键，提升操作效率",
+      "selectCategory": "选择分类",
+      "category": {
+        "all": "所有分类",
+        "global": "全局",
+        "terminal": "终端",
+        "session": "会话",
+        "sftp": "SFTP"
+      },
+      "categoryName": {
+        "global": "全局快捷键",
+        "terminal": "终端快捷键",
+        "session": "会话管理",
+        "sftp": "SFTP 文件管理",
+        "other": "其他"
+      },
+      "loadPreset": "加载预设",
+      "export": "导出配置",
+      "import": "导入配置",
+      "reset": "重置为默认",
+      "searchPlaceholder": "搜索快捷键...",
+      "noResults": "没有找到匹配的快捷键",
+      "exportFailed": "导出失败: {{error}}",
+      "importFailed": "导入失败: {{error}}"
+    },
+    "tabs": {
+      "account": "账号与服务",
+      "appearance": "外观",
+      "terminal": "终端",
+      "recording": "录制",
+      "keybindings": "快捷键",
+      "ai": "AI",
+      "about": "关于"
+    },
+    "account": {
+      "title": "账号与服务",
+      "serverUrl": {
+        "label": "服务器地址",
+        "description": "SSH 会话云同步服务器地址",
+        "placeholder": "http://localhost:3000",
+        "saving": "保存中...",
+        "save": "保存"
+      },
+      "autoSync": {
+        "label": "自动同步",
+        "description": "自动同步 SSH 会话到云服务器（暂不支持）"
+      },
+      "syncInterval": {
+        "label": "同步间隔",
+        "description": "自动同步的时间间隔（分钟）（暂不支持）",
+        "minutes": "{{interval}} 分钟"
+      },
+      "language": {
+        "label": "语言",
+        "description": "选择应用界面语言"
+      }
+    },
+    "appearance": {
+      "title": "外观设置",
+      "theme": {
+        "label": "主题模式",
+        "description": "选择应用的主题外观"
+      },
+      "notifications": {
+        "label": "通知",
+        "description": "接收连接状态和错误通知"
+      },
+      "sound": {
+        "label": "音效",
+        "description": "播放操作反馈音效"
+      }
+    },
+    "recording": {
+      "title": "录制设置",
+      "videoQuality": {
+        "label": "视频录制质量",
+        "description": "选择录制视频的质量（影响视频文件大小）",
+        "low": "低 (500 Kbps)",
+        "medium": "中 (2 Mbps)",
+        "high": "高 (5 Mbps)"
+      },
+      "videoFormat": {
+        "label": "视频录制格式",
+        "description": "选择录制视频的格式（WebM 推荐用于网络播放）",
+        "webm": "WebM (VP9)",
+        "mp4": "MP4 (H.264)"
+      },
+      "recordMicrophone": {
+        "label": "录制麦克风",
+        "description": "录制用户通过麦克风说话的声音（需要用户授权）",
+        "warning": "⚠️ 重要提示：系统会自动过滤掉立体声混音等系统音频设备。如果发现录制到了音乐或其他应用的声音，请检查系统音频设置，确保选择了正确的麦克风设备而非混音设备。"
+      },
+      "recordSpeaker": {
+        "label": "录制扬声器（系统音频）",
+        "description": "录制系统播放的声音（Windows WASAPI Loopback Recording）"
+      },
+      "audioQuality": {
+        "label": "音频录制质量",
+        "description": "选择录制音频的质量（影响音频文件大小）",
+        "low": "低 (64 Kbps)",
+        "medium": "中 (128 Kbps)",
+        "high": "高 (256 Kbps)"
+      },
+      "audioSampleRate": {
+        "44100": "44.1 kHz",
+        "48000": "48 kHz",
+        "96000": "96 kHz",
+        "label": "音频采样率",
+        "description": "选择录制音频的采样率（当前: {{rate}} Hz）"
+      },
+      "tips": {
+        "title": "录制提示",
+        "tip1": "音频录制需要浏览器权限。启用麦克风录制需要用户授权",
+        "tip2": "扬声器录制仅在支持 WASAPI Loopback Recording 的平台上可用（Windows）",
+        "tip3": "如果麦克风录制到了系统音频（音乐等），请在系统设置中检查默认录音设备",
+        "tip4": "建议在 Windows 设置中禁用立体声混音设备，避免误选",
+        "micCheck": "如何检查麦克风设备：打开 Windows 设置 → 系统 → 声音 → 输入设备，确认选择了正确的麦克风设备，而非立体声混音。"
+      }
+    },
+    "about": {
+      "title": "SSH Terminal",
+      "version": "版本 1.0.0",
+      "description": "基于 Tauri 2.0 和 React 19 构建的现代化 SSH 终端管理工具",
+      "techStack": {
+        "title": "技术栈",
+        "frontend": "前端",
+        "backend": "后端",
+        "ui": "UI 库",
+        "terminal": "终端"
+      },
+      "repository": {
+        "title": "开源仓库",
+        "github": "GitHub 仓库",
+        "repoName": "shenjianZ/ssh-terminal",
+        "description": "欢迎访问 GitHub 仓库查看源代码、提交 Issue 或参与贡献",
+        "visit": "访问"
+      },
+      "copyright": "© 2026 SSH Terminal. 保留所有权利。",
+      "madeWith": "使用 Tauri 和 React 构建而成 ❤️"
+    }
+  },
+  "recording": {
+    "countdown": {
+      "message": "即将开始录制..."
+    },
+    "nameDialog": {
+      "title": "命名录制会话",
+      "placeholder": "请输入会话名称"
+    },
+    "action": {
+      "start": "开始录制",
+      "resume": "恢复",
+      "pause": "暂停",
+      "stop": "停止"
+    },
+    "keybinding": {
+      "global": {
+          "newConnection": {
+            "name": "新建连接",
+            "description": "快速创建新的SSH连接"
+          },
+          "openSettings": {
+            "name": "打开设置",
+            "description": "打开应用设置页面"
+          },
+          "toggleSidebar": {
+            "name": "切换侧边栏",
+            "description": "显示或隐藏侧边栏"
+          }
+        },
+        "terminal": {
+          "newTab": {
+            "name": "新建标签页",
+            "description": "复制当前终端连接，创建新标签页（如果没有活动标签页则打开快速连接）"
+          },
+          "closeTab": {
+            "name": "关闭标签页",
+            "description": "关闭当前标签页"
+          },
+          "nextTab": {
+            "name": "下一个标签页",
+            "description": "切换到下一个标签页"
+          },
+          "previousTab": {
+            "name": "上一个标签页",
+            "description": "切换到上一个标签页"
+          },
+          "find": {
+            "name": "查找",
+            "description": "在终端中搜索文本"
+          },
+          "clear": {
+            "name": "清屏",
+            "description": "清除终端屏幕内容"
+          },
+          "paste": {
+            "name": "粘贴",
+            "description": "粘贴剪贴板内容"
+          },
+          "zoomIn": {
+            "name": "放大字体",
+            "description": "增加终端字体大小"
+          },
+          "zoomOut": {
+            "name": "缩小字体",
+            "description": "减小终端字体大小"
+          },
+          "zoomReset": {
+            "name": "重置字体",
+            "description": "重置字体大小为默认值"
+          },
+          "openNLToCmd": {
+            "name": "AI 生成命令",
+            "description": "打开 AI 自然语言转命令面板（Shift+#）"
+          },
+          "explainCommand": {
+            "name": "AI 解释命令",
+            "description": "解释选中的命令（需要先在终端中选中命令）"
+          },
+          "analyzeError": {
+            "name": "AI 分析错误",
+            "description": "分析选中的错误信息（需要先在终端中选中错误文本）"
+          },
+          "openAIChat": {
+            "name": "AI 对话助手",
+            "description": "打开/关闭 AI 对话面板"
+          }
+        },
+        "sftp": {
+          "upload": {
+            "name": "上传文件",
+            "description": "上传选中的本地文件"
+          },
+          "download": {
+            "name": "下载文件",
+            "description": "下载选中的远程文件"
+          },
+          "refresh": {
+            "name": "刷新文件列表",
+            "description": "刷新当前文件列表"
+          }
+        },
+        "session": {
+          "quickConnect": {
+            "name": "新建会话",
+            "description": "在会话管理页面创建新会话"
+          }
+        }
+    },
+    "manager": {
+      "title": "录制文件管理",
+      "refresh": "刷新",
+      "close": "关闭",
+      "searchPlaceholder": "搜索录制文件...",
+      "emptyTitle": "暂无录制文件",
+      "emptyMessage": "开始录制后，文件将显示在这里",
+      "duration": "时长: {{duration}}",
+      "fileSize": "大小: {{size}}",
+      "eventCount": "事件: {{count}}",
+      "createdAt": "创建时间: {{date}}",
+      "exportVideo": "导出视频",
+      "exportJson": "导出为 JSON",
+      "delete": "删除",
+      "totalCount": "共 {{count}} 个录制文件",
+      "confirmDeleteTitle": "确认删除",
+      "confirmDeleteMessage": "确定要删除录制文件 \"{{name}}\" 吗？",
+      "confirmDeleteWarning": "此操作无法撤销，文件将被永久删除。"
+    },
+    "export": {
+      "title": "导出为视频",
+      "description": "此录制包含预先录制的视频。导出的视频将使用录制时的格式和质量设置。",
+      "formatHint": "格式和质量在\"设置 → 会话\"中配置。支持 WebM 和 MP4 格式。",
+      "statusPreparing": "准备中...",
+      "statusEncoding": "编码中...",
+      "statusFinalizing": "完成中...",
+      "statusCompleted": "已完成",
+      "statusError": "导出失败",
+      "error": "错误: {{error}}",
+      "framesPreparing": "准备中...",
+      "framesProgress": "{{current}} / {{total}} 帧 ({{percentage}}%)",
+      "actionClose": "关闭",
+      "actionDownload": "下载视频",
+      "actionStart": "开始导出",
+      "actionCancel": "取消",
+      "warning": "如果没有预先录制的视频，导出可能需要较长时间，请耐心等待。导出期间请不要关闭窗口。"
+    },
+    "indicator": {
+      "recording": "录制中",
+      "paused": "已暂停"
+    }
+  },
+  "sync": {
+    "success": "同步成功",
+    "successDescription": "所有数据已同步到服务器",
+    "failed": "同步失败",
+    "syncing": "正在同步...",
+    "neverSynced": "未同步",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}} 分钟前",
+    "hoursAgo": "{{count}} 小时前",
+    "daysAgo": "{{count}} 天前",
+    "lastSync": "上次同步: {{time}}",
+    "syncFailed": "同步失败",
+    "syncNow": "立即同步"
+  },
+  "sftp": {
+    "title": "文件管理器",
+    "subtitle": "管理远程文件",
+    "pane": {
+      "local": "本地文件",
+      "remote": "远程文件"
+    },
+    "action": {
+      "upload": "上传",
+      "download": "下载",
+      "refresh": "刷新",
+      "newFolder": "新建文件夹",
+      "delete": "删除",
+      "rename": "重命名",
+      "goToRoot": "根目录",
+      "goToParent": "上级目录",
+      "selectConnection": "选择连接",
+      "goToTerminal": "前往终端"
+    },
+    "status": {
+      "uploading": "上传中...",
+      "downloading": "下载中...",
+      "loading": "加载中...",
+      "selected": "已选择 {{count}} 项",
+      "localFileSystem": "本地文件系统",
+      "remoteFileSystem": "远程文件系统"
+    },
+    "list": {
+      "name": "名称",
+      "size": "大小",
+      "modified": "修改时间",
+      "permissions": "权限",
+      "emptyDirectory": "空目录"
+    },
+    "timestamp": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "daysAgo": "{{days}}天前"
+    },
+    "path": {
+      "placeholder": "输入路径，按回车跳转",
+      "drive": "盘符"
+    },
+    "success": {
+      "enteredParent": "已进入上级目录",
+      "folderCreated": "文件夹 \"{{name}}\" 创建成功",
+      "deleteSuccess": "成功删除 {{count}} 项",
+      "renameSuccess": "重命名成功：{{old}} → {{new}}",
+      "switchedToRoot": "已切换到根目录",
+      "refreshed": "已刷新",
+      "navigatedTo": "已跳转到：{{path}}",
+      "switchedToConnection": "已切换到: {{name}} ({{host}})",
+      "uploadSuccess": "成功上传 {{count}} 个文件",
+      "downloadSuccess": "成功下载 {{count}} 个文件",
+      "refreshSuccess": "刷新成功"
+    },
+    "error": {
+      "noConnectionSelected": "请先选择一个连接",
+      "noFileSelected": "请先选择要上传/下载的文件",
+      "noConnectionsAvailable": "没有可用的 SSH 连接",
+      "connectFirst": "请先在终端页面连接到 SSH 服务器",
+      "selectConnectionFirst": "请选择一个 SSH 连接",
+      "skipDirectory": "跳过目录: {{name}}",
+      "uploadFailed": "上传失败: {{error}}",
+      "downloadFailed": "下载失败: {{error}}",
+      "refreshFailed": "刷新失败",
+      "createPermissionDenied": "创建失败：没有权限",
+      "folderExists": "文件夹 \"{{name}}\" 已存在",
+      "parentPathNotExists": "父路径不存在",
+      "createFailed": "创建文件夹失败: {{error}}",
+      "deletePermissionDenied": "删除失败：没有权限",
+      "fileNotExists": "文件或目录不存在",
+      "directoryNotEmpty": "删除失败：目录不为空",
+      "deleteFailed": "删除失败: {{error}}",
+      "renamePermissionDenied": "重命名失败：没有权限",
+      "fileExists": "文件名 \"{{name}}\" 已存在",
+      "renameFailed": "重命名失败: {{error}}",
+      "cannotGetHomeDir": "无法获取用户家目录",
+      "cannotAccessDrive": "无法访问 {{drive}} 盘",
+      "pathNotExists": "路径不存在: {{path}}",
+      "notDirectory": "不是目录: {{path}}",
+      "permissionDenied": "没有访问权限: {{path}}",
+      "cannotAccess": "无法访问路径: {{path}}",
+      "noPermission": "没有访问权限",
+      "directoryNotExists": "目录不存在",
+      "notDirectoryShort": "不是目录",
+      "cannotOpenDirectory": "无法打开目录: {{error}}"
+    },
+    "dialog": {
+      "newFolder": {
+        "title": "新建文件夹",
+        "label": "文件夹名称",
+        "placeholder": "输入文件夹名称",
+        "actionCreate": "创建"
+      },
+      "confirmDelete": {
+        "title": "确认删除",
+        "message": "确定要删除选中的 {{count}} 项吗？",
+        "warning": "此操作不可撤销。"
+      },
+      "rename": {
+        "title": "重命名",
+        "label": "新名称",
+        "placeholder": "输入新名称",
+        "actionConfirm": "确定"
+      }
+    }
+  },
+  "ai": {
+    "chat": {
+      "title": "AI 对话",
+      "inputOfflineHint": "当前服务器离线。您可以继续询问通用技术问题，但无法执行服务器相关操作。",
+      "inputPlaceholderOnline": "输入你的问题... (Enter 发送, Shift+Enter 换行)",
+      "inputPlaceholderOffline": "输入消息（离线模式）... (Enter 发送, Shift+Enter 换行)",
+      "inputCharacterCount": "{{count}} 字符",
+      "errorSendFailed": "发送失败:",
+      "headerOnline": "在线",
+      "headerOffline": "离线"
+    },
+    "explain": {
+      "noProvider": "请先在设置中配置并启用 AI Provider",
+      "failed": "解释失败: {{error}}",
+      "title": "AI 命令解释",
+      "description": "AI 会解释选中命令的功能、参数、使用场景和风险提示",
+      "commandTitle": "待解释的命令",
+      "resultTitle": "解释结果",
+      "emptyMessage": "点击下方按钮开始 AI 解释",
+      "loading": "AI 正在解释命令...",
+      "actionClose": "关闭",
+      "actionStart": "开始解释",
+      "actionExplaining": "解释中...",
+      "actionRetry": "重新解释"
+    },
+    "nl2cmd": {
+      "title": "自然语言转命令",
+      "description": "用自然语言描述你想要执行的操作，AI 将为你生成对应的命令",
+      "noProvider": "请先在设置中配置并启用 AI Provider",
+      "failed": "转换失败: {{error}}",
+      "placeholder": "输入你的需求...",
+      "example": "例如: 删除 30 天前的日志文件",
+      "actionGenerate": "生成命令",
+      "actionGenerating": "生成中...",
+      "actionClose": "关闭",
+      "actionCopy": "复制",
+      "resultTitle": "生成的命令"
+    },
+    "errorAnalysis": {
+      "title": "AI 错误分析",
+      "description": "AI 将分析错误并提供解决方案",
+      "noProvider": "请先在设置中配置并启用 AI Provider",
+      "failed": "分析失败: {{error}}",
+      "errorTitle": "错误信息",
+      "resultTitle": "分析结果",
+      "noError": "没有检测到错误",
+      "actionAnalyzing": "分析中...",
+      "actionRetry": "重新分析",
+      "actionClose": "关闭"
+    },
+    "conversation": {
+      "archived": "(已归档)",
+      "messageCount": "条消息",
+      "actionExport": "导出",
+      "actionArchive": "归档",
+      "actionUnarchive": "取消归档",
+      "actionDelete": "删除",
+      "confirmDeleteMessage": "确定要删除这个对话吗？",
+      "confirmDeleteAction": "删除",
+      "deleteSuccess": "对话已删除",
+      "deleteFailed": "删除失败",
+      "exportSuccess": "导出成功",
+      "exportSuccessDescription": "文件已保存到下载文件夹: {{filename}}",
+      "exportFailed": "导出失败",
+      "archiveSuccess": "归档状态已更新",
+      "operationFailed": "操作失败"
+    },
+    "cache": {
+      "title": "AI Provider 缓存管理",
+      "actionRefresh": "刷新",
+      "actionHotReload": "热重载",
+      "actionClear": "清除缓存",
+      "statsCount": "缓存数量",
+      "statsStatus": "状态",
+      "statusActive": "活跃",
+      "statusEmpty": "空闲",
+      "providersTitle": "已缓存的 Provider",
+      "loading": "加载中...",
+      "emptyTitle": "暂无缓存的 Provider",
+      "emptyMessage": "使用 AI 功能后会自动创建缓存",
+      "infoTitle": "使用说明",
+      "infoCacheMechanism": "缓存机制：相同的 AI 配置会自动复用，提升性能约 90%",
+      "infoHotReload": "热重载：配置文件被外部修改时使用，智能清理变更的 Provider",
+      "infoClearCache": "清除缓存：配置发生重大变更或遇到问题时使用",
+      "infoAutoManagement": "自动管理：保存配置时会自动智能清理相关缓存",
+      "errorLoadFailed": "加载缓存信息失败",
+      "errorClearFailed": "清除缓存失败",
+      "errorHotReloadFailed": "热重载失败",
+      "clearSuccess": "缓存已清除",
+      "clearSuccessDescription": "所有 AI Provider 缓存已被清空",
+      "hotReloadSuccess": "热重载成功",
+      "hotReloadCompleted": "热重载完成",
+      "confirmClearTitle": "确认清除缓存",
+      "confirmClearMessage": "此操作将清除所有 AI Provider 缓存。清除后，下次 AI 调用时会重新创建缓存。",
+      "confirmClearConfirmation": "是否继续？",
+      "confirmClearActionCancel": "取消",
+      "confirmClearActionConfirm": "确认清除"
+    },
+    "status": {
+      "online": "在线",
+      "offline": "离线"
+    }
+  },
+  "user": {
+    "actionLogin": "登录",
+    "menuProfile": "个人资料",
+    "menuSettings": "设置",
+    "menuLogout": "登出",
+    "loginTitle": "登录",
+    "loginEmail": "邮箱",
+    "loginEmailPlaceholder": "请输入邮箱",
+    "loginPassword": "密码",
+    "loginPasswordPlaceholder": "请输入密码",
+    "loginActionLogin": "登录",
+    "loginLoggingIn": "登录中...",
+    "loginSuccess": "登录成功",
+    "loginFailed": "登录失败",
+    "loginValidationRequired": "请输入邮箱和密码",
+    "profile": {
+      "title": "个人中心",
+      "syncToServer": "同步到服务器",
+      "syncing": "同步中...",
+      "avatarSection": {
+        "notLoggedIn": "未登录",
+        "changeAvatar": "更换头像",
+        "imageSelected": "图片已选择",
+        "imageSelectedDescription": "点击\"保存\"按钮以更新头像"
+      },
+      "basicInfo": {
+        "title": "基本信息",
+        "username": "用户名",
+        "usernamePlaceholder": "输入用户名",
+        "email": "邮箱",
+        "emailLocked": "邮箱不可修改，如需更改请联系客服",
+        "bio": "个人简介",
+        "bioPlaceholder": "介绍一下自己..."
+      },
+      "contactInfo": {
+        "title": "联系方式",
+        "phone": "手机号",
+        "phonePlaceholder": "输入手机号",
+        "qq": "QQ",
+        "qqPlaceholder": "输入QQ号",
+        "wechat": "微信号",
+        "wechatPlaceholder": "输入微信号"
+      },
+      "actions": {
+        "edit": "编辑资料",
+        "cancel": "取消",
+        "save": "保存",
+        "saving": "保存中"
+      },
+      "validation": {
+        "imageValidationFailed": "图片验证失败",
+        "unsupportedFormat": "不支持的图片格式：{{format}}。仅支持 JPEG、PNG、GIF、WebP、BMP、SVG 格式",
+        "imageTooLarge": "图片过大：{{size}}MB（最大 5MB）"
+      },
+      "toast": {
+        "saveSuccess": "保存成功",
+        "saveSuccessDescription": "个人资料已更新",
+        "saveFailed": "保存失败",
+        "syncSuccess": "同步成功",
+        "syncSuccessDescription": "个人资料已同步到服务器",
+        "syncFailed": "同步失败",
+        "imageSelected": "图片已选择",
+        "imageSelectedDescription": "点击\"保存\"按钮以更新头像",
+        "imageProcessingFailed": "图片处理失败"
+      },
+      "timestamps": {
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间"
+      }
+    }
+  },
+  "ssh": {
+    "hostKey": {
+      "title": "主机密钥验证",
+      "description": "首次连接到此主机，需要确认其身份",
+      "hostInfo": "主机信息",
+      "keyType": "密钥类型",
+      "fingerprint": "指纹",
+      "securityTip": "安全提示：请确认此指纹是否与服务器管理员提供的一致。如果不确定，请联系服务器管理员验证。",
+      "actionCancel": "取消连接",
+      "actionConfirm": "确认并连接"
+    },
+    "status": {
+      "connected": "已连接",
+      "disconnected": "已断开",
+      "connecting": "连接中",
+      "error": "错误"
+    }
+  },
+  "sessions": {
+    "empty": {
+      "noMatches": "没有匹配的会话",
+      "noSessions": "没有保存的会话",
+      "noMatchesHint": "尝试调整搜索条件或筛选器",
+      "noSessionsHint": "创建你的第一个 SSH 会话配置",
+      "navigateToTerminal": "前往 终端 页面创建新连接"
+    }
+  },
+
+  "theme": {
+    "oneDark": "One Dark",
+    "solarizedDark": "Solarized Dark",
+    "solarizedLight": "Solarized Light",
+    "dracula": "Dracula",
+    "monokai": "Monokai",
+    "nord": "Nord",
+    "tokyoNight": "Tokyo Night",
+    "githubLight": "GitHub Light"
+  },
+  "font": {
+    "cascadiaCode": "Cascadia Code",
+    "firaCode": "Fira Code",
+    "jetbrainsMono": "JetBrains Mono",
+    "consolas": "Consolas",
+    "monaco": "Monaco",
+    "sourceCodePro": "Source Code Pro",
+    "dejaVuSansMono": "DejaVu Sans Mono",
+    "ubuntuMono": "Ubuntu Mono"
+  },
+  "sound": {
+    "success": "操作成功",
+    "error": "操作失败",
+    "buttonClick": "按钮点击",
+    "tabOpen": "标签页打开",
+    "tabClose": "标签页关闭",
+    "tabSwitch": "标签页切换",
+    "toggleSwitch": "开关切换"
+  },
+  "date": {
+    "justNow": "刚刚",
+    "minutesAgo": "{{minutes}}分钟前",
+    "hoursAgo": "{{hours}}小时前",
+    "daysAgo": "{{days}}天前",
+    "weeksAgo": "{{weeks}}周前",
+    "monthsAgo": "{{months}}个月前",
+    "yearsAgo": "{{years}}年前"
+  },
+  "fileSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB"
+  },
+  "duration": {
+    "minutesSeconds": "{{mins}}分{{secs}}秒",
+    "seconds": "{{secs}}秒"
+  },
+  "keybinding": {
+    "conflict": {
+      "title": "快捷键冲突",
+      "message": "快捷键 {{binding}} 已被 \"{{actionName}}\" 使用。是否覆盖？"
+    },
+    "preset": {
+      "notFound": "未找到预设方案 {{presetId}}",
+      "loadConfirm": "确定要加载预设方案\"{{name}}\"吗？这将覆盖当前的快捷键配置。",
+      "loadTitle": "确认加载预设",
+      "overwrite": "预设\"{{name}}\"已存在。是否覆盖？",
+      "existsTitle": "预设已存在"
+    },
+    "reset": {
+      "confirm": "确定要重置为默认快捷键配置吗？这将清除所有自定义配置。",
+      "title": "确认重置",
+      "failed": "重置失败: {{error}}"
+    },
+    "import": {
+      "confirm": "导入快捷键配置将覆盖当前的快捷键设置。是否继续？",
+      "title": "确认导入",
+      "failed": "导入失败: {{error}}",
+      "errorTitle": "导入错误"
+    },
+    "fileType": "JSON Files",
+    "defaultFileName": "keybindings-{{date}}.json",
+    "editor": {
+      "unknownAction": "未知操作",
+      "notSet": "未设置",
+      "edit": "编辑",
+      "set": "设置",
+      "resetToDefault": "恢复默认",
+      "title": "编辑快捷键: {{name}}"
+    },
+    "recorder": {
+      "title": "录制快捷键",
+      "description": "请按下您想要设置的快捷键组合",
+      "recordingHint": "请按下快捷键组合...",
+      "recordingSupport": "支持 Ctrl、Alt、Shift 和字母/数字/功能键的组合",
+      "recordedHint": "已录制的快捷键",
+      "currentHint": "当前快捷键",
+      "reRecord": "重新录制",
+      "cancel": "取消",
+      "confirm": "确认"
+    }
+  }
+}
+

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Terminal as TerminalIcon, Plus, FolderOpen } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
 
 export function Terminal() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [quickConnectOpen, setQuickConnectOpen] = useState(false);
@@ -178,10 +180,9 @@ export function Terminal() {
       host: config.host,
       port: config.port,
       username: config.username,
-      authMethod: config.password ? { password: { password: config.password } } : { publicKey: { privateKeyPath: config.privateKeyPath || '', passphrase: config.passphrase } },
-      password: config.password,
-      privateKeyPath: config.privateKeyPath,
-      passphrase: config.passphrase,
+      authMethod: config.password 
+        ? { Password: { password: config.password } } 
+        : { PublicKey: { privateKeyPath: config.privateKeyPath || '', passphrase: config.passphrase } },
       keepAliveInterval: terminalConfig.keepAliveInterval, // 使用设置的心跳间隔
     };
 
@@ -217,14 +218,14 @@ export function Terminal() {
       <div className="flex items-center gap-3 px-4 py-2.5 bg-muted/40 border-b border-border">
         <Button size="sm" variant="outline" onClick={handleNewTab} className="gap-1.5">
           <Plus className="h-4 w-4" />
-          新建连接
+          {t('terminal.newConnection')}
         </Button>
 
         <Separator orientation="vertical" className="h-5" />
 
         <Button size="sm" variant="ghost" onClick={handleSessionManager} className="gap-1.5">
           <FolderOpen className="h-4 w-4" />
-          会话管理
+          {t('terminal.sessionManager')}
         </Button>
 
         <Separator orientation="vertical" className="h-5" />
@@ -245,7 +246,7 @@ export function Terminal() {
           className="gap-1.5"
         >
           <FolderOpen className="h-4 w-4" />
-          录制管理
+          {t('terminal.recordingManager')}
         </Button>
 
         <div className="flex-1" />
@@ -268,7 +269,7 @@ export function Terminal() {
           // 加载状态
           <div className="flex flex-col items-center justify-center h-full bg-muted/10">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-            <p className="text-sm text-muted-foreground">正在加载会话...</p>
+            <p className="text-sm text-muted-foreground">{t('terminal.loading')}</p>
           </div>
         ) : tabs.length === 0 ? (
           // 空状态
@@ -277,13 +278,13 @@ export function Terminal() {
               <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
                 <TerminalIcon className="h-10 w-10 text-primary/60" />
               </div>
-              <h2 className="text-xl font-semibold mb-2 text-foreground">没有活动的 SSH 会话</h2>
+              <h2 className="text-xl font-semibold mb-2 text-foreground">{t('terminal.noActiveSession')}</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                点击下方按钮创建新的 SSH 连接，或从侧边栏选择其他功能
+                {t('terminal.noActiveSessionHint')}
               </p>
               <Button onClick={handleNewTab} size="lg" className="gap-2">
                 <Plus className="h-4 w-4" />
-                新建连接
+                {t('terminal.newConnection')}
               </Button>
             </div>
           </div>
@@ -296,7 +297,7 @@ export function Terminal() {
           // 没有活动标签页
           <div className="flex items-center justify-center h-full bg-muted/10">
             <div className="text-center">
-              <p className="text-muted-foreground">选择或创建一个标签页开始使用</p>
+              <p className="text-muted-foreground">{t('terminal.selectOrCreateTab')}</p>
             </div>
           </div>
         )}

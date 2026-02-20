@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { KeybindingRecorder } from './KeybindingRecorder';
@@ -10,13 +11,16 @@ import { KEYBINDING_ACTIONS } from '@/types/keybinding';
 
 interface KeybindingEditorProps {
   actionId: string;
+  name?: string;
+  description?: string;
 }
 
 /**
  * 快捷键编辑器
  * 显示当前快捷键，允许用户点击录制新的快捷键
  */
-export function KeybindingEditor({ actionId }: KeybindingEditorProps) {
+export function KeybindingEditor({ actionId, name, description }: KeybindingEditorProps) {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
 
   const currentKeys = useKeybindingStore((state) =>
@@ -54,14 +58,17 @@ export function KeybindingEditor({ actionId }: KeybindingEditorProps) {
   };
 
   if (!action) {
-    return <div className="text-sm text-muted-foreground">未知的动作</div>;
+    return <div className="text-sm text-muted-foreground">{t("keybinding.editor.unknownAction")}</div>;
   }
+
+  const displayName = name || action.name;
+  const displayDescription = description || action.description;
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
       <div className="flex-1">
-        <div className="font-medium">{action.name}</div>
-        <div className="text-sm text-muted-foreground">{action.description}</div>
+        <div className="font-medium">{displayName}</div>
+        <div className="text-sm text-muted-foreground">{displayDescription}</div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -72,7 +79,7 @@ export function KeybindingEditor({ actionId }: KeybindingEditorProps) {
           </Badge>
         ) : (
           <Badge variant="outline" className="px-3 py-1 text-muted-foreground">
-            未设置
+            {t("keybinding.editor.notSet")}
           </Badge>
         )}
 
@@ -82,7 +89,7 @@ export function KeybindingEditor({ actionId }: KeybindingEditorProps) {
           onClick={() => setIsRecording(true)}
           className="h-8"
         >
-          {currentKeys ? '修改' : '设置'}
+          {currentKeys ? t("keybinding.editor.edit") : t("keybinding.editor.set")}
         </Button>
 
         {currentKeys && (
@@ -91,7 +98,7 @@ export function KeybindingEditor({ actionId }: KeybindingEditorProps) {
             size="sm"
             onClick={handleReset}
             className="h-8"
-            title="重置为默认快捷键"
+            title={t("keybinding.editor.resetToDefault")}
           >
             <RotateCcw className="h-4 w-4" />
           </Button>
@@ -103,8 +110,8 @@ export function KeybindingEditor({ actionId }: KeybindingEditorProps) {
         onOpenChange={setIsRecording}
         onRecord={handleRecord}
         currentKeys={currentKeys}
-        title={`设置 ${action.name} 快捷键`}
-        description={action.description}
+        title={t("keybinding.editor.title", { name: displayName })}
+        description={displayDescription}
       />
     </div>
   );

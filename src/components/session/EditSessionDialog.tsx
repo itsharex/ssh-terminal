@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -37,12 +38,13 @@ export function EditSessionDialog({
   onUpdate,
 }: EditSessionDialogProps) {
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: '',
     host: '',
     port: '22',
     username: '',
-    group: '默认分组',
+    group: t('session.defaultGroup'),
     authMethod: 'password' as 'password' | 'publicKey',
     password: '',
     privateKeyPath: '',
@@ -75,7 +77,7 @@ export function EditSessionDialog({
         host: sessionConfig.host,
         port: sessionConfig.port.toString(),
         username: sessionConfig.username,
-        group: sessionConfig.group || '默认分组',
+        group: sessionConfig.group || t('session.defaultGroup'),
         authMethod: authMethodType,
         password: '',
         privateKeyPath: '',
@@ -89,30 +91,30 @@ export function EditSessionDialog({
         host: session.host,
         port: session.port.toString(),
         username: session.username,
-        group: session.group || '默认分组',
+        group: session.group || t('session.defaultGroup'),
         authMethod: 'password',
         password: '',
         privateKeyPath: '',
         passphrase: '',
       });
     }
-  }, [sessionConfig, session, open]);
+  }, [sessionConfig, session, open, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name || !formData.host || !formData.username) {
-      toast.error('请填写必填字段');
+      toast.error(t('validation.requiredFields'));
       return;
     }
 
     // 验证认证方式的必填字段
     if (formData.authMethod === 'password' && !formData.password) {
-      toast.error('请输入密码');
+      toast.error(t('validation.passwordRequired'));
       return;
     }
     if (formData.authMethod === 'publicKey' && !formData.privateKeyPath) {
-      toast.error('请输入私钥路径');
+      toast.error(t('validation.keyPathRequired'));
       return;
     }
 
@@ -124,7 +126,7 @@ export function EditSessionDialog({
         host: formData.host,
         port: parseInt(formData.port),
         username: formData.username,
-        group: formData.group || '默认分组',
+        group: formData.group || t('session.defaultGroup'),
       };
 
       // 根据选择的认证方式更新认证信息
@@ -145,12 +147,12 @@ export function EditSessionDialog({
       }
 
       await onUpdate(updates);
-      toast.success('会话更新成功');
+      toast.success(t('session.success.updated'));
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to update session:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error('会话更新失败', {
+      toast.error(t('session.error.updateFailed'), {
         description: errorMessage,
       });
     } finally {
@@ -164,10 +166,10 @@ export function EditSessionDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Edit className="h-5 w-5 text-primary" />
-            编辑会话
+            {t('session.edit.title')}
           </DialogTitle>
           <DialogDescription>
-            修改会话配置信息
+            {t('session.edit.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -175,11 +177,11 @@ export function EditSessionDialog({
             {/* 会话名称 */}
             <div className="space-y-2">
               <Label htmlFor="edit-name">
-                会话名称 <span className="text-destructive">*</span>
+                {t('session.field.name')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="edit-name"
-                placeholder="例如: 生产服务器"
+                placeholder={t('session.field.namePlaceholder')}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
@@ -189,11 +191,11 @@ export function EditSessionDialog({
             {/* 主机地址 */}
             <div className="space-y-2">
               <Label htmlFor="edit-host">
-                主机地址 <span className="text-destructive">*</span>
+                {t('session.field.host')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="edit-host"
-                placeholder="192.168.1.100 或 example.com"
+                placeholder={t('session.field.hostPlaceholder')}
                 value={formData.host}
                 onChange={(e) => setFormData({ ...formData, host: e.target.value })}
                 required
@@ -203,7 +205,7 @@ export function EditSessionDialog({
             {/* 端口 */}
             <div className="space-y-2">
               <Label htmlFor="edit-port">
-                端口 <span className="text-destructive">*</span>
+                {t('session.field.port')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="edit-port"
@@ -219,11 +221,11 @@ export function EditSessionDialog({
             {/* 用户名 */}
             <div className="space-y-2">
               <Label htmlFor="edit-username">
-                用户名 <span className="text-destructive">*</span>
+                {t('session.field.username')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="edit-username"
-                placeholder="例如: root"
+                placeholder={t('session.field.usernamePlaceholder')}
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 required
@@ -232,10 +234,10 @@ export function EditSessionDialog({
 
             {/* 分组 */}
             <div className="space-y-2">
-              <Label htmlFor="edit-group">分组</Label>
+              <Label htmlFor="edit-group">{t('session.field.group')}</Label>
               <Input
                 id="edit-group"
-                placeholder="例如: 生产环境、测试环境"
+                placeholder={t('session.field.groupPlaceholder')}
                 value={formData.group}
                 onChange={(e) => setFormData({ ...formData, group: e.target.value })}
               />
@@ -243,7 +245,7 @@ export function EditSessionDialog({
 
             {/* 认证方式 */}
             <div className="space-y-2">
-              <Label htmlFor="edit-auth">认证方式</Label>
+              <Label htmlFor="edit-auth">{t('session.field.authMethod')}</Label>
               <Select
                 key={`auth-${formData.authMethod}`}
                 value={formData.authMethod}
@@ -253,8 +255,8 @@ export function EditSessionDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="password">密码</SelectItem>
-                  <SelectItem value="publicKey">公钥</SelectItem>
+                  <SelectItem value="password">{t('session.auth.password')}</SelectItem>
+                  <SelectItem value="publicKey">{t('session.auth.publicKey')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -263,18 +265,18 @@ export function EditSessionDialog({
             {formData.authMethod === 'password' && (
               <div className="space-y-2">
                 <Label htmlFor="edit-password">
-                  密码 <span className="text-destructive">*</span>
+                  {t('session.field.password')} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="edit-password"
                   type="password"
-                  placeholder="输入 SSH 密码"
+                  placeholder={t('session.field.passwordPlaceholder')}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  请输入密码以完成认证配置
+                  {t('session.field.passwordHint')}
                 </p>
               </div>
             )}
@@ -284,11 +286,11 @@ export function EditSessionDialog({
               <>
                 <div className="space-y-2">
                   <Label htmlFor="edit-key">
-                    私钥路径 <span className="text-destructive">*</span>
+                    {t('session.field.privateKeyPath')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="edit-key"
-                    placeholder="~/.ssh/id_rsa"
+                    placeholder={t('session.field.privateKeyPathPlaceholder')}
                     value={formData.privateKeyPath}
                     onChange={(e) => setFormData({ ...formData, privateKeyPath: e.target.value })}
                     required
@@ -296,11 +298,11 @@ export function EditSessionDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-passphrase">私钥密码（可选）</Label>
+                  <Label htmlFor="edit-passphrase">{t('session.field.passphrase')}</Label>
                   <Input
                     id="edit-passphrase"
                     type="password"
-                    placeholder="如果私钥有密码保护"
+                    placeholder={t('session.field.passphrasePlaceholder')}
                     value={formData.passphrase}
                     onChange={(e) => setFormData({ ...formData, passphrase: e.target.value })}
                   />
@@ -315,16 +317,16 @@ export function EditSessionDialog({
                 onClick={() => onOpenChange(false)}
                 disabled={loading}
               >
-                取消
+                {t('dialog.cancel')}
               </Button>
               <Button type="submit" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    保存中...
+                    {t('session.status.saving')}
                   </>
                 ) : (
-                  '保存更改'
+                  t('session.action.saveChanges')
                 )}
               </Button>
             </DialogFooter>

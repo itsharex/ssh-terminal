@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRecordingStore } from '@/store/recordingStore';
 import { useTerminalStore } from '@/store/terminalStore';
 import { useTerminalConfigStore } from '@/store/terminalConfigStore';
@@ -18,6 +19,8 @@ export function RecordingControls({
   connectionId,
   sessionName = 'Session',
 }: RecordingControlsProps) {
+  const { t } = useTranslation();
+
   const recordingSession = useRecordingStore((state) =>
     state.getRecordingSession(connectionId)
   );
@@ -26,6 +29,13 @@ export function RecordingControls({
   const [showCountdown, setShowCountdown] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [currentDuration, setCurrentDuration] = useState(0);
+
+  // 当打开命名对话框时，重置输入名称为默认值
+  useEffect(() => {
+    if (showNameDialog) {
+      setSessionInputName(sessionName);
+    }
+  }, [showNameDialog, sessionName]);
 
   // 实时更新录制时长（每秒更新）
   useEffect(() => {
@@ -205,7 +215,7 @@ export function RecordingControls({
             <div className="text-9xl font-bold text-white animate-pulse">
               {countdown}
             </div>
-            <div className="text-white text-xl mt-4">即将开始录制...</div>
+            <div className="text-white text-xl mt-4">{t('recording.countdown.message')}</div>
           </div>
         </div>
       )}
@@ -214,11 +224,11 @@ export function RecordingControls({
       {showNameDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-background border rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">命名录制会话</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('recording.nameDialog.title')}</h3>
             <input
               type="text"
               className="w-full px-3 py-2 border rounded-md mb-4"
-              placeholder="请输入会话名称"
+              placeholder={t('recording.nameDialog.placeholder')}
               value={sessionInputName}
               onChange={(e) => setSessionInputName(e.target.value)}
               onKeyDown={async (e) => {
@@ -231,15 +241,11 @@ export function RecordingControls({
               autoFocus
             />
             <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowNameDialog(false)}
-              >
-                取消
+              <Button size="sm" variant="outline" onClick={() => setShowNameDialog(false)}>
+                {t('common.cancel')}
               </Button>
               <Button size="sm" onClick={startRecording}>
-                开始录制
+                {t('recording.action.start')}
               </Button>
             </div>
           </div>
@@ -255,7 +261,7 @@ export function RecordingControls({
           className="gap-2"
         >
           <Circle className="w-4 h-4" />
-          开始录制
+          {t('recording.action.start')}
         </Button>
       )}
 
@@ -272,12 +278,12 @@ export function RecordingControls({
             {isPaused ? (
               <>
                 <Circle className="w-4 h-4 fill-red-500 text-red-500" />
-                恢复
+                {t('recording.action.resume')}
               </>
             ) : (
               <>
                 <Pause className="w-4 h-4" />
-                暂停
+                {t('recording.action.pause')}
               </>
             )}
           </Button>
@@ -290,7 +296,7 @@ export function RecordingControls({
             className="gap-2"
           >
             <Square className="w-4 h-4" />
-            停止
+            {t('recording.action.stop')}
           </Button>
 
           {/* 显示录制信息 */}

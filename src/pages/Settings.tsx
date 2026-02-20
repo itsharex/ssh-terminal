@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Palette,
   Terminal,
@@ -28,24 +29,27 @@ import { SoundEffect } from '@/lib/sounds';
 import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import { useAIStore } from '@/store/aiStore';
 import { useAppSettingsStore } from '@/store/appSettingsStore';
+import { useLanguageStore } from '@/store/languageStore';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { invoke } from '@tauri-apps/api/core';
 import type { TerminalConfig } from '@/types/terminal';
 
 export function Settings() {
+  const { t } = useTranslation();
   const { config, setConfig, loadConfig } = useTerminalConfigStore();
   const { loadConfig: loadAIConfig } = useAIStore();
   const { setTheme } = useTheme();
   const {
     settings: appSettings,
-    isLoading: appSettingsLoading,
+    // isLoading: appSettingsLoading,
     loadSettings: loadAppSettings,
     updateServerUrl,
     updateAutoSync,
     updateSyncInterval,
-    updateLanguage,
+    // updateLanguage,
     clearError: clearAppSettingsError
   } = useAppSettingsStore();
+  const { language, setLanguage } = useLanguageStore();
 
   const [serverUrlInput, setServerUrlInput] = useState('');
   const [isSavingServerUrl, setIsSavingServerUrl] = useState(false);
@@ -124,7 +128,7 @@ export function Settings() {
   const handleLanguageChange = async (language: string) => {
     playSound(SoundEffect.BUTTON_CLICK);
     try {
-      await updateLanguage(language);
+      setLanguage(language as any);
       playSound(SoundEffect.SUCCESS);
     } catch (error) {
       playSound(SoundEffect.ERROR);
@@ -135,52 +139,52 @@ export function Settings() {
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       {/* 设置选项卡 */}
       <Tabs defaultValue="appearance" className="space-y-4 sm:space-y-6">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-7 gap-1 h-auto">
-          <TabsTrigger value="account" className="gap-2">
+        <TabsList className="flex flex-wrap w-full h-auto gap-1">
+          <TabsTrigger value="account" className="gap-2 min-w-fit flex-1">
             <Cloud className="h-4 w-4" />
-            账号与服务
+            {t('settings.tabs.account')}
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="gap-2">
+          <TabsTrigger value="appearance" className="gap-2 min-w-fit flex-1">
             <Palette className="h-4 w-4" />
-            外观
+            {t('settings.tabs.appearance')}
           </TabsTrigger>
-          <TabsTrigger value="terminal" className="gap-2">
+          <TabsTrigger value="terminal" className="gap-2 min-w-fit flex-1">
             <Terminal className="h-4 w-4" />
-            终端
+            {t('settings.tabs.terminal')}
           </TabsTrigger>
-          <TabsTrigger value="recording" className="gap-2">
+          <TabsTrigger value="recording" className="gap-2 min-w-fit flex-1">
             <Mic className="h-4 w-4" />
-            录制
+            {t('settings.tabs.recording')}
           </TabsTrigger>
-          <TabsTrigger value="keybindings" className="gap-2">
+          <TabsTrigger value="keybindings" className="gap-2 min-w-fit flex-1">
             <Keyboard className="h-4 w-4" />
-            快捷键
+            {t('settings.tabs.keybindings')}
           </TabsTrigger>
-          <TabsTrigger value="ai" className="gap-2">
+          <TabsTrigger value="ai" className="gap-2 min-w-fit flex-1">
             <Bot className="h-4 w-4" />
-            AI
+            {t('settings.tabs.ai')}
           </TabsTrigger>
-          <TabsTrigger value="about" className="gap-2">
+          <TabsTrigger value="about" className="gap-2 min-w-fit flex-1">
             <Info className="h-4 w-4" />
-            关于
+            {t('settings.tabs.about')}
           </TabsTrigger>
         </TabsList>
 
-        {/* 账号与服务设置 */}
+        {/* {t('settings.tabs.account')}设置 */}
         <TabsContent value="account" className="space-y-6">
-          <h2 className="text-xl font-semibold">账号与服务</h2>
+          <h2 className="text-xl font-semibold">{t('settings.tabs.account')}</h2>
           <div className="space-y-4">
             {/* 服务器地址 */}
             <div className="space-y-2">
-              <Label htmlFor="server-url">服务器地址</Label>
+              <Label htmlFor="server-url">{t("settings.account.serverUrl.label")}</Label>
               <p className="text-sm text-muted-foreground">
-                SSH 会话云同步服务器地址
+                {t("settings.account.serverUrl.description")}
               </p>
               <div className="flex gap-2">
                 <Input
                   id="server-url"
                   type="url"
-                  placeholder="http://localhost:3000"
+                  placeholder={t("settings.account.serverUrl.placeholder")}
                   value={serverUrlInput}
                   onChange={(e) => setServerUrlInput(e.target.value)}
                   disabled={isSavingServerUrl}
@@ -190,7 +194,7 @@ export function Settings() {
                   disabled={isSavingServerUrl || !serverUrlInput.trim()}
                   size="sm"
                 >
-                  {isSavingServerUrl ? '保存中...' : '保存'}
+                  {isSavingServerUrl ? t('settings.account.serverUrl.saving') : t('settings.account.serverUrl.save')}
                 </Button>
               </div>
             </div>
@@ -200,10 +204,10 @@ export function Settings() {
             {/* 自动同步 */}
             <div className="flex items-center justify-between opacity-50">
               <div className="space-y-0.5">
-                <Label htmlFor="auto-sync">自动同步</Label>
+                <Label htmlFor="auto-sync">{t("settings.account.autoSync.label")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  自动同步 SSH 会话到云服务器（暂不支持）
-                </p>
+                {t("settings.account.autoSync.description")}
+              </p>
               </div>
               <Switch
                 id="auto-sync"
@@ -217,9 +221,9 @@ export function Settings() {
 
             {/* 同步间隔 */}
             <div className="space-y-2 opacity-50">
-              <Label>同步间隔</Label>
+              <Label>{t("settings.account.syncInterval.label")}</Label>
               <p className="text-sm text-muted-foreground">
-                自动同步的时间间隔（分钟）（暂不支持）
+                {t("settings.account.syncInterval.description")}
               </p>
               <div className="flex flex-wrap gap-2">
                 {[1, 5, 10, 30, 60].map((interval) => (
@@ -230,7 +234,7 @@ export function Settings() {
                     onClick={() => handleSyncIntervalChange(interval)}
                     disabled={true}
                   >
-                    {interval} 分钟
+                    {t('settings.account.syncInterval.minutes', { interval })}
                   </Button>
                 ))}
               </div>
@@ -242,10 +246,10 @@ export function Settings() {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Globe className="h-4 w-4" />
-                语言
+                {t("settings.account.language.label")}
               </Label>
               <p className="text-sm text-muted-foreground">
-                选择应用界面语言
+                {t("settings.account.language.description")}
               </p>
               <div className="flex flex-wrap gap-2">
                 {[
@@ -255,10 +259,10 @@ export function Settings() {
                 ].map((lang) => (
                   <Button
                     key={lang.value}
-                    variant={appSettings?.language === lang.value ? 'default' : 'outline'}
+                    variant={language === lang.value ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => handleLanguageChange(lang.value)}
-                    disabled={appSettingsLoading}
+                    disabled={false}
                   >
                     {lang.label}
                   </Button>
@@ -268,11 +272,11 @@ export function Settings() {
           </div>
         </TabsContent>
 
-        {/* 外观设置 */}
+        {/* {t('settings.appearance.title')} */}
         <TabsContent value="appearance" className="space-y-6">
           {/* 顶部标题和重置按钮 */}
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">外观设置</h2>
+            <h2 className="text-xl font-semibold">{t('settings.appearance.title')}</h2>
             <Button
               variant="ghost"
               size="sm"
@@ -290,16 +294,16 @@ export function Settings() {
               className="gap-2"
             >
               <RotateCcw className="h-4 w-4" />
-              恢复默认
+              {t('settings.terminal.reset')}
             </Button>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="theme">主题模式</Label>
+                <Label htmlFor="theme">{t("settings.appearance.theme.label")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  选择应用的主题外观
+                  {t('settings.appearance.theme.description')}
                 </p>
               </div>
               <ModeToggle />
@@ -309,10 +313,10 @@ export function Settings() {
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="notifications">通知</Label>
+                <Label htmlFor="notifications">{t("settings.appearance.notifications.label")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  接收连接状态和错误通知
-                </p>
+                {t("settings.appearance.notifications.description")}
+              </p>
               </div>
               <Switch
                 id="notifications"
@@ -325,10 +329,10 @@ export function Settings() {
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="sound">音效</Label>
+                <Label htmlFor="sound">{t("settings.appearance.sound.label")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  播放操作反馈音效
-                </p>
+                {t("settings.appearance.sound.description")}
+              </p>
               </div>
               <Switch
                 id="sound"
@@ -339,16 +343,16 @@ export function Settings() {
           </div>
         </TabsContent>
 
-        {/* 终端设置 */}
+        {/* {t('settings.tabs.terminal')}设置 */}
         <TabsContent value="terminal" className="space-y-6">
           <TerminalSettings />
         </TabsContent>
 
-        {/* 录制设置 */}
+        {/* {t('settings.recording.title')} */}
         <TabsContent value="recording" className="space-y-6">
           {/* 顶部标题和重置按钮 */}
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">录制设置</h2>
+            <h2 className="text-xl font-semibold">{t('settings.recording.title')}</h2>
             <Button
               variant="ghost"
               size="sm"
@@ -365,15 +369,15 @@ export function Settings() {
               className="gap-2"
             >
               <RotateCcw className="h-4 w-4" />
-              恢复默认
+              {t('settings.terminal.reset')}
             </Button>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="videoQuality">视频录制质量</Label>
+              <Label htmlFor="videoQuality">{t('settings.recording.videoQuality.label')}</Label>
               <p className="text-sm text-muted-foreground">
-                选择录制视频的质量（影响视频文件大小）
+                {t('settings.recording.videoQuality.description')}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Button
@@ -382,7 +386,7 @@ export function Settings() {
                   className="flex-1 min-w-24 touch-manipulation"
                   onClick={() => setConfig({ videoQuality: 'low' })}
                 >
-                  低 (500 Kbps)
+                  {t('settings.recording.videoQuality.low')}
                 </Button>
                 <Button
                   variant={config.videoQuality === 'medium' ? 'default' : 'outline'}
@@ -390,7 +394,7 @@ export function Settings() {
                   className="flex-1 min-w-24 touch-manipulation"
                   onClick={() => setConfig({ videoQuality: 'medium' })}
                 >
-                  中 (2 Mbps)
+                  {t('settings.recording.videoQuality.medium')}
                 </Button>
                 <Button
                   variant={config.videoQuality === 'high' ? 'default' : 'outline'}
@@ -398,7 +402,7 @@ export function Settings() {
                   className="flex-1 min-w-24 touch-manipulation"
                   onClick={() => setConfig({ videoQuality: 'high' })}
                 >
-                  高 (5 Mbps)
+                  {t('settings.recording.videoQuality.high')}
                 </Button>
               </div>
             </div>
@@ -406,9 +410,9 @@ export function Settings() {
             <Separator />
 
             <div className="space-y-2">
-              <Label htmlFor="videoFormat">视频录制格式</Label>
+              <Label htmlFor="videoFormat">{t('settings.recording.videoFormat.label')}</Label>
               <p className="text-sm text-muted-foreground">
-                选择录制视频的格式（WebM 推荐用于网络播放）
+                {t('settings.recording.videoFormat.description')}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Button
@@ -417,7 +421,7 @@ export function Settings() {
                   className="flex-1 min-w-24 touch-manipulation"
                   onClick={() => setConfig({ videoFormat: 'webm' })}
                 >
-                  WebM (VP9)
+                  {t('settings.recording.videoFormat.webm')}
                 </Button>
                 <Button
                   variant={config.videoFormat === 'mp4' ? 'default' : 'outline'}
@@ -425,28 +429,24 @@ export function Settings() {
                   className="flex-1 min-w-24 touch-manipulation"
                   onClick={() => setConfig({ videoFormat: 'mp4' })}
                 >
-                  MP4 (H.264)
+                  {t('settings.recording.videoFormat.mp4')}
                 </Button>
               </div>
             </div>
 
             <Separator />
 
-            {/* 音频录制设置 */}
+            {/* 音频{t('settings.recording.title')} */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Mic className="h-4 w-4" />
-                录制麦克风
+                {t('settings.recording.recordMicrophone.label')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                录制用户通过麦克风说话的声音（需要用户授权）
+                {t('settings.recording.recordMicrophone.description')}
               </p>
               <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3">
-                <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                  <strong>⚠️ 重要提示：</strong>系统会自动过滤掉"立体声混音"等系统音频设备。
-                  如果发现录制到了音乐或其他应用的声音，请检查系统音频设置，
-                  确保选择了正确的麦克风设备而非混音设备。
-                </p>
+                <p className="text-xs text-yellow-800 dark:text-yellow-200">{t('settings.recording.recordMicrophone.warning')}</p>
               </div>
               <Switch
                 checked={config.recordMicrophone}
@@ -462,10 +462,10 @@ export function Settings() {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Volume2 className="h-4 w-4" />
-                录制扬声器（系统音频）
+                {t('settings.recording.recordSpeaker.label')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                录制系统播放的声音（Windows WASAPI Loopback Recording）
+                {t('settings.recording.recordSpeaker.description')}
               </p>
               <Switch
                 checked={config.recordSpeaker}
@@ -479,9 +479,9 @@ export function Settings() {
             <Separator />
 
             <div className="space-y-2">
-              <Label>音频录制质量</Label>
+              <Label>{t('settings.recording.audioQuality.label')}</Label>
               <p className="text-sm text-muted-foreground">
-                选择录制音频的质量（影响音频文件大小）
+                {t('settings.recording.audioQuality.description')}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Button
@@ -494,7 +494,7 @@ export function Settings() {
                   }}
                   disabled={!config.recordMicrophone && !config.recordSpeaker}
                 >
-                  低 (64 Kbps)
+                  {t('settings.recording.audioQuality.low')}
                 </Button>
                 <Button
                   variant={config.audioQuality === 'medium' ? 'default' : 'outline'}
@@ -506,7 +506,7 @@ export function Settings() {
                   }}
                   disabled={!config.recordMicrophone && !config.recordSpeaker}
                 >
-                  中 (128 Kbps)
+                  {t('settings.recording.audioQuality.medium')}
                 </Button>
                 <Button
                   variant={config.audioQuality === 'high' ? 'default' : 'outline'}
@@ -518,7 +518,7 @@ export function Settings() {
                   }}
                   disabled={!config.recordMicrophone && !config.recordSpeaker}
                 >
-                  高 (256 Kbps)
+                  {t('settings.recording.audioQuality.high')}
                 </Button>
               </div>
             </div>
@@ -526,9 +526,9 @@ export function Settings() {
             <Separator />
 
             <div className="space-y-2">
-              <Label>音频采样率</Label>
+              <Label>{t("settings.recording.audioSampleRate.label")}</Label>
               <p className="text-sm text-muted-foreground">
-                选择录制音频的采样率（当前: {config.audioSampleRate} Hz）
+                {t('settings.recording.audioSampleRate.description', { rate: config.audioSampleRate })}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Button
@@ -541,7 +541,7 @@ export function Settings() {
                   }}
                   disabled={!config.recordMicrophone && !config.recordSpeaker}
                 >
-                  44.1 kHz
+                  {t('settings.recording.audioSampleRate.44100')}
                 </Button>
                 <Button
                   variant={config.audioSampleRate === 48000 ? 'default' : 'outline'}
@@ -553,7 +553,7 @@ export function Settings() {
                   }}
                   disabled={!config.recordMicrophone && !config.recordSpeaker}
                 >
-                  48 kHz
+                  {t('settings.recording.audioSampleRate.48000')}
                 </Button>
                 <Button
                   variant={config.audioSampleRate === 96000 ? 'default' : 'outline'}
@@ -565,7 +565,7 @@ export function Settings() {
                   }}
                   disabled={!config.recordMicrophone && !config.recordSpeaker}
                 >
-                  96 kHz
+                  {t('settings.recording.audioSampleRate.96000')}
                 </Button>
               </div>
             </div>
@@ -575,65 +575,65 @@ export function Settings() {
             <div className="rounded-lg border p-4 bg-muted/20">
               <h3 className="font-semibold mb-2 flex items-center gap-2">
                 <Volume2 className="h-4 w-4" />
-                录制提示
+                {t('settings.recording.tips.title')}
               </h3>
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>音频录制需要浏览器权限。启用麦克风录制需要用户授权</li>
-                <li>扬声器录制仅在支持 WASAPI Loopback Recording 的平台上可用（Windows）</li>
-                <li>如果麦克风录制到了系统音频（音乐等），请在系统设置中检查默认录音设备</li>
-                <li>建议在 Windows 设置中禁用"立体声混音"设备，避免误选</li>
+                <li>{t('settings.recording.tips.tip1')}</li>
+                <li>{t('settings.recording.tips.tip2')}</li>
+                <li>{t('settings.recording.tips.tip3')}</li>
+                <li>{t("settings.recording.tips.tip4")}</li>
               </ul>
               <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-300">
-                <strong>如何检查麦克风设备：</strong>
-                打开 Windows 设置 → 系统 → 声音 → 输入设备，确认选择了正确的麦克风设备，而非"立体声混音"。
+                
+                {t('settings.recording.tips.micCheck')}
               </div>
             </div>
           </div>
         </TabsContent>
 
-        {/* 快捷键设置 */}
+        {/* {t('settings.tabs.keybindings')}设置 */}
         <TabsContent value="keybindings" className="space-y-6">
           <KeybindingsSettings />
         </TabsContent>
 
-        {/* AI 设置 */}
+        {/* {t('settings.tabs.ai')} 设置 */}
         <TabsContent value="ai" className="space-y-6">
           <AISettings />
         </TabsContent>
 
-        {/* 关于 */}
+        {/* {t('settings.tabs.about')} */}
         <TabsContent value="about" className="space-y-6">
           <div className="space-y-4">
             <div className="rounded-lg border p-6 bg-muted/20 text-center">
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Terminal className="h-8 w-8 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold">SSH Terminal</h2>
-              <p className="text-muted-foreground mt-1">版本 1.0.0</p>
+              <h2 className="text-2xl font-bold">{t("settings.about.title")}</h2>
+              <p className="text-muted-foreground mt-1">{t("settings.about.version")}</p>
               <p className="text-sm text-muted-foreground mt-4 max-w-md mx-auto">
-                基于 Tauri 2.0 和 React 19 构建的现代化 SSH 终端管理工具
+                {t('settings.about.description')}
               </p>
             </div>
 
             <Separator />
 
             <div className="space-y-3">
-              <h3 className="font-semibold">技术栈</h3>
+              <h3 className="font-semibold">{t("settings.about.techStack.title")}</h3>
               <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 text-sm">
                 <div className="rounded border p-3 bg-muted/20">
-                  <p className="font-medium">前端</p>
+                  <p className="font-medium">{t("settings.about.techStack.frontend")}</p>
                   <p className="text-muted-foreground text-xs">React 19</p>
                 </div>
                 <div className="rounded border p-3 bg-muted/20">
-                  <p className="font-medium">后端</p>
+                  <p className="font-medium">{t("settings.about.techStack.backend")}</p>
                   <p className="text-muted-foreground text-xs">Tauri 2.0</p>
                 </div>
                 <div className="rounded border p-3 bg-muted/20">
-                  <p className="font-medium">UI 库</p>
+                  <p className="font-medium">{t("settings.about.techStack.ui")}</p>
                   <p className="text-muted-foreground text-xs">shadcn/ui</p>
                 </div>
                 <div className="rounded border p-3 bg-muted/20">
-                  <p className="font-medium">终端</p>
+                  <p className="font-medium">{t('settings.tabs.terminal')}</p>
                   <p className="text-muted-foreground text-xs">xterm.js</p>
                 </div>
               </div>
@@ -642,14 +642,14 @@ export function Settings() {
             <Separator />
 
             <div className="space-y-3">
-              <h3 className="font-semibold">开源仓库</h3>
+              <h3 className="font-semibold">{t("settings.about.repository.title")}</h3>
               <div className="rounded-lg border p-4 bg-muted/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Github className="h-5 w-5" />
                     <div>
-                      <p className="font-medium">GitHub 仓库</p>
-                      <p className="text-sm text-muted-foreground">shenjianZ/ssh-terminal</p>
+                      <p className="font-medium">{t("settings.about.repository.github")}</p>
+                      <p className="text-sm text-muted-foreground">{t("settings.about.repository.repoName")}</p>
                     </div>
                   </div>
                   <Button
@@ -659,11 +659,11 @@ export function Settings() {
                     className="gap-2"
                   >
                     <Github className="h-4 w-4" />
-                    访问
+                    {t('settings.about.repository.visit')}
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground mt-3">
-                  欢迎访问 GitHub 仓库查看源代码、提交 Issue 或参与贡献
+                  {t("settings.about.repository.description")}
                 </p>
               </div>
             </div>
@@ -671,9 +671,9 @@ export function Settings() {
             <Separator />
 
             <div className="text-center text-sm text-muted-foreground">
-              <p>© 2025 SSH Terminal. All rights reserved.</p>
+              <p>{t("settings.about.copyright")}</p>
               <p className="mt-1">
-                Made with ❤️ using Tauri and React
+                {t("settings.about.madeWith")}
               </p>
             </div>
           </div>
@@ -682,3 +682,27 @@ export function Settings() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

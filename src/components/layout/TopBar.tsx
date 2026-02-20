@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+﻿import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Bell, Plus, FolderOpen, RotateCcw } from "lucide-react";
@@ -9,22 +9,24 @@ import { useKeybindingStore } from "@/store/keybindingStore";
 import { useAIStore } from "@/store/aiStore";
 import { playSound } from "@/lib/sounds";
 import { SoundEffect } from "@/lib/sounds";
+import { useTranslation } from 'react-i18next';
 
 const getPageTitle = (pathname: string): string => {
   const titles: Record<string, string> = {
-    '/': '终端',
-    '/terminal': '终端',
-    '/sessions': '会话管理',
-    '/settings': '设置',
-    '/sftp': '文件管理器',
+    '/': 'page.terminal',
+    '/terminal': 'page.terminal',
+    '/sessions': 'page.sessions',
+    '/settings': 'page.settings',
+    '/sftp': 'page.sftp',
   };
-  return titles[pathname] || 'SSH Terminal';
+  return titles[pathname] || 'app.name';
 };
 
 export function TopBar() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const pageTitle = getPageTitle(location.pathname);
+  const pageTitle = t(getPageTitle(location.pathname));
   const isSessionPage = location.pathname === '/sessions';
   const isSettingsPage = location.pathname === '/settings';
   const { setConfig } = useTerminalConfigStore();
@@ -38,15 +40,15 @@ export function TopBar() {
   const handleResetAll = async () => {
     playSound(SoundEffect.BUTTON_CLICK);
     try {
-      // 1. 重置终端/录制配置
+      // 1. 防嶇疆缁堢鐮/褰曞埗閰嶇疆
       const defaultConfig = await invoke<TerminalConfig>('storage_config_get_default');
       await setConfig(defaultConfig);
 
-      // 2. 重置快捷键
+      // 2. 防嶇疆蹇呴€闿?
       await invoke('storage_keybindings_reset');
       await keybindingStore.loadFromStorage();
 
-      // 3. 重置 AI 配置
+      // 3. 防嶇疆 AI 閰嶇疆
       const defaultAIConfig = await aiStore.getDefaultConfig();
       await aiStore.saveConfig(defaultAIConfig);
 
@@ -64,7 +66,7 @@ export function TopBar() {
 
       {/* Right Actions */}
       <div className="flex items-center gap-2">
-        {/* 会话管理页面专属按钮 */}
+        {/* 浼氳瘽绠＄悊椤甸潰涓撳睘鎸夐挳 */}
         {isSessionPage && (
           <>
             <Button
@@ -74,8 +76,8 @@ export function TopBar() {
               className="touch-manipulation"
             >
               <FolderOpen className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">打开终端</span>
-              <span className="sm:hidden">终端</span>
+              <span className="hidden sm:inline">{t('action.openTerminal')}</span>
+              <span className="sm:hidden">{t('page.terminal')}</span>
             </Button>
             <Button
               size="sm"
@@ -83,14 +85,14 @@ export function TopBar() {
               className="touch-manipulation"
             >
               <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">新建会话</span>
-              <span className="sm:hidden">新建</span>
+              <span className="hidden sm:inline">{t('action.newSession')}</span>
+              <span className="sm:hidden">{t('dialog.create')}</span>
             </Button>
             <div className="w-px h-6 bg-border mx-2" />
           </>
         )}
 
-        {/* 设置页面专属按钮 */}
+        {/* 璁剧疆椤甸潰涓撳睘鎸夐挳 */}
         {isSettingsPage && (
           <>
             <Button
@@ -100,8 +102,8 @@ export function TopBar() {
               className="gap-2 touch-manipulation"
             >
               <RotateCcw className="h-4 w-4" />
-              <span className="hidden sm:inline">重置所有</span>
-              <span className="sm:hidden">重置</span>
+              <span className="hidden sm:inline">{t('action.resetAll')}</span>
+              <span className="sm:hidden">{t('dialog.reset')}</span>
             </Button>
             <div className="w-px h-6 bg-border mx-2" />
           </>
@@ -115,3 +117,5 @@ export function TopBar() {
     </header>
   );
 }
+
+export default TopBar;

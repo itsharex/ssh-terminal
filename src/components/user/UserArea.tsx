@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { User as UserIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/authStore';
@@ -6,6 +7,7 @@ import { LoginForm } from './LoginForm';
 import { UserAvatarDropdown } from './UserAvatarDropdown';
 
 export function UserArea() {
+  const { t } = useTranslation();
   const { isAuthenticated, isLoading } = useAuthStore();
   const [showLogin, setShowLogin] = useState(false);
 
@@ -39,7 +41,7 @@ export function UserArea() {
         size="icon"
         className="h-8 w-8"
         onClick={handleLoginClick}
-        title="登录"
+        title={t('userMenu.login')}
       >
         <UserIcon className="h-4 w-4" />
       </Button>

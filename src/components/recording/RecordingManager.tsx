@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -28,6 +29,8 @@ interface RecordingManagerProps {
 }
 
 export function RecordingManager({ onClose }: RecordingManagerProps) {
+  const { t } = useTranslation();
+
   const recordingFiles = useRecordingStore((state) => state.recordingFiles);
   const listRecordingFiles = useRecordingStore((state) => state.listRecordingFiles);
   const deleteRecordingFile = useRecordingStore((state) => state.deleteRecordingFile);
@@ -134,16 +137,16 @@ export function RecordingManager({ onClose }: RecordingManagerProps) {
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div className="flex items-center gap-2">
             <Video className="w-5 h-5" />
-            <h2 className="text-lg font-semibold">录制文件管理</h2>
+            <h2 className="text-lg font-semibold">{t('recording.manager.title')}</h2>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={loadFiles} disabled={isLoading}>
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              刷新
+              {t('recording.manager.refresh')}
             </Button>
             {onClose && (
               <Button variant="ghost" size="sm" onClick={onClose}>
-                关闭
+                {t('recording.manager.close')}
               </Button>
             )}
           </div>
@@ -155,7 +158,7 @@ export function RecordingManager({ onClose }: RecordingManagerProps) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="搜索录制文件..."
+              placeholder={t('recording.manager.searchPlaceholder')}
               className="w-full pl-10 pr-4 py-2 border rounded-md"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -168,8 +171,8 @@ export function RecordingManager({ onClose }: RecordingManagerProps) {
           {filteredFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <File className="w-12 h-12 mb-4 opacity-50" />
-              <p className="text-lg mb-2">暂无录制文件</p>
-              <p className="text-sm">开始录制后，文件将显示在这里</p>
+              <p className="text-lg mb-2">{t('recording.manager.emptyTitle')}</p>
+              <p className="text-sm">{t('recording.manager.emptyMessage')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -195,26 +198,26 @@ export function RecordingManager({ onClose }: RecordingManagerProps) {
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Clock className="w-3.5 h-3.5" />
                       <span>
-                        时长: {formatDuration(file.metadata.duration || 0)}
+                        {t('recording.manager.duration', { duration: formatDuration(file.metadata.duration || 0) })}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <File className="w-3.5 h-3.5" />
                       <span>
-                        大小: {formatFileSize(file.fileSize)}
+                        {t('recording.manager.fileSize', { size: formatFileSize(file.fileSize) })}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Tag className="w-3.5 h-3.5" />
                       <span>
-                        事件: {file.metadata.eventCount}
+                        {t('recording.manager.eventCount', { count: file.metadata.eventCount })}
                       </span>
                     </div>
 
                     <div className="text-xs text-muted-foreground">
-                      创建时间: {formatDate(file.createdAt)}
+                      {t('recording.manager.createdAt', { date: formatDate(file.createdAt) })}
                     </div>
                   </div>
 
@@ -227,13 +230,13 @@ export function RecordingManager({ onClose }: RecordingManagerProps) {
                       onClick={() => handleExportVideo(file)}
                     >
                       <Video className="w-3.5 h-3.5 mr-1" />
-                      导出视频
+                      {t('recording.manager.exportVideo')}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleExportJson(file)}
-                      title="导出为 JSON"
+                      title={t('recording.manager.exportJson')}
                     >
                       <FileJson className="w-4 h-4" />
                     </Button>
@@ -241,7 +244,7 @@ export function RecordingManager({ onClose }: RecordingManagerProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteFile(file)}
-                      title="删除"
+                      title={t('recording.manager.delete')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -255,7 +258,7 @@ export function RecordingManager({ onClose }: RecordingManagerProps) {
         {/* 统计信息 */}
         {recordingFiles.length > 0 && (
           <div className="px-6 py-3 border-t text-xs text-muted-foreground">
-            共 {recordingFiles.length} 个录制文件
+            {t('recording.manager.totalCount', { count: recordingFiles.length })}
           </div>
         )}
       </div>
@@ -275,13 +278,13 @@ export function RecordingManager({ onClose }: RecordingManagerProps) {
           <DialogHeader>
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              <DialogTitle>确认删除</DialogTitle>
+              <DialogTitle>{t('recording.manager.confirmDeleteTitle')}</DialogTitle>
             </div>
             <DialogDescription>
-              确定要删除录制文件 "{fileToDelete?.metadata.sessionName}" 吗？
+              {t('recording.manager.confirmDeleteMessage', { name: fileToDelete?.metadata.sessionName })}
               <br />
               <span className="text-xs text-muted-foreground">
-                此操作无法撤销，文件将被永久删除。
+                {t('recording.manager.confirmDeleteWarning')}
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -293,10 +296,10 @@ export function RecordingManager({ onClose }: RecordingManagerProps) {
                 setFileToDelete(null);
               }}
             >
-              取消
+              {t('common.cancel')}
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
-              删除
+              {t('recording.manager.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

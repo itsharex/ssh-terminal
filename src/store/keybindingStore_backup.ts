@@ -1,8 +1,8 @@
 ﻿import { create } from 'zustand';
-import i18n from '@/i18n/config';
 import type {
   KeyCombination,
   KeybindingPreset,
+  ConflictInfo,
 } from '@/types/keybinding';
 import {
   checkConflict,
@@ -53,10 +53,10 @@ interface KeybindingStore {
   unregisterKeybinding: (actionId: string) => void;
 
   /**
-        const message = i18n.t('keybinding.conflict.message', {
-          binding: serializeKeyBinding(keys),
-          actionName: conflictAction?.name || conflict.actionId,
-        });
+   * 检查快捷键冲突
+   */
+  checkConflict: (
+    keys: KeyCombination,
     excludeActionId?: string
   ) => ConflictInfo | null;
 
@@ -128,13 +128,12 @@ export const useKeybindingStore = create<KeybindingStore>()((set, get) => ({
         const conflictAction = KEYBINDING_ACTIONS.find(
           (action) => action.id === conflict.actionId
         );
-        const message = i18n.t('keybinding.conflict.message', {
-          keys: serializeKeyBinding(keys),
-          action: conflictAction?.name || conflict.actionId,
-        });
+        const message = `快捷键 ${serializeKeyBinding(
+          keys
+        )} 已被 "${conflictAction?.name || conflict.actionId}" 使用。是否覆盖？`;
 
         const result = await Dialog.confirm(message, {
-          title: i18n.t('keybinding.conflict.title'),
+          title: '快捷键冲突',
           kind: 'warning',
         });
 
@@ -184,7 +183,7 @@ export const useKeybindingStore = create<KeybindingStore>()((set, get) => ({
   },
 
   // 检查冲突
-  checkConflict: (keys: KeyCombination, excludeActionId?: string) => {
+  checkConflict: (keys, excludeActionId) => {
     const { keybindings } = get();
     return checkConflict(keys, keybindings, excludeActionId);
   },
@@ -215,7 +214,7 @@ export const useKeybindingStore = create<KeybindingStore>()((set, get) => ({
     const preset = presets.find((p) => p.id === presetId);
 
     if (!preset) {
-      await Dialog.message(i18n.t('keybinding.preset.notFound', { presetId }), {
+      await Dialog.message(`未找到预设方案: ${presetId}`, {
         title: '错误',
         kind: 'error',
       });
@@ -223,9 +222,9 @@ export const useKeybindingStore = create<KeybindingStore>()((set, get) => ({
     }
 
     const confirmed = await Dialog.confirm(
-      i18n.t('keybinding.preset.loadConfirm', { name: preset.name }),
+      `确定要加载预设方案 "${preset.name}" 吗？这将覆盖当前的快捷键配置。`,
       {
-        title: i18n.t('keybinding.preset.loadTitle'),
+        title: '确认加载预设',
         kind: 'warning',
       }
     );
@@ -245,9 +244,9 @@ export const useKeybindingStore = create<KeybindingStore>()((set, get) => ({
     const existingPreset = presets.find((p) => p.name === name);
     if (existingPreset) {
       const confirmed = await Dialog.confirm(
-        i18n.t('keybinding.preset.overwrite', { name }),
+        `预设 "${name}" 已存在。是否覆盖？`,
         {
-          title: i18n.t('keybinding.preset.existsTitle'),
+          title: '预设已存在',
           kind: 'warning',
         }
       );
@@ -277,9 +276,9 @@ export const useKeybindingStore = create<KeybindingStore>()((set, get) => ({
   // 重置为默认配置
   resetToDefault: async () => {
     const confirmed = await Dialog.confirm(
-      i18n.t('keybinding.reset.confirm'),
+      '确定要重置为默认快捷键配置吗？这将清除所有自定义配置。',
       {
-        title: i18n.t('keybinding.reset.title'),
+        title: '确认重置',
         kind: 'warning',
       }
     );
@@ -293,7 +292,7 @@ export const useKeybindingStore = create<KeybindingStore>()((set, get) => ({
         await get().loadFromStorage();
       } catch (error) {
         console.error('[KeybindingStore] Failed to reset keybindings:', error);
-        await Dialog.message(i18n.t('keybinding.reset.failed', { error }), {
+        await Dialog.message(`重置失败: ${error}`, {
           title: '错误',
           kind: 'error',
         });
@@ -319,9 +318,9 @@ export const useKeybindingStore = create<KeybindingStore>()((set, get) => ({
   importConfig: async (configJson) => {
     try {
       const confirmed = await Dialog.confirm(
-        i18n.t('keybinding.import.confirm'),
+        '导入快捷键配置将覆盖当前的快捷键设置。是否继续？',
         {
-          title: i18n.t('keybinding.import.title'),
+          title: '确认导入',
           kind: 'warning',
         }
       );
@@ -341,8 +340,8 @@ export const useKeybindingStore = create<KeybindingStore>()((set, get) => ({
       return true;
     } catch (error) {
       console.error('[KeybindingStore] Failed to import keybindings:', error);
-      await Dialog.message(i18n.t('keybinding.import.failed', { error }), {
-        title: i18n.t('keybinding.import.errorTitle'),
+      await Dialog.message(`导入失败: ${error}`, {
+        title: '导入错误',
         kind: 'error',
       });
       return false;

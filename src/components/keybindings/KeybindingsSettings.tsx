@@ -1,4 +1,5 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +18,7 @@ import { Search, FileDown, FileUp, RotateCcw } from 'lucide-react';
  * 快捷键设置页面
  */
 export function KeybindingsSettings() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -26,11 +28,25 @@ export function KeybindingsSettings() {
   const exportConfig = useKeybindingStore((state) => state.exportConfig);
   const importConfig = useKeybindingStore((state) => state.importConfig);
 
+  // 获取动作名称
+  const getActionName = (actionId: string): string => {
+    const [category, action] = actionId.split('.');
+    return t(`action.keybinding.${category}.${action}.name`);
+  };
+
+  // 获取动作描述
+  const getActionDescription = (actionId: string): string => {
+    const [category, action] = actionId.split('.');
+    return t(`action.keybinding.${category}.${action}.description`);
+  };
+
   // 过滤动作
   const filteredActions = KEYBINDING_ACTIONS.filter((action) => {
+    const actionName = getActionName(action.id);
+    const actionDescription = getActionDescription(action.id);
     const matchesSearch =
-      action.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      action.description.toLowerCase().includes(searchQuery.toLowerCase());
+      actionName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      actionDescription.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesCategory =
       selectedCategory === 'all' || action.category === selectedCategory;
@@ -49,11 +65,11 @@ export function KeybindingsSettings() {
 
   // 分类名称映射
   const categoryNames: Record<string, string> = {
-    global: '全局快捷键',
-    terminal: '终端快捷键',
-    session: '会话管理',
-    sftp: 'SFTP 文件管理',
-    other: '其他',
+    global: t('settings.keybindings.categoryName.global'),
+    terminal: t('settings.keybindings.categoryName.terminal'),
+    session: t('settings.keybindings.categoryName.session'),
+    sftp: t('settings.keybindings.categoryName.sftp'),
+    other: t('settings.keybindings.categoryName.other'),
   };
 
   const handleExport = async () => {
@@ -67,18 +83,18 @@ export function KeybindingsSettings() {
       const filePath = await save({
         filters: [
           {
-            name: 'JSON Files',
+            name: t('settings.keybindings.fileType'),
             extensions: ['json']
           }
         ],
-        defaultPath: `keybindings-${new Date().toISOString().slice(0, 10)}.json`
+        defaultPath: t('settings.keybindings.defaultFileName', { date: new Date().toISOString().slice(0, 10) })
       });
 
       if (filePath) {
         await writeTextFile(filePath, configJson);
       }
     } catch (error) {
-      console.error('导出失败:', error);
+      console.error(t('settings.keybindings.exportFailed'), error);
     }
   };
 
@@ -91,7 +107,7 @@ export function KeybindingsSettings() {
       const filePath = await open({
         filters: [
           {
-            name: 'JSON Files',
+            name: t('settings.keybindings.fileType'),
             extensions: ['json']
           }
         ],
@@ -103,7 +119,7 @@ export function KeybindingsSettings() {
         await importConfig(text);
       }
     } catch (error) {
-      console.error('导入失败:', error);
+      console.error(t('settings.keybindings.importFailed'), error);
     }
   };
 
@@ -112,9 +128,9 @@ export function KeybindingsSettings() {
       {/* 标题和操作栏 */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">快捷键设置</h2>
+          <h2 className="text-2xl font-bold">{t('settings.keybindings.title')}</h2>
           <p className="text-sm text-muted-foreground">
-            自定义应用快捷键，提升操作效率
+            {t('settings.keybindings.description')}
           </p>
         </div>
 
@@ -124,14 +140,14 @@ export function KeybindingsSettings() {
             onValueChange={setSelectedCategory}
           >
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="选择分类" />
+              <SelectValue placeholder={t('settings.keybindings.selectCategory')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">所有分类</SelectItem>
-              <SelectItem value="global">全局</SelectItem>
-              <SelectItem value="terminal">终端</SelectItem>
-              <SelectItem value="session">会话</SelectItem>
-              <SelectItem value="sftp">SFTP</SelectItem>
+              <SelectItem value="all">{t('settings.keybindings.category.all')}</SelectItem>
+              <SelectItem value="global">{t('settings.keybindings.category.global')}</SelectItem>
+              <SelectItem value="terminal">{t('settings.keybindings.category.terminal')}</SelectItem>
+              <SelectItem value="session">{t('settings.keybindings.category.session')}</SelectItem>
+              <SelectItem value="sftp">{t('settings.keybindings.category.sftp')}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -144,10 +160,11 @@ export function KeybindingsSettings() {
             }}
           >
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="加载预设" />
+              <SelectValue placeholder={t('settings.keybindings.loadPreset')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">加载预设</SelectItem>
+              <SelectItem value="default">{t('settings.keybindings.loadPreset')}</SelectItem>
+              <SelectItem value="default">{t('settings.keybindings.loadPreset')}</SelectItem>
               {presets.map((preset) => (
                 <SelectItem key={preset.id} value={preset.id}>
                   {preset.name}
@@ -156,15 +173,15 @@ export function KeybindingsSettings() {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="icon" onClick={handleExport} title="导出配置">
+          <Button variant="outline" size="icon" onClick={handleExport} title={t('settings.keybindings.export')}>
             <FileDown className="h-4 w-4" />
           </Button>
 
-          <Button variant="outline" size="icon" onClick={handleImport} title="导入配置">
+          <Button variant="outline" size="icon" onClick={handleImport} title={t('settings.keybindings.import')}>
             <FileUp className="h-4 w-4" />
           </Button>
 
-          <Button variant="outline" size="icon" onClick={resetToDefault} title="重置为默认">
+          <Button variant="outline" size="icon" onClick={resetToDefault} title={t('settings.keybindings.reset')}>
             <RotateCcw className="h-4 w-4" />
           </Button>
         </div>
@@ -175,7 +192,7 @@ export function KeybindingsSettings() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="搜索快捷键..."
+          placeholder={t('settings.keybindings.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -192,7 +209,12 @@ export function KeybindingsSettings() {
               </h3>
               <div className="space-y-2">
                 {actions.map((action) => (
-                  <KeybindingEditor key={action.id} actionId={action.id} />
+                  <KeybindingEditor 
+                    key={action.id} 
+                    actionId={action.id}
+                    name={getActionName(action.id)}
+                    description={getActionDescription(action.id)}
+                  />
                 ))}
               </div>
             </div>
@@ -200,7 +222,7 @@ export function KeybindingsSettings() {
 
           {filteredActions.length === 0 && (
             <div className="py-12 text-center text-muted-foreground">
-              没有找到匹配的快捷键
+              {t('settings.keybindings.noResults')}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+﻿import { NavLink } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import { useSidebarStore } from "@/store/sidebarStore";
 import { cn } from "@/lib/utils";
 import { UserArea } from "@/components/user/UserArea";
 import { useAuthStore } from "@/store/authStore";
+import { useTranslation } from 'react-i18next';
 
 interface NavigationItem {
   name: string;
@@ -27,39 +28,38 @@ interface NavigationSection {
   items: NavigationItem[];
 }
 
-const navigationItems: NavigationSection[] = [
-  {
-    title: "连接",
-    items: [
-      { name: "终端", path: "/terminal", icon: Terminal },
-      { name: "会话管理", path: "/sessions", icon: FolderOpen },
-    ]
-  },
-  {
-    title: "AI 助手",
-    items: [
-      { name: "AI 对话", path: "/ai-chat", icon: MessageSquare },
-    ]
-  },
-  {
-    title: "工具",
-    items: [
-      { name: "文件管理器", path: "/sftp", icon: HardDrive },
-    ]
-  },
-  {
-    title: "配置",
-    items: [
-      { name: "设置", path: "/settings", icon: Settings },
-    ]
-  },
-];
-
 export function Sidebar() {
+  const { t } = useTranslation();
   const { isCollapsed, toggleSidebar } = useSidebarStore();
   const { isAuthenticated } = useAuthStore();
 
-  // 处理导航项点击（移除特殊逻辑，使用默认导航行为）
+  const navigationItems: NavigationSection[] = [
+    {
+      title: t("nav.section.connection"),
+      items: [
+        { name: t("nav.item.terminal"), path: "/terminal", icon: Terminal },
+        { name: t("nav.item.sessions"), path: "/sessions", icon: FolderOpen },
+      ]
+    },
+    {
+      title: t("nav.section.ai"),
+      items: [
+        { name: t("nav.item.aiChat"), path: "/ai-chat", icon: MessageSquare },
+      ]
+    },
+    {
+      title: t("nav.section.tools"),
+      items: [
+        { name: t("nav.item.sftp"), path: "/sftp", icon: HardDrive },
+      ]
+    },
+    {
+      title: t("nav.section.config"),
+      items: [
+        { name: t("nav.item.settings"), path: "/settings", icon: Settings },
+      ]
+    },
+  ];
 
   return (
     <aside
@@ -76,7 +76,7 @@ export function Sidebar() {
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Terminal className="h-5 w-5 text-primary" />
               </div>
-              <h1 className="font-bold text-lg whitespace-nowrap overflow-hidden">SSH Terminal</h1>
+              <h1 className="font-bold text-lg whitespace-nowrap overflow-hidden">{t('app.name')}</h1>
             </>
           )}
         </div>
@@ -162,3 +162,5 @@ export function Sidebar() {
     </aside>
   );
 }
+
+export default Sidebar;

@@ -1,4 +1,5 @@
 import { RefreshCw, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { useSyncStore } from '@/store/syncStore';
 import { useAuthStore } from '@/store/authStore';
@@ -9,6 +10,7 @@ import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
 
 export function SyncButton() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuthStore();
   const { syncNow, getStatus, lastSyncAt, isSyncing, error, pendingCount } = useSyncStore();
   const { getCurrentUser } = useAuthStore();
@@ -32,8 +34,8 @@ export function SyncButton() {
     try {
       await syncNow();
       playSound(SoundEffect.SUCCESS);
-      toast.success('同步成功', {
-        description: '所有数据已同步到服务器',
+      toast.success(t('sync.success'), {
+        description: t('sync.successDescription'),
       });
 
       // 同步成功后重新加载会话和用户资料
@@ -48,7 +50,7 @@ export function SyncButton() {
     } catch (error) {
       playSound(SoundEffect.ERROR);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error('同步失败', {
+      toast.error(t('sync.failed'), {
         description: errorMessage,
       });
       console.error('Sync failed:', error);
@@ -57,16 +59,16 @@ export function SyncButton() {
 
   // 计算最后同步时间的显示
   const formatLastSync = () => {
-    if (!lastSyncAt) return '未同步';
+    if (!lastSyncAt) return t('sync.neverSynced');
     const now = Date.now() / 1000;
     const diff = Math.floor((now - lastSyncAt) / 60); // 分钟
 
-    if (diff < 1) return '刚刚';
-    if (diff < 60) return `${diff} 分钟前`;
+    if (diff < 1) return t('sync.justNow');
+    if (diff < 60) return t('sync.minutesAgo', { count: diff });
     const hours = Math.floor(diff / 60);
-    if (hours < 24) return `${hours} 小时前`;
+    if (hours < 24) return t('sync.hoursAgo', { count: hours });
     const days = Math.floor(hours / 24);
-    return `${days} 天前`;
+    return t('sync.daysAgo', { count: days });
   };
 
   const getStatusIcon = () => {
@@ -83,9 +85,9 @@ export function SyncButton() {
   };
 
   const getTooltipText = () => {
-    if (isSyncing) return '正在同步...';
-    if (error) return '同步失败';
-    return `上次同步: ${formatLastSync()}`;
+    if (isSyncing) return t('sync.syncing');
+    if (error) return t('sync.syncFailed');
+    return t('sync.lastSync', { time: formatLastSync() });
   };
 
   return (

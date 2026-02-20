@@ -1,5 +1,6 @@
 import { LogOut, User, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -14,6 +15,7 @@ import { useUserProfileStore } from '@/store/userProfileStore';
 import { useState, useEffect } from 'react';
 
 export function UserAvatarDropdown() {
+  const { t } = useTranslation();
   const { currentUser, logout } = useAuthStore();
   const { profile } = useUserProfileStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -51,7 +53,7 @@ export function UserAvatarDropdown() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-8 w-full justify-start gap-2 px-2 hover:bg-accent/50"
+          className="h-8 w-full justify-start gap-2 px-2 hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
         >
           <Avatar className="h-6 w-6">
             <AvatarImage src={getAvatarUrl()} />
@@ -72,19 +74,19 @@ export function UserAvatarDropdown() {
         <DropdownMenuItem asChild className="gap-2">
           <Link to="/user-profile">
             <User className="h-4 w-4" />
-            个人资料
+            {t('userMenu.profile')}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="gap-2">
           <Link to="/settings">
             <Settings className="h-4 w-4" />
-            设置
+            {t('userMenu.settings')}
           </Link>
         </DropdownMenuItem>
         <Separator className="my-1" />
         <DropdownMenuItem onClick={handleLogout} className="gap-2 text-destructive focus:text-destructive">
           <LogOut className="h-4 w-4" />
-          登出
+          {t('userMenu.logout')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

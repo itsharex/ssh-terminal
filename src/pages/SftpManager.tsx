@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Upload, Download, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
 
 export function SftpManager() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { sessions } = useSessionStore();
   const {
@@ -87,13 +89,13 @@ export function SftpManager() {
     playSound(SoundEffect.BUTTON_CLICK);
     setSelectedConnectionId(connectionId);
     const connection = availableConnections.find(c => c.id === connectionId);
-    toast.success(`已切换到: ${connection?.name || connectionId} (${connection?.host})`);
+    toast.success(t('sftp.success.switchedToConnection', { name: connection?.name || connectionId, host: connection?.host }));
   };
 
   const handleRefresh = async () => {
     playSound(SoundEffect.BUTTON_CLICK);
     if (!selectedConnectionId) {
-      toast.error('请先选择一个连接');
+      toast.error(t('sftp.error.noConnectionSelected'));
       return;
     }
     setIsLoading(true);
@@ -111,10 +113,10 @@ export function SftpManager() {
       // 等待一下让刷新生效
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      toast.success('刷新成功');
+      toast.success(t('sftp.success.refreshSuccess'));
       playSound(SoundEffect.SUCCESS);
     } catch (error) {
-      toast.error('刷新失败', { description: String(error) });
+      toast.error(t('sftp.error.refreshFailed'), { description: String(error) });
     } finally {
       setIsLoading(false);
     }
@@ -123,12 +125,12 @@ export function SftpManager() {
   const handleUpload = async () => {
     playSound(SoundEffect.BUTTON_CLICK);
     if (!selectedConnectionId) {
-      toast.error('请先选择一个连接');
+      toast.error(t('sftp.error.noConnectionSelected'));
       return;
     }
 
     if (selectedLocalFiles.length === 0) {
-      toast.error('请先选择要上传的文件');
+      toast.error(t('sftp.error.noFileSelected'));
       return;
     }
 
@@ -142,7 +144,7 @@ export function SftpManager() {
       for (const file of selectedLocalFiles) {
         // 跳过目录
         if (file.isDir) {
-          toast.warning(`跳过目录: ${file.name}`);
+          toast.warning(t('sftp.error.skipDirectory', { name: file.name }));
           continue;
         }
 
@@ -169,7 +171,7 @@ export function SftpManager() {
         });
       }
 
-      toast.success(`成功上传 ${selectedLocalFiles.length} 个文件`);
+      toast.success(t('sftp.success.uploadSuccess', { count: selectedLocalFiles.length }));
       playSound(SoundEffect.SUCCESS);
       setSelectedLocalFiles([]);
 
@@ -177,7 +179,7 @@ export function SftpManager() {
       setRemoteRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error('Upload failed:', error);
-      toast.error(`上传失败: ${error}`);
+      toast.error(t('sftp.error.uploadFailed', { error }));
       playSound(SoundEffect.ERROR);
     } finally {
       setUploading(false);
@@ -187,12 +189,12 @@ export function SftpManager() {
   const handleDownload = async () => {
     playSound(SoundEffect.BUTTON_CLICK);
     if (!selectedConnectionId) {
-      toast.error('请先选择一个连接');
+      toast.error(t('sftp.error.noConnectionSelected'));
       return;
     }
 
     if (selectedRemoteFiles.length === 0) {
-      toast.error('请先选择要下载的文件');
+      toast.error(t('sftp.error.noFileSelected'));
       return;
     }
 
@@ -201,7 +203,7 @@ export function SftpManager() {
       for (const file of selectedRemoteFiles) {
         // 跳过目录
         if (file.isDir) {
-          toast.warning(`跳过目录: ${file.name}`);
+          toast.warning(t('sftp.error.skipDirectory', { name: file.name }));
           continue;
         }
 
@@ -216,7 +218,7 @@ export function SftpManager() {
         });
       }
 
-      toast.success(`成功下载 ${selectedRemoteFiles.length} 个文件`);
+      toast.success(t('sftp.success.downloadSuccess', { count: selectedRemoteFiles.length }));
       playSound(SoundEffect.SUCCESS);
       setSelectedRemoteFiles([]);
 
@@ -224,7 +226,7 @@ export function SftpManager() {
       setLocalRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error('Download failed:', error);
-      toast.error(`下载失败: ${error}`);
+      toast.error(t('sftp.error.downloadFailed', { error }));
       playSound(SoundEffect.ERROR);
     } finally {
       setDownloading(false);
@@ -235,19 +237,19 @@ export function SftpManager() {
     return (
       <div className="flex-1 flex items-start justify-center pt-32 bg-background">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">SFTP 文件管理器</h2>
+          <h2 className="text-2xl font-bold mb-4">{t('sftp.title')}</h2>
           <p className="text-muted-foreground mb-6">
-            没有可用的 SSH 连接
+            {t('sftp.error.noConnectionsAvailable')}
           </p>
           <p className="text-sm text-muted-foreground mb-6">
-            请先在终端页面连接到 SSH 服务器
+            {t('sftp.error.connectFirst')}
           </p>
           <Button onClick={() => {
             playSound(SoundEffect.BUTTON_CLICK);
             navigate('/terminal');
           }}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            前往终端
+            {t('sftp.action.goToTerminal')}
           </Button>
         </div>
       </div>
@@ -272,9 +274,9 @@ export function SftpManager() {
             </Button>
 
             <div>
-              <h1 className="text-lg font-semibold">SFTP 文件管理器</h1>
+              <h1 className="text-lg font-semibold">{t('sftp.title')}</h1>
               <p className="text-xs text-muted-foreground">
-                管理远程文件
+                {t('sftp.subtitle')}
               </p>
             </div>
           </div>
@@ -288,7 +290,7 @@ export function SftpManager() {
             >
               <SelectTrigger className="w-[200px]">
                 <HardDrive className="h-4 w-4 mr-2 opacity-50" />
-                <SelectValue placeholder="选择连接" />
+                <SelectValue placeholder={t('sftp.action.selectConnection')} />
               </SelectTrigger>
               <SelectContent>
                 {availableConnections.map((conn) => (
@@ -315,7 +317,7 @@ export function SftpManager() {
               disabled={!selectedConnectionId || uploading || selectedLocalFiles.length === 0}
             >
               <Upload className="h-4 w-4 mr-2" />
-              {uploading ? '上传中...' : '上传'}
+              {uploading ? t('sftp.status.uploading') : t('sftp.action.upload')}
             </Button>
 
             <Button
@@ -325,7 +327,7 @@ export function SftpManager() {
               disabled={!selectedConnectionId || downloading || selectedRemoteFiles.length === 0}
             >
               <Download className="h-4 w-4 mr-2" />
-              {downloading ? '下载中...' : '下载'}
+              {downloading ? t('sftp.status.downloading') : t('sftp.action.download')}
             </Button>
           </div>
         </div>
@@ -342,7 +344,7 @@ export function SftpManager() {
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">请选择一个 SSH 连接</p>
+          <p className="text-muted-foreground">{t('sftp.error.selectConnectionFirst')}</p>
         </div>
       )}
     </div>

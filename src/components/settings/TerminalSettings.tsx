@@ -17,7 +17,7 @@ import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
 import { invoke } from '@tauri-apps/api/core';
 import type { TerminalConfig } from '@/types/terminal';
-
+import { useTranslation } from 'react-i18next';
 interface SliderControlProps {
   label: string;
   value: number;
@@ -27,24 +27,20 @@ interface SliderControlProps {
   step: number;
   onChange: (value: number) => void;
 }
-
 function SliderControl({ label, value, unit, min, max, step, onChange }: SliderControlProps) {
   const handleDecrement = () => {
     const newValue = Math.max(min, value - step);
     playSound(SoundEffect.TOGGLE_SWITCH);
     onChange(newValue);
   };
-
   const handleIncrement = () => {
     const newValue = Math.min(max, value + step);
     playSound(SoundEffect.TOGGLE_SWITCH);
     onChange(newValue);
   };
-
   const handleSliderChange = ([newValue]: number[]) => {
     onChange(newValue);
   };
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -82,10 +78,9 @@ function SliderControl({ label, value, unit, min, max, step, onChange }: SliderC
     </div>
   );
 }
-
 export function TerminalSettings() {
   const { config, setConfig, setTheme } = useTerminalConfigStore();
-
+  const { t } = useTranslation();
   const handleReset = async () => {
     try {
       const defaultConfig = await invoke<TerminalConfig>('storage_config_get_default');
@@ -96,12 +91,11 @@ export function TerminalSettings() {
       playSound(SoundEffect.ERROR);
     }
   };
-
   return (
     <div className="space-y-6">
-      {/* 顶部标题和重置按钮 */}
+      {/* ������������ð�ť */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">终端设置</h2>
+        <h2 className="text-xl font-semibold">{t('settings.terminal.title')}</h2>
         <Button
           variant="ghost"
           size="sm"
@@ -109,14 +103,13 @@ export function TerminalSettings() {
           className="gap-2"
         >
           <ResetIcon className="h-4 w-4" />
-          恢复默认
+          {t('settings.terminal.reset')}
         </Button>
       </div>
-
-      {/* 主题选择 */}
+      {/* ����ѡ�� */}
       <Card>
         <CardHeader>
-          <CardTitle>主题</CardTitle>
+          <CardTitle>{t('settings.terminal.theme')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -146,15 +139,14 @@ export function TerminalSettings() {
           </div>
         </CardContent>
       </Card>
-
-      {/* 字体设置 */}
+      {/* �������� */}
       <Card>
         <CardHeader>
-          <CardTitle>字体</CardTitle>
+          <CardTitle>{t('settings.terminal.font')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>字体家族</Label>
+            <Label>{t('settings.terminal.fontFamily')}</Label>
             <Select
               value={config.fontFamily}
               onValueChange={(value) => {
@@ -174,9 +166,8 @@ export function TerminalSettings() {
               </SelectContent>
             </Select>
           </div>
-
           <SliderControl
-            label="字号"
+            label={t('settings.terminal.fontSize')}
             value={config.fontSize}
             unit="px"
             min={10}
@@ -184,27 +175,24 @@ export function TerminalSettings() {
             step={1}
             onChange={(fontSize) => setConfig({ fontSize })}
           />
-
           <SliderControl
-            label="字重"
+            label={t('settings.terminal.fontWeight')}
             value={config.fontWeight}
             min={100}
             max={900}
             step={100}
             onChange={(fontWeight) => setConfig({ fontWeight })}
           />
-
           <SliderControl
-            label="行高"
+            label={t('settings.terminal.lineHeight')}
             value={config.lineHeight * 100}
             min={100}
             max={180}
             step={5}
             onChange={(lineHeight) => setConfig({ lineHeight: lineHeight / 100 })}
           />
-
           <SliderControl
-            label="字间距"
+            label={t('settings.terminal.letterSpacing')}
             value={config.letterSpacing}
             unit="px"
             min={-2}
@@ -214,15 +202,14 @@ export function TerminalSettings() {
           />
         </CardContent>
       </Card>
-
-      {/* 光标设置 */}
+      {/* ������� */}
       <Card>
         <CardHeader>
-          <CardTitle>光标</CardTitle>
+          <CardTitle>{t('settings.terminal.cursor')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label htmlFor="cursor-blink">光标闪烁</Label>
+            <Label htmlFor="cursor-blink">{t('settings.terminal.cursorBlink')}</Label>
             <Switch
               id="cursor-blink"
               checked={config.cursorBlink}
@@ -232,9 +219,8 @@ export function TerminalSettings() {
               }}
             />
           </div>
-
           <div className="space-y-2">
-            <Label>光标样式</Label>
+            <Label>{t('settings.terminal.cursorStyle')}</Label>
             <div className="grid grid-cols-3 gap-2">
               {(['block', 'underline', 'bar'] as const).map((style) => (
                 <Button
@@ -246,24 +232,23 @@ export function TerminalSettings() {
                   }}
                   className="w-full"
                 >
-                  {style === 'block' ? '方块' : style === 'underline' ? '下划线' : '竖线'}
+                  {style === 'block' ? t('settings.terminal.cursorBlock') : style === 'underline' ? t('settings.terminal.cursorUnderline') : t('settings.terminal.cursorBar')}
                 </Button>
               ))}
             </div>
           </div>
         </CardContent>
       </Card>
-
-      {/* 连接设置 */}
+      {/* �������� */}
       <Card>
         <CardHeader>
-          <CardTitle>连接</CardTitle>
+          <CardTitle>{t('settings.terminal.connection')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>心跳间隔</Label>
+            <Label>{t('settings.terminal.keepAliveInterval')}</Label>
             <p className="text-sm text-muted-foreground">
-              保持 SSH 连接活跃的间隔秒数: {config.keepAliveInterval}s
+              {t('settings.terminal.keepAliveIntervalDescription', { value: config.keepAliveInterval })}
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
               {[0, 15, 30, 60, 120].map((value) => (
@@ -277,30 +262,26 @@ export function TerminalSettings() {
                     playSound(SoundEffect.BUTTON_CLICK);
                   }}
                 >
-                  {value === 0 ? '禁用' : `${value}s`}
+                  {value === 0 ? t('settings.terminal.keepAliveIntervalDisabled') : `${value}s`}
                 </Button>
               ))}
             </div>
           </div>
-
           <div className="rounded-lg border p-3 bg-muted/20">
             <p className="text-xs text-muted-foreground">
-              💡 启用心跳功能可以防止长时间空闲导致 SSH 连接断开。
-              建议设置为 30-60 秒以平衡性能和连接稳定性。
-              设置为 0 可以禁用心跳功能。
+              {t('settings.terminal.keepAliveIntervalTip')}
             </p>
           </div>
         </CardContent>
       </Card>
-
-      {/* 其他设置 */}
+      {/* �������� */}
       <Card>
         <CardHeader>
-          <CardTitle>其他</CardTitle>
+          <CardTitle>{t('settings.terminal.other')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <SliderControl
-            label="内边距"
+            label={t('settings.terminal.padding')}
             value={config.padding}
             unit="px"
             min={0}
@@ -308,11 +289,10 @@ export function TerminalSettings() {
             step={4}
             onChange={(padding) => setConfig({ padding })}
           />
-
           <SliderControl
-            label="滚动缓冲"
+            label={t('settings.terminal.scrollback')}
             value={config.scrollback}
-            unit=" 行"
+            unit=" ��"
             min={100}
             max={50000}
             step={100}
@@ -323,3 +303,7 @@ export function TerminalSettings() {
     </div>
   );
 }
+
+
+
+

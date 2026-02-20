@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,9 +31,10 @@ export function KeybindingRecorder({
   onOpenChange,
   onRecord,
   currentKeys,
-  title = '录制快捷键',
-  description = '请按下您想要设置的快捷键组合',
+  title,
+  description,
 }: KeybindingRecorderProps) {
+  const { t } = useTranslation();
   const [recordedKeys, setRecordedKeys] = useState<KeyCombination | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const recordingRef = useRef(false);
@@ -119,9 +121,9 @@ export function KeybindingRecorder({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Keyboard className="h-5 w-5" />
-            {title}
+            {title || t('settings.keybindings.recorder.title')}
           </DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription>{description || t('settings.keybindings.recorder.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="py-6">
@@ -132,10 +134,10 @@ export function KeybindingRecorder({
                 <Keyboard className="relative h-16 w-16 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground">
-                请按下快捷键组合...
+                {t('settings.keybindings.recorder.recordingHint')}
               </p>
               <p className="text-xs text-muted-foreground">
-                支持 Ctrl、Alt、Shift 和字母/数字/功能键的组合
+                {t('settings.keybindings.recorder.recordingSupport')}
               </p>
             </div>
           ) : recordedKeys ? (
@@ -146,7 +148,7 @@ export function KeybindingRecorder({
                 </p>
               </div>
               <p className="text-sm text-muted-foreground">
-                已录制的快捷键
+                {t('settings.keybindings.recorder.recordedHint')}
               </p>
             </div>
           ) : currentKeys ? (
@@ -157,7 +159,7 @@ export function KeybindingRecorder({
                 </p>
               </div>
               <p className="text-sm text-muted-foreground">
-                当前快捷键
+                {t('settings.keybindings.recorder.currentHint')}
               </p>
             </div>
           ) : null}
@@ -166,14 +168,14 @@ export function KeybindingRecorder({
         <DialogFooter>
           {recordedKeys && (
             <Button variant="outline" onClick={handleClear}>
-              重新录制
+              {t('settings.keybindings.recorder.reRecord')}
             </Button>
           )}
           <Button variant="outline" onClick={handleCancel}>
-            取消
+            {t('settings.keybindings.recorder.cancel')}
           </Button>
           <Button onClick={handleConfirm} disabled={!recordedKeys}>
-            确认
+            {t('settings.keybindings.recorder.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>

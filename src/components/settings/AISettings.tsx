@@ -1,4 +1,6 @@
-// AI 设置组件
+﻿// AI 设置组件
+
+import { useTranslation } from 'react-i18next';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -31,6 +33,7 @@ import type { AIProviderConfig, AIProviderType } from '@/types/ai';
 import { AICachePanel } from '@/components/AICachePanel';
 
 export function AISettings() {
+  const { t } = useTranslation();
   const {
     config,
     getDefaultConfig,
@@ -76,22 +79,21 @@ export function AISettings() {
         },
       });
       playSound(SoundEffect.SUCCESS);
-      toast.success('AI 配置已保存');
-    } catch (error) {
-      playSound(SoundEffect.ERROR);
-      toast.error('保存配置失败');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // 恢复默认
-  const handleReset = async () => {
-    const defaultConfig = await getDefaultConfig();
+      toast.success(t('settings.ai.saveSuccess'));
+        } catch (error) {
+          playSound(SoundEffect.ERROR);
+          toast.error(t('settings.ai.saveFailed'));
+        } finally {
+          setIsSaving(false);
+        }
+        };
+      
+        // 重置配置
+        const handleReset = async () => {    const defaultConfig = await getDefaultConfig();
     setProviders(defaultConfig.providers);
     setDefaultProvider(defaultConfig.defaultProvider);
     playSound(SoundEffect.SUCCESS);
-    toast.success('已恢复默认配置');
+    toast.success(t('settings.ai.resetSuccess'));
   };
 
   // 测试连接
@@ -101,7 +103,7 @@ export function AISettings() {
     // 从本地状态获取 provider（用户当前正在编辑的配置）
     const provider = providers.find((p) => p.id === providerId);
     if (!provider) {
-      toast.error('Provider not found');
+      toast.error(t('settings.ai.providers.notFound'));
       setTestingProvider(null);
       return;
     }
@@ -115,10 +117,10 @@ export function AISettings() {
 
       if (success) {
         playSound(SoundEffect.SUCCESS);
-        toast.success('连接测试成功');
+        toast.success(t('settings.ai.providers.testSuccess'));
       } else {
         playSound(SoundEffect.ERROR);
-        toast.error('连接测试失败');
+        toast.error(t('settings.ai.providers.testFailed'));
       }
     } catch (error) {
       console.error('[AISettings] Test connection error:', error);
@@ -152,7 +154,7 @@ export function AISettings() {
       playSound(SoundEffect.SUCCESS);
     } catch (error) {
       playSound(SoundEffect.ERROR);
-      toast.error('保存配置失败');
+      toast.error(t('settings.ai.saveFailed'));
     }
   };
 
@@ -168,12 +170,12 @@ export function AISettings() {
   // 添加新服务
   const handleAddProvider = () => {
     if (!newProviderType.trim()) {
-      toast.error('请输入服务类型');
+      toast.error(t('settings.ai.providers.validationTypeRequired'));
       return;
     }
 
     if (!newProviderName.trim()) {
-      toast.error('请输入服务名称');
+      toast.error(t('settings.ai.providers.validationNameRequired'));
       return;
     }
 
@@ -196,7 +198,7 @@ export function AISettings() {
     setNewProviderIsLocal(false);
     setIsAddDialogOpen(false);
     playSound(SoundEffect.SUCCESS);
-    toast.success('已添加新服务（请填写配置后点击"保存配置"）');
+    toast.success(t('settings.ai.providers.addSuccess'));
   };
 
   // 删除服务
@@ -216,7 +218,7 @@ export function AISettings() {
 
     setProviders(newProviders);
     setDefaultProvider(newDefaultProvider);
-    toast.success('已删除服务');
+    toast.success(t('settings.ai.providers.deleteSuccess'));
 
     // 自动保存（删除会影响启用状态，保存时会播放提示音）
     saveEnabledState(newProviders, newDefaultProvider);
@@ -226,21 +228,18 @@ export function AISettings() {
   const getProviderTypeLabel = (type: string) => {
     switch (type) {
       case 'openai':
-        return 'OpenAI';
-      case 'ollama':
-        return 'Ollama (本地)';
+        return t('settings.ai.providerType.openai');
+      case 'ollama': return t('settings.ai.providerType.ollama');
       case 'qwen':
-        return '通义千问';
-      case 'wenxin':
-        return '文心一言';
+        return t('settings.ai.providerType.qwen');
+      case 'wenxin': return t('settings.ai.providerType.wenxin');
       default:
         return type;
-    }
-  };
-
-  // 获取推荐的模型列表
-  const getRecommendedModels = (type: string) => {
-    switch (type) {
+          }
+          };
+        
+          // 获取推荐的模型列表
+          const getRecommendedModels = (type: string) => {    switch (type) {
       case 'openai':
         return ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'];
       case 'ollama':
@@ -258,7 +257,7 @@ export function AISettings() {
     <div className="space-y-6">
       {/* 顶部标题和操作按钮 */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">AI 设置</h2>
+        <h2 className="text-xl font-semibold">{t('settings.ai.title')}</h2>
         <div className="flex gap-2">
           <Button
             variant="ghost"
@@ -267,18 +266,18 @@ export function AISettings() {
             className="gap-2"
           >
             <RotateCcw className="h-4 w-4" />
-            恢复默认
+            {t('settings.ai.reset')}
           </Button>
           <Button onClick={handleSave} disabled={isSaving} className="gap-2">
             {isSaving ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                保存中...
+                {t('settings.ai.saving')}
               </>
             ) : (
               <>
                 <Bot className="h-4 w-4" />
-                保存配置
+                {t('settings.ai.save')}
               </>
             )}
           </Button>
@@ -288,11 +287,11 @@ export function AISettings() {
       {/* 默认 Provider 选择 */}
       <Card>
         <CardHeader>
-          <CardTitle>默认 AI 服务</CardTitle>
+          <CardTitle>{t('settings.ai.defaultProvider.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label htmlFor="default-provider">选择默认使用的 AI 服务</Label>
+            <Label htmlFor="default-provider">{t('settings.ai.defaultProvider.label')}</Label>
             <Select
               value={defaultProvider}
               onValueChange={async (value) => {
@@ -302,7 +301,7 @@ export function AISettings() {
               }}
             >
               <SelectTrigger id="default-provider">
-                <SelectValue placeholder="选择默认 AI 服务" />
+                <SelectValue placeholder={t('settings.ai.defaultProvider.label')} />
               </SelectTrigger>
               <SelectContent>
                 {providers
@@ -315,7 +314,7 @@ export function AISettings() {
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              启用的服务将作为 AI 功能的默认提供者
+              {t('settings.ai.defaultProvider.hint')}
             </p>
           </div>
         </CardContent>
@@ -324,7 +323,7 @@ export function AISettings() {
       {/* Provider 列表 */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="text-base">已配置的 AI 服务</Label>
+          <Label className="text-base">{t('settings.ai.providers.title')}</Label>
           <Button
             size="sm"
             variant="outline"
@@ -332,7 +331,7 @@ export function AISettings() {
             onClick={() => setIsAddDialogOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            添加新服务
+            {t('settings.ai.providers.add')}
           </Button>
         </div>
 
@@ -340,23 +339,23 @@ export function AISettings() {
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>添加 AI 服务</DialogTitle>
+              <DialogTitle>{t('settings.ai.providers.addDialogTitle')}</DialogTitle>
               <DialogDescription>
-                选择服务类型并输入名称
+                {t('settings.ai.providers.addDialogDescription')}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="provider-type">服务类型</Label>
+                <Label htmlFor="provider-type">{t('settings.ai.providers.type')}</Label>
                 <Input
                   id="provider-type"
                   value={newProviderType}
                   onChange={(e) => setNewProviderType(e.target.value)}
-                  placeholder="例如: openai, ollama, qwen, claude"
+                  placeholder={t('settings.ai.providers.typePlaceholder')}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="provider-mode">服务形式</Label>
+                <Label htmlFor="provider-mode">{t('settings.ai.providers.mode')}</Label>
                 <Select
                   value={newProviderIsLocal ? 'local' : 'api'}
                   onValueChange={(value) => setNewProviderIsLocal(value === 'local')}
@@ -365,23 +364,23 @@ export function AISettings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="api">API 服务（需要 API Key）</SelectItem>
-                    <SelectItem value="local">本地服务（不需要 API Key）</SelectItem>
+                    <SelectItem value="api">{t('settings.ai.providers.modeApi')}</SelectItem>
+                    <SelectItem value="local">{t('settings.ai.providers.modeLocal')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   {newProviderIsLocal
-                    ? '本地服务运行在内网，不需要配置 API Key'
-                    : 'API 服务需要配置 API Key 进行身份验证'}
+                    ? t('settings.ai.providers.modeLocalHint')
+                    : t('settings.ai.providers.modeApiHint')}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="provider-name">服务名称</Label>
+                <Label htmlFor="provider-name">{t('settings.ai.providers.name')}</Label>
                 <Input
                   id="provider-name"
                   value={newProviderName}
                   onChange={(e) => setNewProviderName(e.target.value)}
-                  placeholder="例如: 我的 OpenAI"
+                  placeholder={t('settings.ai.providers.namePlaceholder')}
                 />
               </div>
             </div>
@@ -390,10 +389,10 @@ export function AISettings() {
                 variant="outline"
                 onClick={() => setIsAddDialogOpen(false)}
               >
-                取消
+                {t('dialog.cancel')}
               </Button>
               <Button onClick={handleAddProvider}>
-                添加
+                {t('dialog.add')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -469,7 +468,7 @@ export function AISettings() {
                     {testingProvider === provider.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      '测试连接'
+                      t('settings.ai.providers.test')
                     )}
                   </Button>
                   {/* 删除按钮 */}
@@ -491,7 +490,7 @@ export function AISettings() {
                 {/* API Key（除了 ollama 本地服务，其他都需要） */}
                 {provider.type !== 'ollama' && (
                   <div className="space-y-2">
-                    <Label htmlFor={`${provider.id}-apikey`}>API Key</Label>
+                    <Label htmlFor={`${provider.id}-apikey`}>{t('settings.ai.providers.apiKey')}</Label>
                     <Input
                       id={`${provider.id}-apikey`}
                       type="password"
@@ -504,9 +503,9 @@ export function AISettings() {
                   </div>
                 )}
 
-                {/* Base URL（可选） */}
+                {/* Base URL */}
                 <div className="space-y-2">
-                  <Label htmlFor={`${provider.id}-baseurl`}>Base URL（可选）</Label>
+                  <Label htmlFor={`${provider.id}-baseurl`}>{t('settings.ai.providers.baseUrl')}</Label>
                   <Input
                     id={`${provider.id}-baseurl`}
                     value={provider.baseUrl || ''}
@@ -521,29 +520,29 @@ export function AISettings() {
                   />
                   <p className="text-sm text-muted-foreground">
                     {provider.type === 'ollama'
-                      ? 'Ollama 服务的地址（本地安装后默认为 http://localhost:11434）'
-                      : 'API 的基础地址（通常不需要修改）'}
+                      ? t('settings.ai.providers.baseUrlOllamaHint')
+                      : t('settings.ai.providers.baseUrlHint')}
                   </p>
                 </div>
 
                 {/* 模型输入 */}
                 <div className="space-y-2">
-                  <Label htmlFor={`${provider.id}-model`}>模型</Label>
+                  <Label htmlFor={`${provider.id}-model`}>{t('settings.ai.providers.model')}</Label>
                   <Input
                     id={`${provider.id}-model`}
                     value={provider.model}
                     onChange={(e) => updateProvider(provider.id, { model: e.target.value })}
-                    placeholder="输入模型名称"
+                    placeholder={t('settings.ai.providers.modelPlaceholder')}
                   />
                   <p className="text-xs text-muted-foreground">
-                    推荐模型: {getRecommendedModels(provider.type).join(', ')}
+                    {t('settings.ai.providers.modelRecommended', { models: getRecommendedModels(provider.type).join(', ') })}
                   </p>
                 </div>
 
-                {/* Temperature */}
+                {/* Temperature 设置 */}
                 <div className="space-y-2">
                   <Label htmlFor={`${provider.id}-temperature`}>
-                    Temperature ({provider.temperature || 0.7})
+                    {t('settings.ai.providers.temperature', { value: provider.temperature ?? 0.7 })}
                   </Label>
                   <Input
                     id={`${provider.id}-temperature`}
@@ -559,14 +558,14 @@ export function AISettings() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    控制响应的随机性（0-2，值越高越随机）
+                    {t('settings.ai.providers.temperatureHint')}
                   </p>
                 </div>
 
                 {/* Max Tokens */}
                 <div className="space-y-2">
                   <Label htmlFor={`${provider.id}-maxtokens`}>
-                    Max Tokens ({provider.maxTokens || 2000})
+                    {t('settings.ai.providers.maxTokens', { value: provider.maxTokens ?? 2000 })}
                   </Label>
                   <Input
                     id={`${provider.id}-maxtokens`}
@@ -582,7 +581,7 @@ export function AISettings() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    单次响应的最大 token 数（1-32000）
+                    {t('settings.ai.providers.maxTokensHint')}
                   </p>
                 </div>
               </CardContent>
@@ -600,24 +599,24 @@ export function AISettings() {
           <div className="space-y-3">
             <h3 className="font-semibold flex items-center gap-2">
               <Bot className="h-5 w-5" />
-              💡 使用提示
+              {t('settings.ai.usageTips.title')}
             </h3>
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p>• <strong>OpenAI</strong>：需要 API Key，响应速度快，质量高，按使用量付费</p>
-              <p>• <strong>Ollama</strong>：本地运行，完全免费，数据隐私安全，需要先安装 Ollama</p>
-              <p>• 建议先测试连接，确保配置正确后再使用 AI 功能</p>
-              <p>• 可以同时配置多个 Provider，随时切换使用</p>
-              <p>• 修改配置后记得点击"保存配置"按钮</p>
+              <p>• <strong>{t('settings.ai.providerType.openai')}</strong>：{t('settings.ai.usageTips.openai')}</p>
+              <p>• <strong>Ollama</strong>：{t('settings.ai.usageTips.ollama')}</p>
+              <p>• {t('settings.ai.usageTips.testFirst')}</p>
+              <p>• {t('settings.ai.usageTips.multipleProviders')}</p>
+              <p>• {t('settings.ai.usageTips.rememberToSave')}</p>
             </div>
           </div>
 
           <div className="mt-4 pt-4 border-t space-y-2">
-            <h4 className="font-medium">AI 功能快捷键：</h4>
+            <h4 className="font-medium">{t('settings.ai.shortcuts.title')}</h4>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• 命令解释：选中命令后按 <kbd className="px-1 py-0.5 rounded bg-muted">Ctrl+Shift+A</kbd></li>
-              <li>• 自然语言转命令：输入 <kbd className="px-1 py-0.5 rounded bg-muted">#</kbd> + 描述</li>
-              <li>• AI 对话面板：按 <kbd className="px-1 py-0.5 rounded bg-muted">Ctrl+Shift+I</kbd></li>
-              <li>• 错误分析：自动检测并提供解决方案</li>
+              <li>• {t('settings.ai.shortcuts.explainCommand')}</li>
+              <li>• {t('settings.ai.shortcuts.nlToCommand')}</li>
+              <li>• {t('settings.ai.shortcuts.openChat')}</li>
+              <li>• {t('settings.ai.shortcuts.errorAnalysis')}</li>
             </ul>
           </div>
         </CardContent>

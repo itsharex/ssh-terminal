@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { FilePane } from './FilePane';
 import { useSftpStore } from '@/store/sftpStore';
@@ -18,6 +19,7 @@ interface DualPaneProps {
 }
 
 export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey = 0 }: DualPaneProps) {
+  const { t } = useTranslation();
   const {
     localPath,
     remotePath,
@@ -31,6 +33,8 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
 
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [localRefreshTimestamp, setLocalRefreshTimestamp] = useState(Date.now());
+  const [remoteRefreshTimestamp, setRemoteRefreshTimestamp] = useState(Date.now());
 
   const handleLocalPathChange = (path: string) => {
     setLocalPath(path);
@@ -47,7 +51,7 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
     console.log('Connection ID:', connectionId);
 
     if (selectedLocalFiles.length === 0) {
-      toast.error('请先选择要上传的文件');
+      toast.error(t('sftp.error.noFileSelected'));
       return;
     }
 
@@ -56,7 +60,7 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
       for (const file of selectedLocalFiles) {
         // 跳过目录
         if (file.isDir) {
-          toast.warning(`跳过目录: ${file.name}`);
+          toast.warning(t('sftp.error.skipDirectory', { name: file.name }));
           continue;
         }
 
@@ -73,14 +77,14 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
         });
       }
 
-      toast.success(`成功上传 ${selectedLocalFiles.length} 个文件`);
+      toast.success(t('sftp.success.uploadSuccess', { count: selectedLocalFiles.length }));
       setSelectedLocalFiles([]);
 
-      // 刷新远程面板
-      setRemotePath(remotePath + '#');
+      // 只刷新远程面板
+      setRemoteRefreshTimestamp(Date.now());
     } catch (error) {
       console.error('Upload failed:', error);
-      toast.error(`上传失败: ${error}`);
+      toast.error(t('sftp.error.uploadFailed', { error }));
     } finally {
       setUploading(false);
     }
@@ -94,7 +98,7 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
       for (const file of selectedRemoteFiles) {
         // 跳过目录
         if (file.isDir) {
-          toast.warning(`跳过目录: ${file.name}`);
+          toast.warning(t('sftp.error.skipDirectory', { name: file.name }));
           continue;
         }
 
@@ -109,14 +113,14 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
         });
       }
 
-      toast.success(`成功下载 ${selectedRemoteFiles.length} 个文件`);
+      toast.success(t('sftp.success.downloadSuccess', { count: selectedRemoteFiles.length }));
       setSelectedRemoteFiles([]);
 
-      // 刷新本地面板
-      setLocalPath(localPath + '#');
+      // 只刷新本地面板
+      setLocalRefreshTimestamp(Date.now());
     } catch (error) {
       console.error('Download failed:', error);
-      toast.error(`下载失败: ${error}`);
+      toast.error(t('sftp.error.downloadFailed', { error }));
     } finally {
       setDownloading(false);
     }
@@ -134,6 +138,7 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
           onSelectedFilesChange={setSelectedLocalFiles}
           isLoading={false}
           refreshKey={localRefreshKey}
+          extraRefreshKey={localRefreshTimestamp}
         />
       </div>
 
@@ -142,8 +147,14 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
         <button
           onClick={handleTransferToRemote}
           disabled={selectedLocalFiles.length === 0 || uploading}
-          className="p-2 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title={uploading ? "上传中..." : "上传到远程"}
+          className={`
+            p-2 rounded transition-all duration-200
+            ${selectedLocalFiles.length > 0 && !uploading
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-110 shadow-md'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed'
+            }
+          `}
+          title={uploading ? t('sftp.status.uploading') : t('sftp.action.upload')}
         >
           <ChevronRight className={`h-4 w-4 ${uploading ? 'animate-pulse' : ''}`} />
         </button>
@@ -151,8 +162,14 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
         <button
           onClick={handleTransferToLocal}
           disabled={selectedRemoteFiles.length === 0 || downloading}
-          className="p-2 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title={downloading ? "下载中..." : "下载到本地"}
+          className={`
+            p-2 rounded transition-all duration-200
+            ${selectedRemoteFiles.length > 0 && !downloading
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-110 shadow-md'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed'
+            }
+          `}
+          title={downloading ? t('sftp.status.downloading') : t('sftp.action.download')}
         >
           <ChevronRight className={`h-4 w-4 transform rotate-180 ${downloading ? 'animate-pulse' : ''}`} />
         </button>
@@ -169,6 +186,7 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
           onSelectedFilesChange={setSelectedRemoteFiles}
           isLoading={false}
           refreshKey={remoteRefreshKey}
+          extraRefreshKey={remoteRefreshTimestamp}
         />
       </div>
     </div>

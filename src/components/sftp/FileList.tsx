@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { getFileIcon, formatFileSize, formatPermissions, type SftpFileInfo } from '@/types/sftp';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -31,9 +32,28 @@ export function FileList({
   isLoading = false,
   refreshKey = 0,
 }: FileListProps) {
+  const { t } = useTranslation();
   const [files, setFiles] = useState<SftpFileInfo[]>([]);
   const [allSelected, setAllSelected] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // 时间格式化函数
+  const formatTimestamp = (timestamp: number): string => {
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return t('sftp.timestamp.today');
+    } else if (diffDays === 1) {
+      return t('sftp.timestamp.yesterday');
+    } else if (diffDays < 30) {
+      return t('sftp.timestamp.daysAgo', { days: diffDays });
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
 
   useEffect(() => {
     const loadFiles = async () => {
@@ -125,16 +145,16 @@ export function FileList({
             onCheckedChange={handleSelectAll}
           />
         </div>
-        <div className="col-span-5">名称</div>
-        <div className="col-span-2">大小</div>
-        <div className="col-span-2">修改时间</div>
-        <div className="col-span-2">权限</div>
+        <div className="col-span-5">{t('sftp.list.name')}</div>
+        <div className="col-span-2">{t('sftp.list.size')}</div>
+        <div className="col-span-2">{t('sftp.list.modified')}</div>
+        <div className="col-span-2">{t('sftp.list.permissions')}</div>
       </div>
 
       {/* 文件列表 */}
       {files.length === 0 ? (
         <div className="flex items-center justify-center h-64 text-muted-foreground">
-          空目录
+          {t('sftp.list.emptyDirectory')}
         </div>
       ) : (
         <div>
@@ -173,21 +193,4 @@ export function FileList({
       )}
     </div>
   );
-}
-
-function formatTimestamp(timestamp: number): string {
-  const date = new Date(timestamp * 1000);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return '今天';
-  } else if (diffDays === 1) {
-    return '昨天';
-  } else if (diffDays < 30) {
-    return `${diffDays}天前`;
-  } else {
-    return date.toLocaleDateString();
-  }
 }

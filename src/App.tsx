@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Terminal } from "@/pages/Terminal";
@@ -19,6 +19,7 @@ import { MobileSessionList } from "@/components/mobile/MobileSessionList";
 import { MobileTerminalPage } from "@/components/mobile/MobileTerminalPage";
 import { isMobileDevice, isAndroid, isIOS } from "@/lib/utils";
 import { globalKeyHandler } from "@/lib/globalKeyHandler";
+import '@/i18n/config';
 
 function AppContent() {
   const navigate = useNavigate();
@@ -161,3 +162,4 @@ function App() {
 }
 
 export default App;
+

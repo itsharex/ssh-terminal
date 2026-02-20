@@ -1,4 +1,5 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ export function QuickConnectDialog({
   onConnect,
 }: QuickConnectDialogProps) {
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const [formData, setFormData] = useState({
     host: '',
@@ -101,7 +103,7 @@ export function QuickConnectDialog({
       playSound(SoundEffect.ERROR);
       console.error('Failed to connect:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error('快速连接失败', {
+      toast.error(t('session.error.quickConnectFailed'), {
         description: errorMessage,
       });
     } finally {
@@ -115,10 +117,10 @@ export function QuickConnectDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
-            快速连接
+            {t('session.quickConnect.title')}
           </DialogTitle>
           <DialogDescription>
-            快速建立 SSH 连接，不保存配置信息
+            {t('session.quickConnect.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -126,7 +128,7 @@ export function QuickConnectDialog({
           {/* 主机地址 */}
           <div className="space-y-2">
             <Label htmlFor="quick-host">
-              主机地址 <span className="text-destructive">*</span>
+              {t('session.field.host')} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="quick-host"
@@ -142,7 +144,7 @@ export function QuickConnectDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="quick-port">
-                端口 <span className="text-destructive">*</span>
+                {t('session.field.port')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="quick-port"
@@ -157,7 +159,7 @@ export function QuickConnectDialog({
 
             <div className="space-y-2">
               <Label htmlFor="quick-username">
-                用户名 <span className="text-destructive">*</span>
+                {t('session.field.username')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="quick-username"
@@ -171,7 +173,7 @@ export function QuickConnectDialog({
 
           {/* 认证方式 */}
           <div className="space-y-2">
-            <Label htmlFor="quick-auth">认证方式</Label>
+            <Label htmlFor="quick-auth">{t('session.field.authMethod')}</Label>
             <Select
               value={formData.authMethod}
               onValueChange={(value) => setFormData({ ...formData, authMethod: value })}
@@ -180,8 +182,8 @@ export function QuickConnectDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="password">密码</SelectItem>
-                <SelectItem value="publicKey">公钥</SelectItem>
+                <SelectItem value="password">{t('session.auth.password')}</SelectItem>
+                <SelectItem value="publicKey">{t('session.auth.publicKey')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -190,12 +192,12 @@ export function QuickConnectDialog({
           {formData.authMethod === 'password' && (
             <div className="space-y-2">
               <Label htmlFor="quick-password">
-                密码 <span className="text-destructive">*</span>
+                {t('session.field.password')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="quick-password"
                 type="password"
-                placeholder="输入 SSH 密码"
+                placeholder={t('session.field.passwordPlaceholder')}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
@@ -208,11 +210,11 @@ export function QuickConnectDialog({
             <>
               <div className="space-y-2">
                 <Label htmlFor="quick-key">
-                  私钥路径 <span className="text-destructive">*</span>
+                  {t('session.field.privateKeyPath')} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="quick-key"
-                  placeholder="~/.ssh/id_rsa"
+                  placeholder={t('session.field.privateKeyPathPlaceholder')}
                   value={formData.privateKeyPath}
                   onChange={(e) => setFormData({ ...formData, privateKeyPath: e.target.value })}
                   required
@@ -220,11 +222,11 @@ export function QuickConnectDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="quick-passphrase">私钥密码（可选）</Label>
+                <Label htmlFor="quick-passphrase">{t('session.field.passphrase')}</Label>
                 <Input
                   id="quick-passphrase"
                   type="password"
-                  placeholder="如果私钥有密码保护"
+                  placeholder={t('session.field.passphrasePlaceholder')}
                   value={formData.passphrase}
                   onChange={(e) => setFormData({ ...formData, passphrase: e.target.value })}
                 />
@@ -239,18 +241,18 @@ export function QuickConnectDialog({
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
-              取消
+              {t('dialog.cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  连接中...
+                  {t('session.status.connecting')}
                 </>
               ) : (
                 <>
                   <Zap className="h-4 w-4 mr-2" />
-                  立即连接
+                  {t('session.action.connectNow')}
                 </>
               )}
             </Button>

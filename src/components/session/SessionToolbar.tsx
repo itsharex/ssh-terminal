@@ -1,3 +1,4 @@
+﻿import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Filter } from 'lucide-react';
@@ -16,12 +17,14 @@ export const SessionToolbar = memo(function SessionToolbar({
   filter,
   onFilterChange,
 }: SessionToolbarProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center gap-4">
       <div className="relative flex-1 max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="搜索会话..."
+          placeholder={t('session.search.placeholder')}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-9"
@@ -35,21 +38,21 @@ export const SessionToolbar = memo(function SessionToolbar({
           variant={filter === 'all' ? 'default' : 'outline'}
           onClick={() => onFilterChange('all')}
         >
-          全部
+          {t('session.filter.all')}
         </Button>
         <Button
           size="sm"
           variant={filter === 'connected' ? 'default' : 'outline'}
           onClick={() => onFilterChange('connected')}
         >
-          已连接
+          {t('session.filter.connected')}
         </Button>
         <Button
           size="sm"
           variant={filter === 'disconnected' ? 'default' : 'outline'}
           onClick={() => onFilterChange('disconnected')}
         >
-          已断开
+          {t('session.filter.disconnected')}
         </Button>
       </div>
     </div>

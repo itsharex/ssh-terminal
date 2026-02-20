@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { SessionStatus } from '@/types/ssh';
 import { cn } from '@/lib/utils';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ConnectionStatusBadgeProps {
   status: SessionStatus;
@@ -9,11 +10,13 @@ interface ConnectionStatusBadgeProps {
 }
 
 export const ConnectionStatusBadge = memo(function ConnectionStatusBadge({ status, className }: ConnectionStatusBadgeProps) {
+  const { t } = useTranslation();
+
   const statusConfig = {
-    connected: { label: '已连接', className: 'badge-connected' },
-    connecting: { label: '连接中', className: 'badge-connecting' },
-    disconnected: { label: '已断开', className: 'badge-disconnected' },
-    error: { label: '错误', className: 'badge-error' },
+    connected: { label: t('session.status.connected'), className: 'badge-connected' },
+    connecting: { label: t('session.status.connecting'), className: 'badge-connecting' },
+    disconnected: { label: t('session.status.disconnected'), className: 'badge-disconnected' },
+    error: { label: t('session.status.error'), className: 'badge-error' },
   };
 
   const config = statusConfig[status] || statusConfig.disconnected;

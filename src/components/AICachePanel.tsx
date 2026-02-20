@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import {
   Database,
@@ -99,6 +100,7 @@ function playSound(type: 'success' | 'error' | 'info') {
  * - Toast 消息提示
  */
 export function AICachePanel() {
+  const { t } = useTranslation();
   const [cacheInfo, setCacheInfo] = useState<CacheInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -111,7 +113,7 @@ export function AICachePanel() {
       setCacheInfo(info);
     } catch (error) {
       console.error('Failed to load cache info:', error);
-      toast.error('加载缓存信息失败', {
+      toast.error(t('ai.cache.errorLoadFailed'), {
         description: String(error),
         icon: <XCircle className="h-4 w-4" />
       });
@@ -130,15 +132,15 @@ export function AICachePanel() {
       await loadCacheInfo();
 
       playSound('success');
-      toast.success('缓存已清除', {
-        description: '所有 AI Provider 缓存已被清空',
+      toast.success(t('ai.cache.clearSuccess'), {
+        description: t('ai.cache.clearSuccessDescription'),
         icon: <CheckCircle2 className="h-4 w-4" />
       });
     } catch (error) {
       console.error('Failed to clear cache:', error);
 
       playSound('error');
-      toast.error('清除缓存失败', {
+      toast.error(t('ai.cache.errorClearFailed'), {
         description: String(error),
         icon: <XCircle className="h-4 w-4" />
       });
@@ -156,13 +158,13 @@ export function AICachePanel() {
 
       if (result.success) {
         playSound('success');
-        toast.success('热重载成功', {
+        toast.success(t('ai.cache.hotReloadSuccess'), {
           description: `${result.message}（移除 ${result.removedCount} 个 Provider）`,
           icon: <CheckCircle2 className="h-4 w-4" />
         });
       } else {
         playSound('info');
-        toast.info('热重载完成', {
+        toast.info(t('ai.cache.hotReloadCompleted'), {
           description: result.message,
           icon: <AlertCircle className="h-4 w-4" />
         });
@@ -171,7 +173,7 @@ export function AICachePanel() {
       console.error('Failed to hot reload:', error);
 
       playSound('error');
-      toast.error('热重载失败', {
+      toast.error(t('ai.cache.errorHotReloadFailed'), {
         description: String(error),
         icon: <XCircle className="h-4 w-4" />
       });
@@ -195,17 +197,17 @@ export function AICachePanel() {
         <div className="ai-cache-panel__header">
           <div className="header-title">
             <Database className="title-icon" />
-            <h2>AI Provider 缓存管理</h2>
+            <h2>{t('ai.cache.title')}</h2>
           </div>
           <Button
             size="sm"
             variant="outline"
             onClick={loadCacheInfo}
             disabled={loading}
-            title="刷新缓存信息"
+            title={t('ai.cache.actionRefresh')}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="ml-2">刷新</span>
+            <span className="ml-2">{t('ai.cache.actionRefresh')}</span>
           </Button>
         </div>
 
@@ -216,7 +218,7 @@ export function AICachePanel() {
               <Database className="h-5 w-5" />
             </div>
             <div className="stat-card__content">
-              <div className="stat-card__label">缓存数量</div>
+              <div className="stat-card__label">{t('ai.cache.statsCount')}</div>
               <div className="stat-card__value">{cacheInfo?.cache_size ?? 0}</div>
             </div>
           </div>
@@ -225,12 +227,12 @@ export function AICachePanel() {
               <Zap className="h-5 w-5" />
             </div>
             <div className="stat-card__content">
-              <div className="stat-card__label">状态</div>
+              <div className="stat-card__label">{t('ai.cache.statsStatus')}</div>
               <div className="stat-card__value">
                 {cacheInfo && cacheInfo.cache_size > 0 ? (
-                  <span className="status-active">活跃</span>
+                  <span className="status-active">{t('ai.cache.statusActive')}</span>
                 ) : (
-                  <span className="status-empty">空闲</span>
+                  <span className="status-empty">{t('ai.cache.statusEmpty')}</span>
                 )}
               </div>
             </div>
@@ -239,11 +241,11 @@ export function AICachePanel() {
 
         {/* 缓存的 Provider 列表 */}
         <div className="ai-cache-panel__providers">
-          <h3>已缓存的 Provider</h3>
+          <h3>{t('ai.cache.providersTitle')}</h3>
           {!cacheInfo ? (
             <div className="empty-state">
               <RefreshCw className="h-6 w-6 animate-spin" />
-              <p>加载中...</p>
+              <p>{t('ai.cache.loading')}</p>
             </div>
           ) : cacheInfo.cached_providers.length > 0 ? (
             <ul className="provider-list">
@@ -259,8 +261,8 @@ export function AICachePanel() {
           ) : (
             <div className="empty-state">
               <Database className="h-8 w-8" />
-              <p>暂无缓存的 Provider</p>
-              <p className="empty-state__hint">使用 AI 功能后会自动创建缓存</p>
+              <p>{t('ai.cache.emptyTitle')}</p>
+              <p className="empty-state__hint">{t('ai.cache.emptyMessage')}</p>
             </div>
           )}
         </div>
@@ -273,7 +275,7 @@ export function AICachePanel() {
             disabled={loading}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            热重载
+            {t('ai.cache.actionHotReload')}
           </Button>
           <Button
             className="btn-clear"
@@ -282,7 +284,7 @@ export function AICachePanel() {
             disabled={loading || !cacheInfo || cacheInfo.cache_size === 0}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            清除缓存
+            {t('ai.cache.actionClear')}
           </Button>
         </div>
 
@@ -290,20 +292,20 @@ export function AICachePanel() {
         <div className="ai-cache-panel__info">
           <div className="info-header">
             <Info className="h-4 w-4" />
-            <span>使用说明</span>
+            <span>{t('ai.cache.infoTitle')}</span>
           </div>
           <ul className="info-list">
             <li>
-              <strong>缓存机制</strong>：相同的 AI 配置会自动复用，提升性能约 90%
+              <strong>{t('ai.cache.infoCacheMechanism').split('：')[0]}</strong>：{t('ai.cache.infoCacheMechanism').split('：')[1]}
             </li>
             <li>
-              <strong>热重载</strong>：配置文件被外部修改时使用，智能清理变更的 Provider
+              <strong>{t('ai.cache.infoHotReload').split('：')[0]}</strong>：{t('ai.cache.infoHotReload').split('：')[1]}
             </li>
             <li>
-              <strong>清除缓存</strong>：配置发生重大变更或遇到问题时使用
+              <strong>{t('ai.cache.infoClearCache').split('：')[0]}</strong>：{t('ai.cache.infoClearCache').split('：')[1]}
             </li>
             <li>
-              <strong>自动管理</strong>：保存配置时会自动智能清理相关缓存
+              <strong>{t('ai.cache.infoAutoManagement').split('：')[0]}</strong>：{t('ai.cache.infoAutoManagement').split('：')[1]}
             </li>
           </ul>
         </div>
@@ -315,21 +317,21 @@ export function AICachePanel() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-destructive" />
-              确认清除缓存
+              {t('ai.cache.confirmClearTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              此操作将清除所有 AI Provider 缓存。清除后，下次 AI 调用时会重新创建缓存。
+              {t('ai.cache.confirmClearMessage')}
               <br /><br />
-              是否继续？
+              {t('ai.cache.confirmClearConfirmation')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t('ai.cache.confirmClearActionCancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleClearCache}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              确认清除
+              {t('ai.cache.confirmClearActionConfirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -344,6 +346,7 @@ export function AICachePanel() {
  * 用于在状态栏或工具栏中显示缓存状态
  */
 export function AICacheIndicator() {
+  const { t } = useTranslation();
   const [cacheSize, setCacheSize] = useState(0);
 
   useEffect(() => {
@@ -364,7 +367,7 @@ export function AICacheIndicator() {
   return (
     <div
       className="ai-cache-indicator"
-      title={`AI 缓存: ${cacheSize} 个 Provider${cacheSize > 0 ? '\n已启用缓存加速' : '\n暂无缓存'}`}
+      title={`${t('ai.cache.title')}: ${cacheSize} 个 Provider${cacheSize > 0 ? '\n已启用缓存加速' : '\n暂无缓存'}`}
     >
       <Database className="h-4 w-4" />
       {cacheSize > 0 && (

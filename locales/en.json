@@ -1,0 +1,997 @@
+﻿{
+  "app": {
+    "name": "SSH Terminal"
+  },
+  "nav": {
+    "section": {
+      "connection": "Connection",
+      "ai": "AI Assistant",
+      "tools": "Tools",
+      "config": "Config"
+    },
+    "item": {
+      "terminal": "Terminal",
+      "sessions": "Sessions",
+      "aiChat": "AI Chat",
+      "sftp": "File Manager",
+      "settings": "Settings",
+      "userProfile": "Profile"
+    }
+  },
+  "userMenu": {
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Logout",
+    "login": "Login"
+  },
+  "terminal": {
+    "newConnection": "New Connection",
+    "sessionManager": "Sessions",
+    "recordingManager": "Recording Manager",
+    "loading": "Loading sessions...",
+    "noActiveSession": "No active SSH session",
+    "noActiveSessionHint": "Click the button below to create a new SSH connection, or select another feature from the sidebar",
+    "selectOrCreateTab": "Select or create a tab to get started"
+  },
+  "page": {
+    "terminal": "Terminal",
+    "sessions": "Sessions",
+    "settings": "Settings",
+    "sftp": "File Manager"
+  },
+  "action": {
+    "openTerminal": "Open Terminal",
+    "newSession": "New Session",
+    "resetAll": "Reset All",
+    "keybinding": {
+      "global": {
+        "newConnection": {
+          "name": "New Connection",
+          "description": "Quickly create new SSH connection"
+        },
+        "openSettings": {
+          "name": "Open Settings",
+          "description": "Open application settings page"
+        },
+        "toggleSidebar": {
+          "name": "Toggle Sidebar",
+          "description": "Show or hide sidebar"
+        }
+      },
+      "terminal": {
+        "newTab": {
+          "name": "New Tab",
+          "description": "Duplicate current terminal connection, create new tab (opens quick connect if no active tab)"
+        },
+        "closeTab": {
+          "name": "Close Tab",
+          "description": "Close current tab"
+        },
+        "nextTab": {
+          "name": "Next Tab",
+          "description": "Switch to next tab"
+        },
+        "previousTab": {
+          "name": "Previous Tab",
+          "description": "Switch to previous tab"
+        },
+        "find": {
+          "name": "Find",
+          "description": "Search text in terminal"
+        },
+        "clear": {
+          "name": "Clear Screen",
+          "description": "Clear terminal screen content"
+        },
+        "paste": {
+          "name": "Paste",
+          "description": "Paste clipboard content"
+        },
+        "zoomIn": {
+          "name": "Zoom In",
+          "description": "Increase terminal font size"
+        },
+        "zoomOut": {
+          "name": "Zoom Out",
+          "description": "Decrease terminal font size"
+        },
+        "zoomReset": {
+          "name": "Reset Font",
+          "description": "Reset font size to default"
+        },
+        "openNLToCmd": {
+          "name": "AI Generate Command",
+          "description": "Open AI natural language to command panel (Shift+#)"
+        },
+        "explainCommand": {
+          "name": "AI Explain Command",
+          "description": "Explain selected command (need to select command in terminal first)"
+        },
+        "analyzeError": {
+          "name": "AI Analyze Error",
+          "description": "Analyze selected error message (need to select error text in terminal first)"
+        },
+        "openAIChat": {
+          "name": "AI Chat Assistant",
+          "description": "Open/close AI chat panel"
+        }
+      },
+      "sftp": {
+        "upload": {
+          "name": "Upload File",
+          "description": "Upload selected local file"
+        },
+        "download": {
+          "name": "Download File",
+          "description": "Download selected remote file"
+        },
+        "refresh": {
+          "name": "Refresh File List",
+          "description": "Refresh current file list"
+        }
+      },
+      "session": {
+        "quickConnect": {
+          "name": "New Session",
+          "description": "Create new session in session management page"
+        }
+      }
+    }
+  },
+  "session": {
+    "error": {
+      "createConnectionFailed": "Failed to create new connection",
+      "connectionFailed": "Connection failed",
+      "disconnectFailed": "Failed to disconnect",
+      "cannotDelete": "Cannot delete session",
+      "hasActiveConnections": "This session has active connections. Please disconnect all connections before deleting",
+      "deleteFailed": "Failed to delete session",
+      "updateFailed": "Failed to update session",
+      "saveFailed": "Failed to save session",
+      "quickConnectFailed": "Quick connect failed"
+    },
+    "success": {
+      "disconnected": "Disconnected successfully",
+      "deleted": "Session deleted successfully",
+      "updated": "Session updated successfully",
+      "saved": "Session saved successfully"
+    },
+    "action": {
+      "disconnect": "Disconnect",
+      "openTerminal": "Open Terminal",
+      "edit": "Edit",
+      "connect": "Connect",
+      "saveChanges": "Save Changes",
+      "connectNow": "Connect Now",
+      "save": "Save Session"
+    },
+    "status": {
+      "connected": "Connected",
+      "connecting": "Connecting",
+      "disconnected": "Disconnected",
+      "error": "Error",
+      "saving": "Saving..."
+    },
+    "defaultGroup": "Default Group",
+    "edit": {
+      "title": "Edit Session",
+      "description": "Modify session configuration"
+    },
+    "quickConnect": {
+      "title": "Quick Connect",
+      "description": "Quickly establish SSH connection without saving configuration",
+      "button": "Quick Connect"
+    },
+    "save": {
+      "title": "Save Session Configuration",
+      "description": "Save SSH session configuration locally for quick future connections",
+      "tab": {
+        "basic": "Basic Config",
+        "advanced": "Advanced Options"
+      },
+      "info": {
+        "title": "Save Instructions",
+        "encryption": "Session configuration will be encrypted and saved to local storage",
+        "aesEncryption": "Passwords are encrypted using AES before storage",
+        "viewInManager": "View saved sessions in Session Manager after saving",
+        "editAndDelete": "Support editing and deleting saved sessions"
+      }
+    },
+    "field": {
+      "name": "Session Name",
+      "namePlaceholder": "e.g., Production Server",
+      "nameHint": "Specify an easy-to-remember name for this connection",
+      "host": "Host Address",
+      "hostPlaceholder": "192.168.1.100 or example.com",
+      "port": "Port",
+      "username": "Username",
+      "usernamePlaceholder": "e.g., root",
+      "group": "Group",
+      "groupPlaceholder": "e.g., Production, Testing",
+      "groupHint": "Group sessions for easy organization (default: Default Group)",
+      "authMethod": "Authentication Method",
+      "password": "Password",
+      "passwordPlaceholder": "Enter SSH password",
+      "passwordHint": "Enter password to complete authentication configuration",
+      "passwordSecurityHint": "Password will be encrypted and saved locally",
+      "privateKeyPath": "Private Key Path",
+      "privateKeyPathPlaceholder": "~/.ssh/id_rsa",
+      "passphrase": "Private Key Passphrase (Optional)",
+      "passphrasePlaceholder": "If private key has password protection",
+      "terminalType": "Terminal Type",
+      "terminalTypeHint": "Specify the terminal emulation type, usually use default value"
+    },
+    "auth": {
+      "password": "Password",
+      "publicKey": "Public Key"
+    },
+    "search": {
+      "placeholder": "Search sessions..."
+    },
+    "filter": {
+      "all": "All",
+      "connected": "Connected",
+      "disconnected": "Disconnected"
+    }
+  },
+  "dialog": {
+    "confirmDelete": {
+      "title": "Confirm Delete",
+      "message": "Are you sure you want to delete session \"{{name}}\"? This action cannot be undone."
+    },
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "close": "Close",
+    "save": "Save",
+    "create": "Create",
+    "add": "Add",
+    "remove": "Remove",
+    "import": "Import",
+    "export": "Export",
+    "refresh": "Refresh",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "reset": "Reset",
+    "apply": "Apply",
+    "skip": "Skip",
+    "done": "Done",
+    "next": "Next",
+    "previous": "Previous",
+    "edit": "Edit"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "save": "Save",
+    "delete": "Delete",
+    "loading": "Loading...",
+    "processing": "Processing...",
+    "saving": "Saving...",
+    "deleting": "Deleting...",
+    "success": "Operation successful",
+    "error": "Operation failed",
+    "unknownError": "Unknown error",
+    "networkError": "Network error",
+    "permissionDenied": "Permission denied",
+    "invalidParams": "Invalid parameters",
+    "notFound": "Not found"
+  },
+  "validation": {
+    "requiredFields": "Please fill in required fields",
+    "passwordRequired": "Please enter password",
+    "keyPathRequired": "Please enter private key path"
+  },
+  "settings": {
+    "title": "Settings",
+    "terminal": {
+      "title": "Terminal Settings",
+      "reset": "Reset to Default",
+      "theme": "Theme",
+      "font": "Font",
+      "fontFamily": "Font Family",
+      "fontSize": "Font Size",
+      "fontWeight": "Font Weight",
+      "lineHeight": "Line Height",
+      "letterSpacing": "Letter Spacing",
+      "cursor": "Cursor",
+      "cursorBlink": "Cursor Blink",
+      "cursorStyle": "Cursor Style",
+      "cursorBlock": "Block",
+      "cursorUnderline": "Underline",
+      "cursorBar": "Bar",
+      "connection": "Connection",
+      "keepAliveInterval": "Keep Alive Interval",
+      "keepAliveIntervalDescription": "Interval in seconds to keep SSH connection active: {{value}}s",
+      "keepAliveIntervalDisabled": "Disabled",
+      "keepAliveIntervalTip": "Enable heartbeat to prevent SSH connection from disconnecting due to long idle time. Recommended setting: 30-60 seconds to balance performance and connection stability. Set to 0 to disable heartbeat.",
+      "other": "Other",
+      "padding": "Padding",
+      "scrollback": "Scrollback"
+    },
+    "ai": {
+      "title": "AI Settings",
+      "reset": "Reset to Default",
+      "save": "Save Configuration",
+      "saving": "Saving...",
+      "saveSuccess": "AI configuration saved",
+      "saveFailed": "Failed to save configuration",
+      "resetSuccess": "Configuration reset to default",
+      "defaultProvider": {
+        "title": "Default AI Service",
+        "label": "Select default AI service",
+        "hint": "Enabled services will be used as default provider for AI features"
+      },
+      "providers": {
+        "title": "Configured AI Services",
+        "add": "Add New Service",
+        "addDialogTitle": "Add AI Service",
+        "addDialogDescription": "Select service type and enter name",
+        "type": "Service Type",
+        "typePlaceholder": "e.g., openai, ollama, qwen, claude",
+        "mode": "Service Mode",
+        "modeApi": "API Service (requires API Key)",
+        "modeLocal": "Local Service (no API Key required)",
+        "modeLocalHint": "Local service runs on intranet, no API Key configuration needed",
+        "modeApiHint": "API service requires API Key for authentication",
+        "name": "Service Name",
+        "namePlaceholder": "e.g., My OpenAI",
+        "test": "Test Connection",
+        "testSuccess": "Connection test successful",
+        "testFailed": "Connection test failed",
+        "notFound": "Provider not found",
+        "testFailedWithReason": "Connection test failed: {{error}}",
+        "apiKey": "API Key",
+        "baseUrl": "Base URL (Optional)",
+        "baseUrlOllamaHint": "Ollama service address (default http://localhost:11434 after local installation)",
+        "baseUrlHint": "Base URL for API (usually no need to modify)",
+        "model": "Model",
+        "modelPlaceholder": "Enter model name",
+        "modelRecommended": "Recommended models: {{models}}",
+        "temperature": "Temperature ({{value}})",
+        "temperatureHint": "Control response randomness (0-2, higher values are more random)",
+        "maxTokens": "Max Tokens ({{value}})",
+        "maxTokensHint": "Maximum tokens per response (1-32000)",
+        "validationTypeRequired": "Please enter service type",
+        "validationNameRequired": "Please enter service name",
+        "addSuccess": "New service added (please fill in configuration and click \"Save Configuration\")",
+        "deleteSuccess": "Service deleted",
+        "saveFailed": "Failed to save configuration"
+      },
+      "providerType": {
+        "openai": "OpenAI",
+        "ollama": "Ollama (Local)",
+        "qwen": "Qwen",
+        "wenxin": "Wenxin Yiyan"
+      },
+      "usageTips": {
+        "title": "Usage Tips",
+        "openai": "OpenAI: Requires API Key, fast response, high quality, pay per use",
+        "ollama": "Ollama: Runs locally, completely free, data privacy secure, requires Ollama installation first",
+        "testFirst": "Test connection first to ensure configuration is correct before using AI features",
+        "multipleProviders": "Can configure multiple providers, switch anytime",
+        "rememberToSave": "Remember to click \"Save Configuration\" after modifying settings"
+      },
+      "shortcuts": {
+        "title": "AI Feature Shortcuts:",
+        "explainCommand": "Command Explanation: Select command and press Ctrl+Shift+A",
+        "nlToCommand": "Natural Language to Command: Type # + description",
+        "openChat": "AI Chat Panel: Press Ctrl+Shift+I",
+        "errorAnalysis": "Error Analysis: Automatically detect and provide solutions"
+      }
+    },
+    "keybindings": {
+      "title": "Keyboard Shortcuts",
+      "description": "Customize app shortcuts to improve efficiency",
+      "selectCategory": "Select Category",
+      "category": {
+        "all": "All Categories",
+        "global": "Global",
+        "terminal": "Terminal",
+        "session": "Session",
+        "sftp": "SFTP"
+      },
+      "categoryName": {
+        "global": "Global Shortcuts",
+        "terminal": "Terminal Shortcuts",
+        "session": "Session Management",
+        "sftp": "SFTP File Management",
+        "other": "Other"
+      },
+      "loadPreset": "Load Preset",
+      "export": "Export Configuration",
+      "import": "Import Configuration",
+      "reset": "Reset to Default",
+      "searchPlaceholder": "Search shortcuts...",
+      "noResults": "No matching shortcuts found",
+      "exportFailed": "Export failed: {{error}}",
+      "importFailed": "Import failed: {{error}}"
+    },
+    "tabs": {
+      "account": "Account & Services",
+      "appearance": "Appearance",
+      "terminal": "Terminal",
+      "recording": "Recording",
+      "keybindings": "Shortcuts",
+      "ai": "AI",
+      "about": "About"
+    },
+    "account": {
+      "title": "Account & Services",
+      "serverUrl": {
+        "label": "Server URL",
+        "description": "SSH session cloud sync server address",
+        "placeholder": "http://localhost:3000",
+        "saving": "Saving...",
+        "save": "Save"
+      },
+      "autoSync": {
+        "label": "Auto Sync",
+        "description": "Automatically sync SSH sessions to cloud server (not supported yet)"
+      },
+      "syncInterval": {
+        "label": "Sync Interval",
+        "description": "Auto sync time interval in minutes (not supported yet)",
+        "minutes": "{{interval}} minutes"
+      },
+      "language": {
+        "label": "Language",
+        "description": "Select application interface language"
+      }
+    },
+    "appearance": {
+      "title": "Appearance Settings",
+      "theme": {
+        "label": "Theme Mode",
+        "description": "Select the theme appearance of the application"
+      },
+      "notifications": {
+        "label": "Notifications",
+        "description": "Receive connection status and error notifications"
+      },
+      "sound": {
+        "label": "Sound Effects",
+        "description": "Play operation feedback sounds"
+      }
+    },
+    "recording": {
+      "title": "Recording Settings",
+      "videoQuality": {
+        "label": "Video Recording Quality",
+        "description": "Select video recording quality (affects video file size)",
+        "low": "Low (500 Kbps)",
+        "medium": "Medium (2 Mbps)",
+        "high": "High (5 Mbps)"
+      },
+      "videoFormat": {
+        "label": "Video Recording Format",
+        "description": "Select video recording format (WebM recommended for web playback)",
+        "webm": "WebM (VP9)",
+        "mp4": "MP4 (H.264)"
+      },
+      "recordMicrophone": {
+        "label": "Record Microphone",
+        "description": "Record user voice through microphone (requires user authorization)",
+        "warning": "Important Note: The system will automatically filter out system audio devices like Stereo Mix. If you find that music or other application sounds are being recorded, please check your system audio settings to ensure you have selected the correct microphone device instead of the mix device."
+      },
+      "recordSpeaker": {
+        "label": "Record Speaker (System Audio)",
+        "description": "Record system playback sounds (Windows WASAPI Loopback Recording)"
+      },
+      "audioQuality": {
+        "label": "Audio Recording Quality",
+        "description": "Select audio recording quality (affects audio file size)",
+        "low": "Low (64 Kbps)",
+        "medium": "Medium (128 Kbps)",
+        "high": "High (256 Kbps)"
+      },
+      "audioSampleRate": {
+        "44100": "44.1 kHz",
+        "48000": "48 kHz",
+        "96000": "96 kHz",
+        "label": "Audio Sample Rate",
+        "description": "Select audio recording sample rate (current: {{rate}} Hz)"
+      },
+      "tips": {
+        "title": "Recording Tips",
+        "tip1": "Audio recording requires browser permissions. Enabling microphone recording requires user authorization",
+        "tip2": "Speaker recording is only available on platforms that support WASAPI Loopback Recording (Windows)",
+        "tip3": "If microphone recording captures system audio (music, etc.), please check the default recording device in system settings",
+        "tip4": "It is recommended to disable the Stereo Mix device in Windows settings to avoid accidental selection",
+        "micCheck": "How to check microphone device: Open Windows Settings - System - Sound - Input devices, confirm the correct microphone device is selected, not Stereo Mix."
+      }
+    },
+    "about": {
+      "title": "SSH Terminal",
+      "version": "Version 1.0.0",
+      "description": "Modern SSH terminal management tool built with Tauri 2.0 and React 19",
+      "techStack": {
+        "title": "Tech Stack",
+        "frontend": "Frontend",
+        "backend": "Backend",
+        "ui": "UI Library",
+        "terminal": "Terminal"
+      },
+"repository": {
+        "title": "Open Source Repository",
+        "github": "GitHub Repository",
+        "repoName": "shenjianZ/ssh-terminal",
+        "description": "Welcome to visit the GitHub repository to view source code, submit issues, or contribute",
+        "visit": "Visit"
+      },
+      "copyright": "© 2026 SSH Terminal. All rights reserved.",
+      "madeWith": "Made with ❤️ using Tauri and React"
+    }
+  },
+  "recording": {
+    "countdown": {
+      "message": "Recording will start..."
+    },
+    "nameDialog": {
+      "title": "Name Recording Session",
+      "placeholder": "Enter session name"
+    },
+    "action": {
+      "start": "Start Recording",
+      "resume": "Resume",
+      "pause": "Pause",
+      "stop": "Stop"
+    },
+    "manager": {
+      "title": "Recording File Manager",
+      "refresh": "Refresh",
+      "close": "Close",
+      "searchPlaceholder": "Search recording files...",
+      "emptyTitle": "No recording files",
+      "emptyMessage": "Recording files will appear here after you start recording",
+      "duration": "Duration: {{duration}}",
+      "fileSize": "Size: {{size}}",
+      "eventCount": "Events: {{count}}",
+      "createdAt": "Created: {{date}}",
+      "exportVideo": "Export Video",
+      "exportJson": "Export as JSON",
+      "delete": "Delete",
+      "totalCount": "Total {{count}} recording files",
+      "confirmDeleteTitle": "Confirm Delete",
+      "confirmDeleteMessage": "Are you sure you want to delete recording file \"{{name}}\"?",
+      "confirmDeleteWarning": "This action cannot be undone, the file will be permanently deleted."
+    },
+    "export": {
+      "title": "Export as Video",
+      "description": "This recording contains pre-recorded video. Exported video will use the format and quality settings from recording time.",
+      "formatHint": "Format and quality are configured in \"Settings 鈫?Session\". Supports WebM and MP4 formats.",
+      "statusPreparing": "Preparing...",
+      "statusEncoding": "Encoding...",
+      "statusFinalizing": "Finalizing...",
+      "statusCompleted": "Completed",
+      "statusError": "Export failed",
+      "error": "Error: {{error}}",
+      "framesPreparing": "Preparing...",
+      "framesProgress": "{{current}} / {{total}} frames ({{percentage}}%)",
+      "actionClose": "Close",
+      "actionDownload": "Download Video",
+      "actionStart": "Start Export",
+      "actionCancel": "Cancel",
+      "warning": "If there is no pre-recorded video, export may take a long time, please be patient. Do not close the window during export."
+    },
+    "indicator": {
+      "recording": "Recording",
+      "paused": "Paused"
+    }
+  },
+  "sync": {
+    "success": "Sync successful",
+    "successDescription": "All data has been synchronized to the server",
+    "failed": "Sync failed",
+    "syncing": "Syncing...",
+    "neverSynced": "Never synced",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} minutes ago",
+    "hoursAgo": "{{count}} hours ago",
+    "daysAgo": "{{count}} days ago",
+    "lastSync": "Last sync: {{time}}",
+    "syncFailed": "Sync failed",
+    "syncNow": "Sync now"
+  },
+  "sftp": {
+    "title": "File Manager",
+    "subtitle": "Manage remote files",
+    "pane": {
+      "local": "Local Files",
+      "remote": "Remote Files"
+    },
+    "action": {
+      "goToRoot": "Root Directory",
+      "goToParent": "Parent Directory",
+      "refresh": "Refresh",
+      "newFolder": "New Folder",
+      "delete": "Delete",
+      "rename": "Rename",
+      "goToTerminal": "Back to Terminal",
+      "upload": "Upload",
+      "download": "Download",
+      "selectConnection": "Select Connection"
+    },
+    "list": {
+      "name": "Name",
+      "size": "Size",
+      "modified": "Modified",
+      "permissions": "Permissions",
+      "emptyDirectory": "Empty directory"
+    },
+    "timestamp": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "daysAgo": "{{days}} days ago"
+    },
+    "path": {
+      "placeholder": "Enter path, press Enter to navigate",
+      "drive": "Drive"
+    },
+    "success": {
+      "enteredParent": "Entered parent directory",
+      "folderCreated": "Folder \"{{name}}\" created successfully",
+      "deleteSuccess": "Successfully deleted {{count}} items",
+      "renameSuccess": "Renamed successfully: {{old}} → {{new}}",
+      "switchedToRoot": "Switched to root directory",
+      "refreshed": "Refreshed",
+      "navigatedTo": "Navigated to: {{path}}",
+      "uploadSuccess": "Successfully uploaded {{count}} files",
+      "downloadSuccess": "Successfully downloaded {{count}} files",
+      "refreshSuccess": "Refresh successful"
+    },
+    "error": {
+      "noConnectionSelected": "Please select a connection first",
+      "noFileSelected": "Please select files to upload/download",
+      "noConnectionsAvailable": "No available SSH connections",
+      "connectFirst": "Please connect to an SSH server first on the Terminal page",
+      "selectConnectionFirst": "Please select an SSH connection",
+      "skipDirectory": "Skipping directory: {{name}}",
+      "uploadFailed": "Upload failed: {{error}}",
+      "downloadFailed": "Download failed: {{error}}",
+      "refreshFailed": "Refresh failed",
+      "createPermissionDenied": "Creation failed: No permission",
+      "folderExists": "Folder \"{{name}}\" already exists",
+      "parentPathNotExists": "Parent path does not exist",
+      "createFailed": "Failed to create folder: {{error}}",
+      "deletePermissionDenied": "Deletion failed: No permission",
+      "fileNotExists": "File or directory does not exist",
+      "directoryNotEmpty": "Deletion failed: Directory not empty",
+      "deleteFailed": "Failed to delete: {{error}}",
+      "renamePermissionDenied": "Rename failed: No permission",
+      "fileExists": "File name \"{{name}}\" already exists",
+      "renameFailed": "Rename failed: {{error}}",
+      "cannotGetHomeDir": "Cannot get user home directory",
+      "cannotAccessDrive": "Cannot access drive {{drive}}",
+      "pathNotExists": "Path does not exist: {{path}}",
+      "notDirectory": "Not a directory: {{path}}",
+      "permissionDenied": "No permission to access: {{path}}",
+      "cannotAccess": "Cannot access path: {{path}}",
+      "noPermission": "No permission",
+      "directoryNotExists": "Directory does not exist",
+      "notDirectoryShort": "Not a directory",
+      "cannotOpenDirectory": "Cannot open directory: {{error}}"
+    },
+    "status": {
+      "selected": "{{count}} items selected",
+      "localFileSystem": "Local File System",
+      "remoteFileSystem": "Remote File System"
+    },
+    "dialog": {
+      "newFolder": {
+        "title": "New Folder",
+        "label": "Folder Name",
+        "placeholder": "Enter folder name",
+        "actionCreate": "Create"
+      },
+      "confirmDelete": {
+        "title": "Confirm Delete",
+        "message": "Are you sure you want to delete selected {{count}} items?",
+        "warning": "This action cannot be undone."
+      },
+      "rename": {
+        "title": "Rename",
+        "label": "New Name",
+        "placeholder": "Enter new name",
+        "actionConfirm": "Confirm"
+      }
+    }
+  },
+  "ai": {
+    "chat": {
+      "title": "AI Chat",
+      "inputOfflineHint": "Current server is offline. You can continue asking general technical questions, but cannot perform server-related operations.",
+      "inputPlaceholderOnline": "Enter your question... (Enter to send, Shift+Enter for new line)",
+      "inputPlaceholderOffline": "Enter message (offline mode)... (Enter to send, Shift+Enter for new line)",
+      "inputCharacterCount": "{{count}} characters",
+      "errorSendFailed": "Send failed:",
+      "headerOnline": "Online",
+      "headerOffline": "Offline"
+    },
+    "explain": {
+      "noProvider": "Please configure and enable AI Provider in settings first",
+      "failed": "Explanation failed: {{error}}",
+      "title": "AI Command Explanation",
+      "description": "AI will explain the function, parameters, use cases, and risk tips of the selected command",
+      "commandTitle": "Command to Explain",
+      "resultTitle": "Explanation Result",
+      "emptyMessage": "Click the button below to start AI explanation",
+      "loading": "AI is explaining the command...",
+      "actionClose": "Close",
+      "actionStart": "Start Explanation",
+      "actionExplaining": "Explaining...",
+      "actionRetry": "Retry"
+    },
+    "nl2cmd": {
+      "title": "Natural Language to Command",
+      "description": "Describe the operation you want to perform in natural language, and AI will generate the corresponding command",
+      "noProvider": "Please configure and enable AI Provider in settings first",
+      "failed": "Conversion failed: {{error}}",
+      "placeholder": "Enter your requirement...",
+      "example": "e.g., Delete log files older than 30 days",
+      "actionGenerate": "Generate Command",
+      "actionGenerating": "Generating...",
+      "actionClose": "Close",
+      "actionCopy": "Copy",
+      "resultTitle": "Generated Command"
+    },
+    "errorAnalysis": {
+      "title": "AI Error Analysis",
+      "description": "AI will analyze the error and provide solutions",
+      "noProvider": "Please configure and enable AI Provider in settings first",
+      "failed": "Analysis failed: {{error}}",
+      "errorTitle": "Error Information",
+      "resultTitle": "Analysis Result",
+      "noError": "No errors detected",
+      "actionAnalyzing": "Analyzing...",
+      "actionRetry": "Retry",
+      "actionClose": "Close"
+    },
+    "conversation": {
+      "archived": "(Archived)",
+      "messageCount": "messages",
+      "actionExport": "Export",
+      "actionArchive": "Archive",
+      "actionUnarchive": "Unarchive",
+      "actionDelete": "Delete",
+      "confirmDeleteMessage": "Are you sure you want to delete this conversation?",
+      "confirmDeleteAction": "Delete",
+      "deleteSuccess": "Conversation deleted",
+      "deleteFailed": "Delete failed",
+      "exportSuccess": "Export successful",
+      "exportSuccessDescription": "File saved to downloads folder: {{filename}}",
+      "exportFailed": "Export failed",
+      "archiveSuccess": "Archive status updated",
+      "operationFailed": "Operation failed"
+    },
+    "cache": {
+      "title": "AI Provider Cache Management",
+      "actionRefresh": "Refresh",
+      "actionHotReload": "Hot Reload",
+      "actionClear": "Clear Cache",
+      "statsCount": "Cache Count",
+      "statsStatus": "Status",
+      "statusActive": "Active",
+      "statusEmpty": "Idle",
+      "providersTitle": "Cached Providers",
+      "loading": "Loading...",
+      "emptyTitle": "No cached providers",
+      "emptyMessage": "Cache will be created automatically after using AI features",
+      "infoTitle": "Usage Instructions",
+      "infoCacheMechanism": "Cache Mechanism: Same AI configuration will be automatically reused, improving performance by ~90%",
+      "infoHotReload": "Hot Reload: Use when configuration files are modified externally, intelligently clean up changed providers",
+      "infoClearCache": "Clear Cache: Use when configuration changes significantly or encountering issues",
+      "infoAutoManagement": "Auto Management: Automatically clean up related caches when saving configuration",
+      "errorLoadFailed": "Failed to load cache information",
+      "errorClearFailed": "Failed to clear cache",
+      "errorHotReloadFailed": "Hot reload failed",
+      "clearSuccess": "Cache cleared",
+      "clearSuccessDescription": "All AI Provider caches have been cleared",
+      "hotReloadSuccess": "Hot reload successful",
+      "hotReloadCompleted": "Hot reload completed",
+      "confirmClearTitle": "Confirm Clear Cache",
+      "confirmClearMessage": "This operation will clear all AI Provider caches. After clearing, AI calls will recreate the cache next time.",
+      "confirmClearConfirmation": "Continue?",
+      "confirmClearActionCancel": "Cancel",
+      "confirmClearActionConfirm": "Confirm Clear"
+    },
+    "status": {
+      "online": "Online",
+      "offline": "Offline"
+    }
+  },
+  "user": {
+    "actionLogin": "Login",
+    "menuProfile": "Profile",
+    "menuSettings": "Settings",
+    "menuLogout": "Logout",
+    "loginTitle": "Login",
+    "loginEmail": "Email",
+    "loginEmailPlaceholder": "Enter email",
+    "loginPassword": "Password",
+    "loginPasswordPlaceholder": "Enter password",
+    "loginActionLogin": "Login",
+    "loginLoggingIn": "Logging in...",
+    "loginSuccess": "Login successful",
+    "loginFailed": "Login failed",
+    "loginValidationRequired": "Please enter email and password",
+    "profile": {
+      "title": "Profile",
+      "syncToServer": "Sync to Server",
+      "syncing": "Syncing...",
+      "avatarSection": {
+        "notLoggedIn": "Not logged in",
+        "changeAvatar": "Change Avatar",
+        "imageSelected": "Image Selected",
+        "imageSelectedDescription": "Click \"Save\" button to update avatar"
+      },
+      "basicInfo": {
+        "title": "Basic Information",
+        "username": "Username",
+        "usernamePlaceholder": "Enter username",
+        "email": "Email",
+        "emailLocked": "Email cannot be modified, please contact customer service for changes",
+        "bio": "Bio",
+        "bioPlaceholder": "Introduce yourself..."
+      },
+      "contactInfo": {
+        "title": "Contact Information",
+        "phone": "Phone",
+        "phonePlaceholder": "Enter phone number",
+        "qq": "QQ",
+        "qqPlaceholder": "Enter QQ number",
+        "wechat": "WeChat",
+        "wechatPlaceholder": "Enter WeChat ID"
+      },
+      "actions": {
+        "edit": "Edit Profile",
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving"
+      },
+      "validation": {
+        "imageValidationFailed": "Image validation failed",
+        "unsupportedFormat": "Unsupported image format: {{format}}. Only JPEG, PNG, GIF, WebP, BMP, SVG formats are supported",
+        "imageTooLarge": "Image too large: {{size}}MB (maximum 5MB)"
+      },
+      "toast": {
+        "saveSuccess": "Save Successful",
+        "saveSuccessDescription": "Profile updated successfully",
+        "saveFailed": "Save Failed",
+        "syncSuccess": "Sync Successful",
+        "syncSuccessDescription": "Profile synced to server successfully",
+        "syncFailed": "Sync Failed",
+        "imageSelected": "Image Selected",
+        "imageSelectedDescription": "Click \"Save\" button to update avatar",
+        "imageProcessingFailed": "Image processing failed"
+      },
+      "timestamps": {
+        "createdAt": "Created At",
+        "updatedAt": "Updated At"
+      }
+    }
+  },
+  "ssh": {
+    "hostKey": {
+      "title": "Host Key Verification",
+      "description": "First connection to this host, need to verify its identity",
+      "hostInfo": "Host Information",
+      "keyType": "Key Type",
+      "fingerprint": "Fingerprint",
+      "securityTip": "Security Tip: Please verify this fingerprint matches what the server administrator provided. If unsure, contact the server administrator for verification.",
+      "actionCancel": "Cancel Connection",
+      "actionConfirm": "Confirm and Connect"
+    },
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting",
+      "error": "Error"
+    }
+  },
+  "sessions": {
+    "empty": {
+      "noMatches": "No matching sessions",
+      "noSessions": "No saved sessions",
+      "noMatchesHint": "Try adjusting search conditions or filters",
+      "noSessionsHint": "Create your first SSH session configuration",
+      "navigateToTerminal": "Go to Terminal page to create new connection"
+    }
+  },
+  "theme": {
+    "oneDark": "One Dark",
+    "solarizedDark": "Solarized Dark",
+    "solarizedLight": "Solarized Light",
+    "dracula": "Dracula",
+    "monokai": "Monokai",
+    "nord": "Nord",
+    "tokyoNight": "Tokyo Night",
+    "githubLight": "GitHub Light"
+  },
+  "font": {
+    "cascadiaCode": "Cascadia Code",
+    "firaCode": "Fira Code",
+    "jetbrainsMono": "JetBrains Mono",
+    "consolas": "Consolas",
+    "monaco": "Monaco",
+    "sourceCodePro": "Source Code Pro",
+    "dejaVuSansMono": "DejaVu Sans Mono",
+    "ubuntuMono": "Ubuntu Mono"
+  },
+  "sound": {
+    "success": "Operation Success",
+    "error": "Operation Error",
+    "buttonClick": "Button Click",
+    "tabOpen": "Tab Open",
+    "tabClose": "Tab Close",
+    "tabSwitch": "Tab Switch",
+    "toggleSwitch": "Toggle Switch"
+  },
+  "date": {
+    "justNow": "Just now",
+    "minutesAgo": "{{minutes}} minutes ago",
+    "hoursAgo": "{{hours}} hours ago",
+    "daysAgo": "{{days}} days ago",
+    "weeksAgo": "{{weeks}} weeks ago",
+    "monthsAgo": "{{months}} months ago",
+    "yearsAgo": "{{years}} years ago"
+  },
+  "fileSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB"
+  },
+  "duration": {
+    "minutesSeconds": "{{mins}}min {{secs}}s",
+    "seconds": "{{secs}}s"
+  },
+  "keybinding": {
+    "conflict": {
+      "title": "Shortcut Conflict",
+      "message": "Shortcut {{binding}} is already used by \"{{actionName}}\". Overwrite?"
+    },
+    "preset": {
+      "notFound": "Preset not found: {{presetId}}",
+      "loadConfirm": "Are you sure you want to load preset \"{{name}}\"? This will overwrite current keybinding configuration.",
+      "loadTitle": "Confirm Load Preset",
+      "overwrite": "Preset \"{{name}}\" already exists. Overwrite?",
+      "existsTitle": "Preset Already Exists"
+    },
+    "reset": {
+      "confirm": "Are you sure you want to reset to default keybindings? This will clear all custom configurations.",
+      "title": "Confirm Reset",
+      "failed": "Reset failed: {{error}}"
+    },
+    "import": {
+      "confirm": "Importing keybinding configuration will overwrite current settings. Continue?",
+      "title": "Confirm Import",
+      "failed": "Import failed: {{error}}",
+      "errorTitle": "Import Error"
+    },
+    "fileType": "JSON Files",
+    "defaultFileName": "keybindings-{{date}}.json",
+    "recorder": {
+      "title": "Record Shortcut",
+      "description": "Please press the key combination you want to set",
+      "recordingHint": "Please press a key combination...",
+      "recordingSupport": "Supports combinations of Ctrl, Alt, Shift and letters/numbers/function keys",
+      "recordedHint": "Recorded shortcut",
+      "currentHint": "Current shortcut",
+      "reRecord": "Re-record",
+      "cancel": "Cancel",
+      "confirm": "Confirm"
+    },
+    "editor": {
+      "unknownAction": "Unknown Action",
+      "notSet": "Not Set",
+      "edit": "Edit",
+      "set": "Set",
+      "resetToDefault": "Reset to Default",
+      "title": "Edit Shortcut: {{name}}"
+    }
+  }
+}
+

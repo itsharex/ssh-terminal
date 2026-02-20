@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { FileList } from './FileList';
 import { ArrowUp, Home, RefreshCw, FolderPlus, Trash2, Edit2, HardDrive } from 'lucide-react';
@@ -27,6 +28,7 @@ interface FilePaneProps {
   onSelectedFilesChange: (files: SftpFileInfo[]) => void;
   isLoading?: boolean;
   refreshKey?: number;
+  extraRefreshKey?: number;
 }
 
 export function FilePane({
@@ -38,7 +40,9 @@ export function FilePane({
   onSelectedFilesChange,
   isLoading = false,
   refreshKey = 0,
+  extraRefreshKey = 0,
 }: FilePaneProps) {
+  const { t } = useTranslation();
   const [inputPath, setInputPath] = useState(path);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -53,13 +57,14 @@ export function FilePane({
     setInputPath(path);
   }, [path]);
 
-  // 监听外部的 refreshKey 变化
+  // 监听外部的 refreshKey 和 extraRefreshKey 变化
   useEffect(() => {
-    if (refreshKey > 0) {
-      console.log('External refreshKey changed:', refreshKey);
-      setInternalRefreshKey(refreshKey);
+    const key = refreshKey + extraRefreshKey;
+    if (key > 0) {
+      console.log('External refreshKey changed:', refreshKey, 'extraRefreshKey:', extraRefreshKey);
+      setInternalRefreshKey(key);
     }
-  }, [refreshKey]);
+  }, [refreshKey, extraRefreshKey]);
   const joinPath = (basePath: string, fileName: string): string => {
     if (type === 'local') {
       // Windows 本地路径使用反斜杠
@@ -86,9 +91,18 @@ export function FilePane({
       const lastBackslash = filePath.lastIndexOf('\\');
       const lastSlash = filePath.lastIndexOf('/');
       const lastSeparator = Math.max(lastBackslash, lastSlash);
+      
       if (lastSeparator > 0) {
-        return filePath.substring(0, lastSeparator);
+        const parentPath = filePath.substring(0, lastSeparator);
+        // 检查是否是盘符根目录（如 D:、C:）
+        const driveMatch = parentPath.match(/^([A-Z]):$/);
+        if (driveMatch) {
+          // 如果是盘符根目录，返回盘符加反斜杠（D:\）
+          return parentPath + '\\';
+        }
+        return parentPath;
       }
+      
       // 如果是根目录（如 D:\），返回原路径
       return filePath;
     } else {
@@ -128,7 +142,7 @@ export function FilePane({
 
     // 仅对远程文件操作显示提示
     if (type === 'remote') {
-      toast.success('已进入上级目录');
+      toast.success(t('sftp.success.enteredParent'));
     }
     // 本地文件不显示提示
   };
@@ -146,7 +160,7 @@ export function FilePane({
           path: folderPath,
           recursive: false,
         });
-        toast.success(`文件夹 "${newFolderName}" 创建成功`);
+        toast.success(t('sftp.success.folderCreated', { name: newFolderName }));
         playSound(SoundEffect.SUCCESS);
       }
       setShowNewFolderDialog(false);
@@ -157,13 +171,13 @@ export function FilePane({
       console.error('Failed to create folder:', error);
       const errorMsg = String(error);
       if (errorMsg.includes('Permission denied')) {
-        toast.error('创建失败：没有权限');
+        toast.error(t('sftp.error.createPermissionDenied'));
       } else if (errorMsg.includes('exists') || errorMsg.includes('already exists')) {
-        toast.error(`文件夹 "${newFolderName}" 已存在`);
+        toast.error(t('sftp.error.folderExists', { name: newFolderName }));
       } else if (errorMsg.includes('No such file')) {
-        toast.error('父路径不存在');
+        toast.error(t('sftp.error.parentPathNotExists'));
       } else {
-        toast.error(`创建文件夹失败: ${errorMsg}`);
+        toast.error(t('sftp.error.createFailed', { error: errorMsg }));
       }
       playSound(SoundEffect.ERROR);
     }
@@ -187,7 +201,7 @@ export function FilePane({
             });
           }
         }
-        toast.success(`成功删除 ${selectedFiles.length} 项`);
+        toast.success(t('sftp.success.deleteSuccess', { count: selectedFiles.length }));
         playSound(SoundEffect.SUCCESS);
       }
       setShowDeleteDialog(false);
@@ -198,13 +212,13 @@ export function FilePane({
       console.error('Failed to delete:', error);
       const errorMsg = String(error);
       if (errorMsg.includes('Permission denied')) {
-        toast.error('删除失败：没有权限');
+        toast.error(t('sftp.error.deletePermissionDenied'));
       } else if (errorMsg.includes('No such file')) {
-        toast.error('文件或目录不存在');
+        toast.error(t('sftp.error.fileNotExists'));
       } else if (errorMsg.includes('Directory not empty')) {
-        toast.error('删除失败：目录不为空');
+        toast.error(t('sftp.error.directoryNotEmpty'));
       } else {
-        toast.error(`删除失败: ${errorMsg}`);
+        toast.error(t('sftp.error.deleteFailed', { error: errorMsg }));
       }
       playSound(SoundEffect.ERROR);
     }
@@ -224,7 +238,7 @@ export function FilePane({
           oldPath: file.path,
           newPath: newPath,
         });
-        toast.success(`重命名成功：${file.name} → ${renameValue}`);
+        toast.success(t('sftp.success.renameSuccess', { old: file.name, new: renameValue }));
         playSound(SoundEffect.SUCCESS);
       }
       setShowRenameDialog(false);
@@ -236,13 +250,13 @@ export function FilePane({
       console.error('Failed to rename:', error);
       const errorMsg = String(error);
       if (errorMsg.includes('Permission denied')) {
-        toast.error('重命名失败：没有权限');
+        toast.error(t('sftp.error.renamePermissionDenied'));
       } else if (errorMsg.includes('No such file')) {
-        toast.error('文件不存在');
+        toast.error(t('sftp.error.fileNotExists'));
       } else if (errorMsg.includes('exists') || errorMsg.includes('already exists')) {
-        toast.error(`文件名 "${renameValue}" 已存在`);
+        toast.error(t('sftp.error.fileExists', { name: renameValue }));
       } else {
-        toast.error(`重命名失败: ${errorMsg}`);
+        toast.error(t('sftp.error.renameFailed', { error: errorMsg }));
       }
       playSound(SoundEffect.ERROR);
     }
@@ -277,7 +291,7 @@ export function FilePane({
     } else {
       // 远程文件：进入根目录
       onPathChange('/');
-      toast.success('已切换到根目录');
+      toast.success(t('sftp.success.switchedToRoot'));
     }
   };
 
@@ -291,7 +305,7 @@ export function FilePane({
 
     // 仅对远程文件操作显示提示
     if (type === 'remote') {
-      toast.success('已刷新');
+      toast.success(t('sftp.success.refreshed'));
     }
     // 本地文件不显示提示
   };
@@ -307,7 +321,7 @@ export function FilePane({
         onPathChange(homeDir);
       } catch (error) {
         console.error('Failed to get home directory:', error);
-        toast.error('无法获取用户家目录');
+        toast.error(t('sftp.error.cannotGetHomeDir'));
       }
     } else {
       // 其他盘符：切换到盘符根目录
@@ -316,7 +330,7 @@ export function FilePane({
         onPathChange(rootPath);
       } catch (error) {
         console.error('Failed to get drive root:', error);
-        toast.error(`无法访问 ${drive} 盘`);
+        toast.error(t('sftp.error.cannotAccessDrive', { drive }));
       }
     }
   };
@@ -328,6 +342,7 @@ export function FilePane({
     return match ? match[1] + ':' : null;
   };
 
+  // 提交路径验证和跳转
   const handleSubmitPath = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -352,19 +367,19 @@ export function FilePane({
         });
         // 路径有效，更新路径
         onPathChange(normalizedPath);
-        toast.success(`已跳转到：${normalizedPath}`);
+        toast.success(t('sftp.success.navigatedTo', { path: normalizedPath }));
       } catch (error) {
         console.error('Invalid path:', error);
         // 判断错误类型并显示相应的提示
         const errorMsg = String(error);
         if (errorMsg.includes('No such file') || errorMsg.includes('not found')) {
-          toast.error(`路径不存在: ${normalizedPath}`);
+          toast.error(t('sftp.error.pathNotExists', { path: normalizedPath }));
         } else if (errorMsg.includes('Not a directory') || errorMsg.includes('not a directory')) {
-          toast.error(`不是目录: ${normalizedPath}`);
+          toast.error(t('sftp.error.notDirectory', { path: normalizedPath }));
         } else if (errorMsg.includes('Permission denied')) {
-          toast.error(`没有访问权限: ${normalizedPath}`);
+          toast.error(t('sftp.error.permissionDenied', { path: normalizedPath }));
         } else {
-          toast.error(`无法访问路径: ${normalizedPath}`);
+          toast.error(t('sftp.error.cannotAccess', { path: normalizedPath }));
         }
         // 重置输入为当前有效路径
         setInputPath(path);
@@ -395,13 +410,13 @@ export function FilePane({
           console.error('Failed to open directory:', error);
           const errorMsg = String(error);
           if (errorMsg.includes('Permission denied')) {
-            toast.error('没有访问权限');
+            toast.error(t('sftp.error.noPermission'));
           } else if (errorMsg.includes('No such file')) {
-            toast.error('目录不存在');
+            toast.error(t('sftp.error.directoryNotExists'));
           } else if (errorMsg.includes('Not a directory')) {
-            toast.error('不是目录');
+            toast.error(t('sftp.error.notDirectoryShort'));
           } else {
-            toast.error(`无法打开目录: ${errorMsg}`);
+            toast.error(t('sftp.error.cannotOpenDirectory', { error: errorMsg }));
           }
         }
       } else {
@@ -420,7 +435,7 @@ export function FilePane({
       <div className="border-b bg-muted/40 px-3 py-2">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-sm font-medium">
-            {type === 'local' ? '本地文件' : '远程文件'}
+            {type === 'local' ? t('sftp.pane.local') : t('sftp.pane.remote')}
           </span>
 
           <div className="flex-1" />
@@ -431,7 +446,7 @@ export function FilePane({
               size="sm"
               className="h-6 w-6 p-0"
               onClick={handleGoToRoot}
-              title="根目录"
+              title={t('sftp.action.goToRoot')}
             >
               <Home className="h-3 w-3" />
             </Button>
@@ -441,7 +456,7 @@ export function FilePane({
               size="sm"
               className="h-6 w-6 p-0"
               onClick={handleGoToParent}
-              title="上级目录"
+              title={t('sftp.action.goToParent')}
             >
               <ArrowUp className="h-3 w-3" />
             </Button>
@@ -451,7 +466,7 @@ export function FilePane({
               size="sm"
               className="h-6 w-6 p-0"
               onClick={handleRefresh}
-              title="刷新"
+              title={t('sftp.action.refresh')}
             >
               <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
@@ -463,7 +478,7 @@ export function FilePane({
                   size="sm"
                   className="h-6 w-6 p-0"
                   onClick={() => setShowNewFolderDialog(true)}
-                  title="新建文件夹"
+                  title={t('sftp.action.newFolder')}
                 >
                   <FolderPlus className="h-3 w-3" />
                 </Button>
@@ -473,7 +488,7 @@ export function FilePane({
                   size="sm"
                   className="h-6 w-6 p-0"
                   onClick={() => setShowDeleteDialog(true)}
-                  title="删除"
+                  title={t('sftp.action.delete')}
                   disabled={selectedFiles.length === 0}
                 >
                   <Trash2 className="h-3 w-3" />
@@ -489,7 +504,7 @@ export function FilePane({
                       setShowRenameDialog(true);
                     }
                   }}
-                  title="重命名"
+                  title={t('sftp.action.rename')}
                   disabled={selectedFiles.length !== 1}
                 >
                   <Edit2 className="h-3 w-3" />
@@ -509,7 +524,7 @@ export function FilePane({
             >
               <SelectTrigger className="w-[70px] h-8">
                 <HardDrive className="h-3 w-3 mr-1 opacity-50" />
-                <SelectValue placeholder="盘符" />
+                <SelectValue placeholder={t('sftp.path.drive')} />
               </SelectTrigger>
               <SelectContent>
                 {availableDrives.map((drive) => (
@@ -527,7 +542,7 @@ export function FilePane({
               value={inputPath}
               onChange={(e) => setInputPath(e.target.value)}
               className="h-8 text-sm"
-              placeholder="输入路径，按回车跳转"
+              placeholder={t('sftp.path.placeholder')}
             />
           </form>
         </div>
@@ -550,24 +565,24 @@ export function FilePane({
       {/* 状态栏 */}
       <div className="border-t bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
         {selectedFiles.length > 0
-          ? `已选择 ${selectedFiles.length} 项`
-          : `${type === 'local' ? '本地' : '远程'}文件系统`}
+          ? t('sftp.status.selected', { count: selectedFiles.length })
+          : type === 'local' ? t('sftp.status.localFileSystem') : t('sftp.status.remoteFileSystem')}
       </div>
 
       {/* 新建文件夹对话框 */}
       <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新建文件夹</DialogTitle>
+            <DialogTitle>{t('sftp.dialog.newFolder.title')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="folder-name">文件夹名称</Label>
+              <Label htmlFor="folder-name">{t('sftp.dialog.newFolder.label')}</Label>
               <Input
                 id="folder-name"
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="输入文件夹名称"
+                placeholder={t('sftp.dialog.newFolder.placeholder')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleCreateFolder();
@@ -581,10 +596,10 @@ export function FilePane({
               playSound(SoundEffect.BUTTON_CLICK);
               setShowNewFolderDialog(false);
             }}>
-              取消
+              {t('dialog.cancel')}
             </Button>
             <Button onClick={handleCreateFolder}>
-              创建
+              {t('sftp.dialog.newFolder.actionCreate')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -594,12 +609,12 @@ export function FilePane({
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>确认删除</DialogTitle>
+            <DialogTitle>{t('sftp.dialog.confirmDelete.title')}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p>确定要删除选中的 {selectedFiles.length} 项吗？</p>
+            <p>{t('sftp.dialog.confirmDelete.message', { count: selectedFiles.length })}</p>
             <p className="text-sm text-muted-foreground mt-2">
-              此操作不可撤销。
+              {t('sftp.dialog.confirmDelete.warning')}
             </p>
           </div>
           <DialogFooter>
@@ -607,10 +622,10 @@ export function FilePane({
               playSound(SoundEffect.BUTTON_CLICK);
               setShowDeleteDialog(false);
             }}>
-              取消
+              {t('dialog.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
-              删除
+              {t('sftp.action.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -620,16 +635,16 @@ export function FilePane({
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>重命名</DialogTitle>
+            <DialogTitle>{t('sftp.dialog.rename.title')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="rename">新名称</Label>
+              <Label htmlFor="rename">{t('sftp.dialog.rename.label')}</Label>
               <Input
                 id="rename"
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
-                placeholder="输入新名称"
+                placeholder={t('sftp.dialog.rename.placeholder')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleRename();
@@ -643,10 +658,10 @@ export function FilePane({
               playSound(SoundEffect.BUTTON_CLICK);
               setShowRenameDialog(false);
             }}>
-              取消
+              {t('dialog.cancel')}
             </Button>
             <Button onClick={handleRename}>
-              确定
+              {t('sftp.dialog.rename.actionConfirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
