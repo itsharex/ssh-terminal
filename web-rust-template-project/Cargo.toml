@@ -48,6 +48,7 @@ config = "0.13"
 rand = "0.8"
 clap = { version = "4", features = ["derive", "env"] }
 validator = { version = "0.16", features = ["derive"] }
+log = "0.4.29"
 
 # 优化发布版本
 [profile.release]

@@ -4,10 +4,12 @@ use redis::{AsyncCommands, Client};
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tracing::warn;
 
-/// Redis 客户端（使用 MultiplexedConnection）
+/// Redis 客户端（支持自动重连）
 #[derive(Clone)]
 pub struct RedisClient {
+    client: Client,
     conn: Arc<Mutex<MultiplexedConnection>>,
 }
 
@@ -17,38 +19,119 @@ impl RedisClient {
         let client = Client::open(url)?;
         let conn = client.get_multiplexed_async_connection().await?;
         Ok(Self {
+            client,
             conn: Arc::new(Mutex::new(conn)),
         })
     }
 
+    /// 重建连接
+    async fn reconnect(&self) -> redis::RedisResult<()> {
+        match self.client.get_multiplexed_async_connection().await {
+            Ok(new_conn) => {
+                *self.conn.lock().await = new_conn;
+                tracing::info!("Redis 连接已重新建立");
+                Ok(())
+            }
+            Err(e) => {
+                warn!("Redis 重连失败: {}", e);
+                Err(e)
+            }
+        }
+    }
+
     /// 设置字符串值
     pub async fn set(&self, k: &str, v: &str) -> redis::RedisResult<()> {
-        let mut c = self.conn.lock().await;
-        c.set(k, v).await
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<()> = conn.set(k, v).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.set(k, v).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 获取字符串值
     pub async fn get(&self, k: &str) -> redis::RedisResult<Option<String>> {
-        let mut c = self.conn.lock().await;
-        c.get(k).await
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<Option<String>> = conn.get(k).await;
+        match result {
+            Ok(result) => Ok(result),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.get(k).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 设置字符串值并指定过期时间（秒）
     pub async fn set_ex(&self, k: &str, v: &str, seconds: u64) -> redis::RedisResult<()> {
-        let mut c = self.conn.lock().await;
-        c.set_ex(k, v, seconds).await
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<()> = conn.set_ex(k, v, seconds).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.set_ex(k, v, seconds).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 删除键
     pub async fn del(&self, k: &str) -> redis::RedisResult<()> {
-        let mut c = self.conn.lock().await;
-        c.del(k).await
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<()> = conn.del(k).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.del(k).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 设置键的过期时间（秒）
     pub async fn expire(&self, k: &str, seconds: u64) -> redis::RedisResult<()> {
-        let mut c = self.conn.lock().await;
-        c.expire(k, seconds as i64).await
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<()> = conn.expire(k, seconds as i64).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.expire(k, seconds as i64).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 使用 RedisKey 设置 JSON 值
@@ -64,8 +147,22 @@ impl RedisClient {
                 e.to_string(),
             ))
         })?;
-        let mut c = self.conn.lock().await;
-        c.set(key.build(), json).await
+        let key_str = key.build();
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<()> = conn.set(key_str.clone(), json.clone()).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.set(key_str, json).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 使用 RedisKey 设置 JSON 值并指定过期时间（秒）
@@ -82,15 +179,42 @@ impl RedisClient {
                 e.to_string(),
             ))
         })?;
-        let mut c = self.conn.lock().await;
-        c.set_ex(key.build(), json, expiration_seconds).await
+        let key_str = key.build();
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<()> = conn.set_ex(key_str.clone(), json.clone(), expiration_seconds).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.set_ex(key_str, json, expiration_seconds).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 使用 RedisKey 获取字符串值
     pub async fn get_key(&self, key: &RedisKey) -> redis::RedisResult<Option<String>> {
-        let mut c = self.conn.lock().await;
-        let json: Option<String> = c.get(key.build()).await?;
-        Ok(json)
+        let key_str = key.build();
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<Option<String>> = conn.get(key_str.clone()).await;
+        match result {
+            Ok(result) => Ok(result),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.get(key_str).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 使用 RedisKey 获取并反序列化 JSON 值
@@ -98,8 +222,21 @@ impl RedisClient {
         &self,
         key: &RedisKey,
     ) -> redis::RedisResult<Option<T>> {
-        let mut c = self.conn.lock().await;
-        let json: Option<String> = c.get(key.build()).await?;
+        let key_str = key.build();
+        let mut conn = self.conn.lock().await;
+        let json: Option<String> = match conn.get(key_str.clone()).await {
+            Ok(result) => result,
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.get(key_str).await?
+                } else {
+                    return Err(e);
+                }
+            }
+        };
         match json {
             Some(data) => {
                 let value = serde_json::from_str(&data).map_err(|e| {
@@ -117,19 +254,69 @@ impl RedisClient {
 
     /// 使用 RedisKey 删除键
     pub async fn delete_key(&self, key: &RedisKey) -> redis::RedisResult<()> {
-        let mut c = self.conn.lock().await;
-        c.del(key.build()).await
+        let key_str = key.build();
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<()> = conn.del(key_str.clone()).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.del(key_str).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 使用 RedisKey 检查键是否存在
     pub async fn exists_key(&self, key: &RedisKey) -> redis::RedisResult<bool> {
-        let mut c = self.conn.lock().await;
-        c.exists(key.build()).await
+        let key_str = key.build();
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<bool> = conn.exists(key_str.clone()).await;
+        match result {
+            Ok(result) => Ok(result),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.exists(key_str).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     /// 使用 RedisKey 设置键的过期时间（秒）
     pub async fn expire_key(&self, key: &RedisKey, seconds: u64) -> redis::RedisResult<()> {
-        let mut c = self.conn.lock().await;
-        c.expire(key.build(), seconds as i64).await
+        let key_str = key.build();
+        let mut conn = self.conn.lock().await;
+        let result: redis::RedisResult<()> = conn.expire(key_str.clone(), seconds as i64).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                if self.is_connection_error(&e) {
+                    drop(conn);
+                    self.reconnect().await?;
+                    let mut conn = self.conn.lock().await;
+                    conn.expire(key_str, seconds as i64).await
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    /// 检查是否是连接错误
+    fn is_connection_error(&self, e: &redis::RedisError) -> bool {
+        let err_msg = e.to_string();
+        err_msg.contains("broken pipe")
+            || err_msg.contains("connection closed")
+            || err_msg.contains("Connection reset")
     }
 }

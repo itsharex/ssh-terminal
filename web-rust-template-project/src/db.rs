@@ -25,9 +25,12 @@ pub async fn create_pool(config: &DatabaseConfig) -> anyhow::Result<DbPool> {
     opt.max_connections(config.max_connections)
         .min_connections(1)
         .connect_timeout(Duration::from_secs(8))
-        .idle_timeout(Duration::from_secs(8))
-        .max_lifetime(Duration::from_secs(7200))
-        .sqlx_logging(true);
+        .idle_timeout(Duration::from_secs(600))      // 10分钟空闲超时
+        .max_lifetime(Duration::from_secs(1800))     // 30分钟连接生命周期
+        .acquire_timeout(Duration::from_secs(30))    // 获取连接超时30秒
+        .test_before_acquire(true)                   // 获取连接前测试连接有效性
+        .sqlx_logging(true)
+        .sqlx_logging_level(log::LevelFilter::Info);
 
     let pool = Database::connect(opt)
         .await
