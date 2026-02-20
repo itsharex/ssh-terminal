@@ -4,7 +4,11 @@
 
 set -e
 
+# ========================================
+# 构建配置变量
+# ========================================
 IMAGE_NAME="registry.cn-hangzhou.aliyuncs.com/pull-image/muslrust:latest"
+BUILD_IMAGE_NAME="ssh-terminal-server:latest"
 CONTAINER_NAME="ssh-terminal-builder"
 PROJECT_DIR="$(pwd)"
 OUTPUT_DIR="${PROJECT_DIR}/target/x86_64-unknown-linux-musl/release"
@@ -168,11 +172,10 @@ EOF
     trap "rm -f ${TEMP_BINARY}" EXIT
 
     # 构建镜像
-    IMAGE_TAG="ssh-terminal-server:latest"
-    echo "构建 Docker 镜像: ${IMAGE_TAG}"
+    echo "构建 Docker 镜像: ${BUILD_IMAGE_NAME}"
     echo "  Dockerfile: ${DOCKERFILE_PATH}"
     echo "  构建上下文: ${PROJECT_DIR}"
-    docker build -t "${IMAGE_TAG}" -f "${DOCKERFILE_PATH}" "${PROJECT_DIR}"
+    docker build -t "${BUILD_IMAGE_NAME}" -f "${DOCKERFILE_PATH}" "${PROJECT_DIR}"
 
     # 清理临时文件（trap 也会处理，但这里显式清理更清晰）
     rm -f "${TEMP_BINARY}"
@@ -186,7 +189,7 @@ EOF
 
     # 显示镜像信息
     echo "镜像信息:"
-    docker images "${IMAGE_TAG}"
+    docker images "${BUILD_IMAGE_NAME}"
     echo ""
 
     echo "========================================="
@@ -230,7 +233,7 @@ EOF
     echo "  docker rm ssh-terminal"
     echo ""
     echo "📦 导出镜像为 tar 文件："
-    echo "  docker save -o ssh-terminal-server.tar ssh-terminal-server:latest"
+    echo "  docker save -o ssh-terminal-server.tar ${BUILD_IMAGE_NAME}"
     echo ""
     echo "📦 在其他机器上导入镜像："
     echo "  docker load -i ssh-terminal-server.tar"
