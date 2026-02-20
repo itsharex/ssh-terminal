@@ -20,7 +20,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ isOpen, onClose }: LoginFormProps) {
-  const { login, register, isLoading, error, clearError } = useAuthStore();
+  const { login, register, isLoading, clearError } = useAuthStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

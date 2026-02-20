@@ -61,7 +61,6 @@ export function extractMessageFromError(errorString: string): {
   const apiErrorMatch = errorString.match(/API error \((\d+ [^\)]+)\): (.+)$/);
 
   if (apiErrorMatch) {
-    const statusCode = apiErrorMatch[1];
     const content = apiErrorMatch[2].trim();
 
     // 尝试解析 JSON 格式的错误

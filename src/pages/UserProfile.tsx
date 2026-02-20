@@ -62,7 +62,7 @@ function validateImageFile(file: File): { valid: boolean; error?: string } {
 
 export function UserProfile() {
   const navigate = useNavigate();
-  const { profile, isLoading, error, loadProfile, updateProfile, syncProfile, clearError } = useUserProfileStore();
+  const { profile, isLoading, loadProfile, updateProfile, syncProfile, clearError } = useUserProfileStore();
   const { currentUser } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

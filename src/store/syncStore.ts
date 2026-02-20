@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { SyncStatus, SyncReport, ConflictInfo, ConflictStrategy } from '@/types/sync';
-import { analyzeNetworkError, NetworkErrorType } from '@/utils/network';
 
 interface SyncState {
   lastSyncAt: number | null;

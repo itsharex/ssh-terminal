@@ -1,7 +1,7 @@
 import { LogOut, User, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,11 +10,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/store/authStore';
-import { useState } from 'react';
+import { useUserProfileStore } from '@/store/userProfileStore';
+import { useState, useEffect } from 'react';
 
 export function UserAvatarDropdown() {
   const { currentUser, logout } = useAuthStore();
+  const { profile } = useUserProfileStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    // 当组件挂载时，加载用户资料
+    useUserProfileStore.getState().loadProfile();
+  }, []);
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
@@ -31,6 +38,14 @@ export function UserAvatarDropdown() {
     return email.charAt(0).toUpperCase();
   };
 
+  // 获取头像 URL
+  const getAvatarUrl = () => {
+    if (profile?.avatarData && profile?.avatarMimeType) {
+      return `data:${profile.avatarMimeType};base64,${profile.avatarData}`;
+    }
+    return undefined;
+  };
+
   return (
     <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
       <DropdownMenuTrigger asChild>
@@ -39,6 +54,7 @@ export function UserAvatarDropdown() {
           className="h-8 w-full justify-start gap-2 px-2 hover:bg-accent/50"
         >
           <Avatar className="h-6 w-6">
+            <AvatarImage src={getAvatarUrl()} />
             <AvatarFallback className="bg-primary text-primary-foreground text-xs">
               {getInitials(currentUser?.email)}
             </AvatarFallback>
