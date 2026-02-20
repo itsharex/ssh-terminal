@@ -18,6 +18,12 @@ type TokenUpdateCallback = Arc<Mutex<Option<Box<dyn Fn(String, String, Option<i6
 /// Token 刷新失败的特殊错误码
 pub const TOKEN_REFRESH_FAILED: &str = "TOKEN_REFRESH_FAILED";
 
+/// 网络连接失败的错误码
+pub const NETWORK_ERROR: &str = "NETWORK_ERROR";
+
+/// 连接超时的错误码
+pub const TIMEOUT_ERROR: &str = "TIMEOUT_ERROR";
+
 /// HTTP API 客户端
 /// 用于与服务器进行通信
 #[derive(Clone)]
@@ -101,6 +107,17 @@ impl ApiClient {
             || error_str.contains(TOKEN_REFRESH_FAILED)
     }
 
+    /// 判断是否是网络连接错误
+    pub fn is_network_error(error: &anyhow::Error) -> bool {
+        let error_str = error.to_string().to_lowercase();
+        error_str.contains("network_error")
+            || error_str.contains("timeout_error")
+            || error_str.contains("connection refused")
+            || error_str.contains("timeout")
+            || error_str.contains("no route to host")
+            || error_str.contains("dns error")
+    }
+
     /// 获取当前令牌
     fn get_token(&self) -> Option<String> {
         let guard = self.access_token.lock()
@@ -119,29 +136,53 @@ impl ApiClient {
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
 
-        let response = self.client
+        match self.client
             .get(&url)
             .header(header::AUTHORIZATION, format!("Bearer {}", token))
             .send()
-            .await?;
+            .await
+        {
+            Ok(response) => {
+                match self.handle_response(response).await {
+                    Ok(result) => Ok(result),
+                    Err(e) if e.to_string().contains("Token refreshed, please retry") => {
+                        // Token 刷新成功，重试请求
+                        tracing::info!("Retrying request with new token: GET {}", path);
+                        let new_token = self.get_token()
+                            .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
 
-        match self.handle_response(response).await {
-            Ok(result) => Ok(result),
-            Err(e) if e.to_string().contains("Token refreshed, please retry") => {
-                // Token 刷新成功，重试请求
-                tracing::info!("Retrying request with new token: GET {}", path);
-                let new_token = self.get_token()
-                    .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
+                        let response = self.client
+                            .get(&url)
+                            .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
+                            .send()
+                            .await?;
 
-                let response = self.client
-                    .get(&url)
-                    .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
-                    .send()
-                    .await?;
-
-                self.handle_response(response).await
+                        self.handle_response(response).await
+                    }
+                    Err(e) => Err(e),
+                }
             }
-            Err(e) => Err(e),
+            Err(err) => {
+                // 使用 reqwest 的错误判断方法
+                if err.is_timeout() {
+                    return Err(anyhow!("{}: 请求超时，请检查网络连接", TIMEOUT_ERROR));
+                } else if err.is_connect() {
+                    let err_str = err.to_string().to_lowercase();
+                    if err_str.contains("connection refused") {
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行", NETWORK_ERROR));
+                    } else if err_str.contains("no route to host") {
+                        return Err(anyhow!("{}: 无法访问服务器，请检查网络连接和服务器地址", NETWORK_ERROR));
+                    } else if err_str.contains("dns") {
+                        return Err(anyhow!("{}: DNS 解析失败，请检查服务器地址是否正确", NETWORK_ERROR));
+                    } else if err_str.contains("connection reset") || err_str.contains("reset by peer") {
+                        return Err(anyhow!("{}: 连接被重置，服务器可能已关闭", NETWORK_ERROR));
+                    } else {
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行或网络连接", NETWORK_ERROR));
+                    }
+                } else {
+                    return Err(anyhow!("API error: {}", err));
+                }
+            }
         }
     }
 
@@ -151,33 +192,57 @@ impl ApiClient {
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
 
-        let response = self.client
+        match self.client
             .post(&url)
             .header(header::AUTHORIZATION, format!("Bearer {}", token))
             .header(header::CONTENT_TYPE, "application/json")
             .json(body)
             .send()
-            .await?;
+            .await
+        {
+            Ok(response) => {
+                match self.handle_response(response).await {
+                    Ok(result) => Ok(result),
+                    Err(e) if e.to_string().contains("Token refreshed, please retry") => {
+                        // Token 刷新成功，重试请求
+                        tracing::info!("Retrying request with new token: POST {}", path);
+                        let new_token = self.get_token()
+                            .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
 
-        match self.handle_response(response).await {
-            Ok(result) => Ok(result),
-            Err(e) if e.to_string().contains("Token refreshed, please retry") => {
-                // Token 刷新成功，重试请求
-                tracing::info!("Retrying request with new token: POST {}", path);
-                let new_token = self.get_token()
-                    .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
+                        let response = self.client
+                            .post(&url)
+                            .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
+                            .header(header::CONTENT_TYPE, "application/json")
+                            .json(body)
+                            .send()
+                            .await?;
 
-                let response = self.client
-                    .post(&url)
-                    .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .json(body)
-                    .send()
-                    .await?;
-
-                self.handle_response(response).await
+                        self.handle_response(response).await
+                    }
+                    Err(e) => Err(e),
+                }
             }
-            Err(e) => Err(e),
+            Err(err) => {
+                // 使用 reqwest 的错误判断方法
+                if err.is_timeout() {
+                    return Err(anyhow!("{}: 请求超时，请检查网络连接", TIMEOUT_ERROR));
+                } else if err.is_connect() {
+                    let err_str = err.to_string().to_lowercase();
+                    if err_str.contains("connection refused") {
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行", NETWORK_ERROR));
+                    } else if err_str.contains("no route to host") {
+                        return Err(anyhow!("{}: 无法访问服务器，请检查网络连接和服务器地址", NETWORK_ERROR));
+                    } else if err_str.contains("dns") {
+                        return Err(anyhow!("{}: DNS 解析失败，请检查服务器地址是否正确", NETWORK_ERROR));
+                    } else if err_str.contains("connection reset") || err_str.contains("reset by peer") {
+                        return Err(anyhow!("{}: 连接被重置，服务器可能已关闭", NETWORK_ERROR));
+                    } else {
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行或网络连接", NETWORK_ERROR));
+                    }
+                } else {
+                    return Err(anyhow!("API error: {}", err));
+                }
+            }
         }
     }
 
@@ -187,33 +252,57 @@ impl ApiClient {
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
 
-        let response = self.client
+        match self.client
             .put(&url)
             .header(header::AUTHORIZATION, format!("Bearer {}", token))
             .header(header::CONTENT_TYPE, "application/json")
             .json(body)
             .send()
-            .await?;
+            .await
+        {
+            Ok(response) => {
+                match self.handle_response(response).await {
+                    Ok(result) => Ok(result),
+                    Err(e) if e.to_string().contains("Token refreshed, please retry") => {
+                        // Token 刷新成功，重试请求
+                        tracing::info!("Retrying request with new token: PUT {}", path);
+                        let new_token = self.get_token()
+                            .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
 
-        match self.handle_response(response).await {
-            Ok(result) => Ok(result),
-            Err(e) if e.to_string().contains("Token refreshed, please retry") => {
-                // Token 刷新成功，重试请求
-                tracing::info!("Retrying request with new token: PUT {}", path);
-                let new_token = self.get_token()
-                    .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
+                        let response = self.client
+                            .put(&url)
+                            .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
+                            .header(header::CONTENT_TYPE, "application/json")
+                            .json(body)
+                            .send()
+                            .await?;
 
-                let response = self.client
-                    .put(&url)
-                    .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .json(body)
-                    .send()
-                    .await?;
-
-                self.handle_response(response).await
+                        self.handle_response(response).await
+                    }
+                    Err(e) => Err(e),
+                }
             }
-            Err(e) => Err(e),
+            Err(err) => {
+                // 使用 reqwest 的错误判断方法
+                if err.is_timeout() {
+                    return Err(anyhow!("{}: 请求超时，请检查网络连接", TIMEOUT_ERROR));
+                } else if err.is_connect() {
+                    let err_str = err.to_string().to_lowercase();
+                    if err_str.contains("connection refused") {
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行", NETWORK_ERROR));
+                    } else if err_str.contains("no route to host") {
+                        return Err(anyhow!("{}: 无法访问服务器，请检查网络连接和服务器地址", NETWORK_ERROR));
+                    } else if err_str.contains("dns") {
+                        return Err(anyhow!("{}: DNS 解析失败，请检查服务器地址是否正确", NETWORK_ERROR));
+                    } else if err_str.contains("connection reset") || err_str.contains("reset by peer") {
+                        return Err(anyhow!("{}: 连接被重置，服务器可能已关闭", NETWORK_ERROR));
+                    } else {
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行或网络连接", NETWORK_ERROR));
+                    }
+                } else {
+                    return Err(anyhow!("API error: {}", err));
+                }
+            }
         }
     }
 
@@ -223,29 +312,53 @@ impl ApiClient {
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
 
-        let response = self.client
+        match self.client
             .delete(&url)
             .header(header::AUTHORIZATION, format!("Bearer {}", token))
             .send()
-            .await?;
+            .await
+        {
+            Ok(response) => {
+                match self.handle_response(response).await {
+                    Ok(result) => Ok(result),
+                    Err(e) if e.to_string().contains("Token refreshed, please retry") => {
+                        // Token 刷新成功，重试请求
+                        tracing::info!("Retrying request with new token: DELETE {}", path);
+                        let new_token = self.get_token()
+                            .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
 
-        match self.handle_response(response).await {
-            Ok(result) => Ok(result),
-            Err(e) if e.to_string().contains("Token refreshed, please retry") => {
-                // Token 刷新成功，重试请求
-                tracing::info!("Retrying request with new token: DELETE {}", path);
-                let new_token = self.get_token()
-                    .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
+                        let response = self.client
+                            .delete(&url)
+                            .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
+                            .send()
+                            .await?;
 
-                let response = self.client
-                    .delete(&url)
-                    .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
-                    .send()
-                    .await?;
-
-                self.handle_response(response).await
+                        self.handle_response(response).await
+                    }
+                    Err(e) => Err(e),
+                }
             }
-            Err(e) => Err(e),
+            Err(err) => {
+                // 使用 reqwest 的错误判断方法
+                if err.is_timeout() {
+                    return Err(anyhow!("{}: 请求超时，请检查网络连接", TIMEOUT_ERROR));
+                } else if err.is_connect() {
+                    let err_str = err.to_string().to_lowercase();
+                    if err_str.contains("connection refused") {
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行", NETWORK_ERROR));
+                    } else if err_str.contains("no route to host") {
+                        return Err(anyhow!("{}: 无法访问服务器，请检查网络连接和服务器地址", NETWORK_ERROR));
+                    } else if err_str.contains("dns") {
+                        return Err(anyhow!("{}: DNS 解析失败，请检查服务器地址是否正确", NETWORK_ERROR));
+                    } else if err_str.contains("connection reset") || err_str.contains("reset by peer") {
+                        return Err(anyhow!("{}: 连接被重置，服务器可能已关闭", NETWORK_ERROR));
+                    } else {
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行或网络连接", NETWORK_ERROR));
+                    }
+                } else {
+                    return Err(anyhow!("API error: {}", err));
+                }
+            }
         }
     }
 
@@ -253,14 +366,37 @@ impl ApiClient {
     async fn post_public<T: Serialize, R: DeserializeOwned>(&self, path: &str, body: &T) -> Result<R> {
         let url = self.build_url(path);
 
-        let response = self.client
+        match self.client
             .post(&url)
             .header(header::CONTENT_TYPE, "application/json")
             .json(body)
             .send()
-            .await?;
-
-        self.handle_response(response).await
+            .await
+        {
+            Ok(response) => self.handle_response(response).await,
+            Err(err) => {
+                // 使用 reqwest 的错误判断方法
+                if err.is_timeout() {
+                    return Err(anyhow!("{}: 请求超时，请检查网络连接", TIMEOUT_ERROR));
+                } else if err.is_connect() {
+                    let err_str = err.to_string().to_lowercase();
+                    if err_str.contains("connection refused") {
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行", NETWORK_ERROR));
+                    } else if err_str.contains("no route to host") {
+                        return Err(anyhow!("{}: 无法访问服务器，请检查网络连接和服务器地址", NETWORK_ERROR));
+                    } else if err_str.contains("dns") {
+                        return Err(anyhow!("{}: DNS 解析失败，请检查服务器地址是否正确", NETWORK_ERROR));
+                    } else if err_str.contains("connection reset") || err_str.contains("reset by peer") {
+                        return Err(anyhow!("{}: 连接被重置，服务器可能已关闭", NETWORK_ERROR));
+                    } else {
+                        // 其他连接错误，可能是服务器未运行或网络问题
+                        return Err(anyhow!("{}: 无法连接到服务器，请检查服务器是否运行或网络连接", NETWORK_ERROR));
+                    }
+                } else {
+                    return Err(anyhow!("API error: {}", err));
+                }
+            }
+        }
     }
 
     /// 处理 HTTP 响应（带 token 自动刷新）
@@ -399,13 +535,13 @@ impl ApiClient {
     // ==================== 用户资料 API ====================
 
     /// 获取用户资料
-    pub async fn get_profile(&self) -> Result<UserProfile> {
+    pub async fn get_profile(&self) -> Result<ServerUserProfile> {
         tracing::info!("API: get_profile");
         self.get_auth("api/user/profile").await
     }
 
     /// 更新用户资料
-    pub async fn update_profile(&self, req: &UpdateProfileRequest) -> Result<UserProfile> {
+    pub async fn update_profile(&self, req: &ServerUpdateProfileRequest) -> Result<ServerUserProfile> {
         tracing::info!("API: update_profile");
         self.put_auth("api/user/profile", req).await
     }

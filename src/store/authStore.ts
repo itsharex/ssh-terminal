@@ -54,9 +54,24 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user: User = await createUserWithServerUrl(res);
       set({ isAuthenticated: true, currentUser: user, isLoading: false });
     } catch (error) {
-      const errorMessage = error as string;
+      const errorString = error as string;
+      // 尝试从 API 错误响应中提取 message 字段
+      let errorMessage = errorString;
+      try {
+        // 匹配 API error (400 Bad Request): {"code":400,"message":"邮箱已注册","data":null} 格式
+        const match = errorString.match(/API error \(\d+ [^\)]+\): (\{.+\})/);
+        if (match && match[1]) {
+          const errorJson = JSON.parse(match[1]);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          }
+        }
+      } catch (parseError) {
+        // 如果解析失败，使用原始错误消息
+        console.error('[authStore] Failed to parse error message:', parseError);
+      }
       set({ error: errorMessage, isLoading: false });
-      throw error;
+      throw new Error(errorMessage);
     }
   },
 
@@ -67,9 +82,24 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user: User = await createUserWithServerUrl(res);
       set({ isAuthenticated: true, currentUser: user, isLoading: false });
     } catch (error) {
-      const errorMessage = error as string;
+      const errorString = error as string;
+      // 尝试从 API 错误响应中提取 message 字段
+      let errorMessage = errorString;
+      try {
+        // 匹配 API error (400 Bad Request): {"code":400,"message":"邮箱已注册","data":null} 格式
+        const match = errorString.match(/API error \(\d+ [^\)]+\): (\{.+\})/);
+        if (match && match[1]) {
+          const errorJson = JSON.parse(match[1]);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          }
+        }
+      } catch (parseError) {
+        // 如果解析失败，使用原始错误消息
+        console.error('[authStore] Failed to parse error message:', parseError);
+      }
       set({ error: errorMessage, isLoading: false });
-      throw error;
+      throw new Error(errorMessage);
     }
   },
 

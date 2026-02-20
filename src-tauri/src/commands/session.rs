@@ -129,8 +129,11 @@ pub async fn session_connect(
 
         if !session_exists {
             // 不在内存中，尝试从数据库加载
+            println!("[session_connect] ⚠️  Session config not in memory, loading from database: {}", session_id);
+
             match load_session_from_db(&pool, &session_id).await {
                 Ok(Some(config)) => {
+                    println!("[session_connect] ✅ Loaded from database: {}", config.name);
                     // 创建内存会话配置
                     manager.create_session_with_id(Some(session_id.clone()), config).await?;
                 }
@@ -142,10 +145,13 @@ pub async fn session_connect(
                     return Err(crate::error::SSHError::Storage(format!("Failed to load session from database: {}", e)));
                 }
             }
+        } else {
+            println!("[session_connect] ✅ Session config found in memory");
         }
     }
 
-    manager.connect_session(&session_id).await
+    let connection_id = manager.connect_session(&session_id).await?;
+    Ok(connection_id)
 }
 
 /// 断开会话

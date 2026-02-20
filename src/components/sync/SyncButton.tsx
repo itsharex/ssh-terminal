@@ -3,6 +3,9 @@ import { Button } from '@/components/ui/button';
 import { useSyncStore } from '@/store/syncStore';
 import { useAuthStore } from '@/store/authStore';
 import { useEffect } from 'react';
+import { toast } from 'sonner';
+import { playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 export function SyncButton() {
   const { isAuthenticated } = useAuthStore();
@@ -25,7 +28,16 @@ export function SyncButton() {
   const handleSync = async () => {
     try {
       await syncNow();
+      playSound(SoundEffect.SUCCESS);
+      toast.success('同步成功', {
+        description: '所有数据已同步到服务器',
+      });
     } catch (error) {
+      playSound(SoundEffect.ERROR);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error('同步失败', {
+        description: errorMessage,
+      });
       console.error('Sync failed:', error);
     }
   };

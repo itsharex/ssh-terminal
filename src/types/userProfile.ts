@@ -22,9 +22,10 @@ export interface UserProfile {
   phone?: string;
   qq?: string;
   wechat?: string;
-  avatarData?: string;
-  avatarMimeType?: string;
+  avatarData?: string;  // Base64 编码的图片数据（不含前缀）
+  avatarMimeType?: string;  // 图片 MIME 类型
   bio?: string;
+  serverVer?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -34,8 +35,8 @@ export interface UpdateProfileRequest {
   phone?: string;
   qq?: string;
   wechat?: string;
-  avatarData?: string;
-  avatarMimeType?: string;
+  avatarData?: string;  // Base64 编码的图片数据（不含前缀）
+  avatarMimeType?: string;  // 图片 MIME 类型
   bio?: string;
 }
 

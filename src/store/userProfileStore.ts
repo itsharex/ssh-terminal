@@ -9,7 +9,7 @@ interface UserProfileState {
 
   loadProfile: () => Promise<void>;
   updateProfile: (req: UpdateProfileRequest) => Promise<UserProfile>;
-  deleteProfile: () => Promise<void>;
+  syncProfile: () => Promise<UserProfile>;
   clearError: () => void;
 }
 
@@ -24,7 +24,8 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
       const profile = await invoke<UserProfile>('user_profile_get');
       set({ profile, isLoading: false });
     } catch (error) {
-      const errorMessage = error as string;
+      const errorMessage = typeof error === 'string' ? error : '获取资料失败';
+      console.error('[userProfileStore] 获取资料失败:', error);
       set({ error: errorMessage, isLoading: false });
       throw error;
     }
@@ -37,19 +38,22 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
       set({ profile, isLoading: false });
       return profile;
     } catch (error) {
-      const errorMessage = error as string;
+      const errorMessage = typeof error === 'string' ? error : '更新资料失败';
+      console.error('[userProfileStore] 更新资料失败:', error);
       set({ error: errorMessage, isLoading: false });
       throw error;
     }
   },
 
-  deleteProfile: async () => {
+  syncProfile: async () => {
     set({ isLoading: true, error: null });
     try {
-      await invoke('user_profile_delete');
-      set({ profile: null, isLoading: false });
+      const profile = await invoke<UserProfile>('user_profile_sync');
+      set({ profile, isLoading: false });
+      return profile;
     } catch (error) {
-      const errorMessage = error as string;
+      const errorMessage = typeof error === 'string' ? error : '同步资料失败';
+      console.error('[userProfileStore] 同步资料失败:', error);
       set({ error: errorMessage, isLoading: false });
       throw error;
     }

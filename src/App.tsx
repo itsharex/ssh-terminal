@@ -13,6 +13,7 @@ import { useTerminalConfigStore } from "@/store/terminalConfigStore";
 import { useAIStore } from "@/store/aiStore";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { useAuthStore } from "@/store/authStore";
+import { useSessionStore } from "@/store/sessionStore";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { MobileSessionList } from "@/components/mobile/MobileSessionList";
 import { MobileTerminalPage } from "@/components/mobile/MobileTerminalPage";
@@ -24,13 +25,15 @@ function AppContent() {
   const location = useLocation();
   const loadConfig = useTerminalConfigStore(state => state.loadConfig);
   const loadAIConfig = useAIStore(state => state.loadConfig);
+  const loadSessionsFromStorage = useSessionStore(state => state.loadSessionsFromStorage);
   const toggleSidebar = useSidebarStore(state => state.toggleSidebar);
   const { autoLogin, getCurrentUser } = useAuthStore();
 
   useEffect(() => {
     loadConfig();
     loadAIConfig();
-  }, [loadConfig, loadAIConfig]);
+    loadSessionsFromStorage();
+  }, [loadConfig, loadAIConfig, loadSessionsFromStorage]);
 
   // 应用启动时尝试自动登录
   useEffect(() => {

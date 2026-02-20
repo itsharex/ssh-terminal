@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::database::repositories::{UserAuthRepository, UserProfileRepository, AppSettingsRepository};
 use crate::database::DbPool;
 use crate::models::user_auth::*;
+use crate::models::user_profile::UserProfile;
 use crate::services::CryptoService;
 use crate::services::api_client::ApiClient;
 use crate::commands::auth::ApiClientStateWrapper;
@@ -147,8 +148,19 @@ impl AuthService {
         // 设置为当前账号
         repo.switch_account(&user_id)?;
 
-        // 同步用户资料
-        self.sync_user_profile(api_client.clone()).await?;
+        // 加载用户资料（从服务器获取并保存到本地）
+        let profile_repo = UserProfileRepository::new(self.pool.clone());
+        match api_client.get_profile().await {
+            Ok(server_profile) => {
+                // 转换为 UserProfile 并保存到本地数据库
+                let profile: UserProfile = server_profile.into();
+                let _ = profile_repo.save(&profile);
+                tracing::info!("User profile synced from server");
+            }
+            Err(e) => {
+                tracing::warn!("Failed to sync user profile from server: {}", e);
+            }
+        }
 
         // 构建客户端期望的 AuthResponse
         let auth_response = AuthResponse {
@@ -232,8 +244,19 @@ impl AuthService {
         // 设置为当前账号
         repo.switch_account(&server_result.user_id)?;
 
-        // 同步用户资料
-        self.sync_user_profile(api_client.clone()).await?;
+        // 加载用户资料（从服务器获取并保存到本地）
+        let profile_repo = UserProfileRepository::new(self.pool.clone());
+        match api_client.get_profile().await {
+            Ok(server_profile) => {
+                // 转换为 UserProfile 并保存到本地数据库
+                let profile: UserProfile = server_profile.into();
+                let _ = profile_repo.save(&profile);
+                tracing::info!("User profile synced from server");
+            }
+            Err(e) => {
+                tracing::warn!("Failed to sync user profile from server: {}", e);
+            }
+        }
 
         // 构建客户端期望的 AuthResponse
         let auth_response = AuthResponse {
@@ -297,9 +320,8 @@ impl AuthService {
             state.set_client(api_client.clone());
         }
 
-        // 同步用户资料（优先本地，不存在则服务器）
-        // ApiClient 会自动处理 token 过期和刷新
-        match self.sync_user_profile(api_client.clone()).await {
+        // 加载用户资料（从本地数据库）
+        match self.load_user_profile().await {
             Ok(_) => {
                 // 成功返回
                 Ok(AuthResponse {
@@ -483,22 +505,21 @@ impl AuthService {
         Ok(())
     }
 
-    /// 同步用户资料
-    /// 返回用户资料（以便获取 user_id）
-    async fn sync_user_profile(&self, api_client: ApiClient) -> Result<Option<crate::models::user_profile::UserProfile>> {
-        match api_client.get_profile().await {
-            Ok(profile) => {
-                let repo = UserProfileRepository::new(self.pool.clone());
-                // 保存或更新用户资料到本地数据库
-                let _ = repo.save(&profile);
-                tracing::info!("User profile synced from server");
-                Ok(Some(profile))
-            }
-            Err(e) => {
-                tracing::warn!("Failed to sync user profile: {}", e);
-                Ok(None)
+    /// 加载用户资料
+    /// 从本地数据库获取用户资料
+    async fn load_user_profile(&self) -> Result<Option<crate::models::user_profile::UserProfile>> {
+        let profile_repo = UserProfileRepository::new(self.pool.clone());
+
+        // 从本地数据库获取
+        if let Some(auth) = UserAuthRepository::new(self.pool.clone()).find_current()? {
+            if let Some(local_profile) = profile_repo.find_by_user_id(&auth.user_id)? {
+                tracing::info!("User profile loaded from local database");
+                return Ok(Some(local_profile));
             }
         }
+
+        tracing::info!("User profile not found in local database");
+        Ok(None)
     }
 
     /// 获取访问令牌

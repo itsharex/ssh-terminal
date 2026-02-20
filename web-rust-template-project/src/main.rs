@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
     // 初始化日志（使用北京时间）
     let offset = time::UtcOffset::from_hms(8, 0, 0).unwrap();
     let format = time::format_description::parse(
-        "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"
+        "[year]-[month]-[day] [hour]:[minute]:[second]"
     ).unwrap();
     let timer = tracing_subscriber::fmt::time::OffsetTime::new(offset, format);
 

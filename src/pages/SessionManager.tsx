@@ -13,7 +13,7 @@ import { SoundEffect } from '@/lib/sounds';
 
 export function SessionManager() {
   const location = useLocation();
-  const { sessions, loadSessions, loadSessionsFromStorage, createSession, isStorageLoaded, getSessionConfig } = useSessionStore();
+  const { sessions, loadSessions, createSession, getSessionConfig } = useSessionStore();
   const { config: terminalConfig } = useTerminalConfigStore();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<SessionInfo | null>(null);
@@ -25,21 +25,11 @@ export function SessionManager() {
   const sessionConfigs = sessions.filter(s => !s.connectionSessionId);
 
   useEffect(() => {
-    const initializeSessions = async () => {
-      // 只在首次加载时从存储加载配置
-      if (!isStorageLoaded) {
-        await loadSessionsFromStorage();
-      } else {
-        // 如果已经从存储加载过，只从后端获取最新状态
-        await loadSessions();
-      }
-    };
-
-    // 只在 /sessions 路由时初始化
+    // 当进入会话管理页面时，从后端获取最新状态（合并内存和数据库会话）
     if (location.pathname === '/sessions') {
-      initializeSessions();
+      loadSessions();
     }
-  }, [location.pathname, isStorageLoaded, loadSessions, loadSessionsFromStorage]);
+  }, [location.pathname, loadSessions]);
 
   // 监听快捷键和 TopBar 触发的新建会话事件
   useEffect(() => {

@@ -82,7 +82,7 @@ pub async fn request_logging_middleware(
     tracing::info!("{}", separator);
 
     let format = time::format_description::parse(
-    "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"
+    "[year]-[month]-[day] [hour]:[minute]:[second]"
 ).unwrap();
 let now_beijing = time::OffsetDateTime::now_utc()
     .to_offset(time::UtcOffset::from_hms(8, 0, 0).unwrap())

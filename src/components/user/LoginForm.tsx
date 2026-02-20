@@ -10,6 +10,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
+import { toast } from 'sonner';
+import { playSound } from '@/lib/sounds';
+import { SoundEffect } from '@/lib/sounds';
 
 interface LoginFormProps {
   isOpen: boolean;
@@ -29,8 +32,16 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
     try {
       if (mode === 'login') {
         await login({ email, password });
+        playSound(SoundEffect.SUCCESS);
+        toast.success('登录成功', {
+          description: '欢迎回来！',
+        });
       } else {
         await register({ email, password });
+        playSound(SoundEffect.SUCCESS);
+        toast.success('注册成功', {
+          description: '账号已创建，欢迎使用！',
+        });
       }
       onClose();
       // 清空表单
@@ -38,7 +49,12 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
       setPassword('');
       mode === 'register' && setMode('login');
     } catch (error) {
-      // 错误已经在 store 中设置了
+      // 错误已经在 store 中设置了，这里显示 toast
+      playSound(SoundEffect.ERROR);
+      const errorMessage = error instanceof Error ? error.message : '操作失败';
+      toast.error(mode === 'login' ? '登录失败' : '注册失败', {
+        description: errorMessage,
+      });
       console.error('Auth failed:', error);
     }
   };
@@ -97,12 +113,6 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
               minLength={6}
             />
           </div>
-
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-              {error}
-            </div>
-          )}
 
           <div className="flex justify-between items-center pt-2">
             <Button

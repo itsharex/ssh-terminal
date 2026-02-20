@@ -1,10 +1,9 @@
 use anyhow::Result;
 use r2d2::PooledConnection;
 use r2d2_sqlite::{rusqlite, SqliteConnectionManager};
-use chrono::TimeZone;
 
 use crate::database::DbPool;
-use crate::models::user_profile::{UserProfile, LocalUserProfile, UpdateProfileRequest};
+use crate::models::user_profile::{UserProfile, UpdateProfileRequest};
 
 /// 用户资料 Repository
 pub struct UserProfileRepository {
@@ -24,16 +23,8 @@ impl UserProfileRepository {
             .map_err(|e| anyhow::anyhow!("Failed to get database connection: {}", e))
     }
 
-    /// 保存或更新用户资料（接收服务器返回的 UserProfile）
+    /// 保存或更新用户资料
     pub fn save(&self, profile: &UserProfile) -> Result<UserProfile> {
-        // 转换为 LocalUserProfile 保存到数据库
-        let local: LocalUserProfile = profile.clone().into();
-        self.save_local(&local)?;
-        Ok(profile.clone())
-    }
-
-    /// 保存或更新本地用户资料
-    pub fn save_local(&self, profile: &LocalUserProfile) -> Result<LocalUserProfile> {
         let conn = self.get_conn()?;
 
         conn.execute(
@@ -67,8 +58,8 @@ impl UserProfileRepository {
         Ok(profile.clone())
     }
 
-    /// 根据 user_id 获取本地用户资料
-    pub fn find_by_user_id_local(&self, user_id: &str) -> Result<Option<LocalUserProfile>> {
+    /// 根据 user_id 获取用户资料
+    pub fn find_by_user_id(&self, user_id: &str) -> Result<Option<UserProfile>> {
         let conn = self.get_conn()?;
 
         let mut stmt = conn.prepare(
@@ -82,30 +73,19 @@ impl UserProfileRepository {
         let mut rows = stmt.query([user_id])?;
 
         if let Some(row) = rows.next()? {
-            Ok(Some(self.row_to_local_profile(row)?))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// 根据 user_id 获取用户资料（返回服务器格式，模拟）
-    pub fn find_by_user_id(&self, user_id: &str) -> Result<Option<UserProfile>> {
-        // 从数据库获取本地格式
-        if let Some(local) = self.find_by_user_id_local(user_id)? {
-            // 转换为服务器格式
             Ok(Some(UserProfile {
-                id: local.id,
-                user_id: local.user_id,
-                username: local.username,
-                phone: local.phone,
-                qq: local.qq,
-                wechat: local.wechat,
-                avatar_data: local.avatar_data,
-                avatar_mime_type: local.avatar_mime_type,
-                bio: local.bio,
-                server_ver: 0,  // 本地数据没有 server_ver，默认为 0
-                created_at: local.created_at,
-                updated_at: local.updated_at,
+                id: row.get(0)?,
+                user_id: row.get(1)?,
+                username: row.get(2)?,
+                phone: row.get(3)?,
+                qq: row.get(4)?,
+                wechat: row.get(5)?,
+                avatar_data: row.get(6)?,
+                avatar_mime_type: row.get(7)?,
+                bio: row.get(8)?,
+                server_ver: 0,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
             }))
         } else {
             Ok(None)
@@ -117,10 +97,11 @@ impl UserProfileRepository {
         let conn = self.get_conn()?;
         let now = chrono::Utc::now().timestamp();
 
+        tracing::info!("[UserProfileRepository] 开始更新用户资料: user_id={}", user_id);
+
         // 先获取现有资料
-        let existing = self.find_by_user_id_local(user_id)?;
+        let existing = self.find_by_user_id(user_id)?;
         let created_at = existing.as_ref().map(|p| p.created_at).unwrap_or(now);
-        let id = existing.as_ref().map(|p| p.id).unwrap_or(0);
 
         conn.execute(
             "INSERT INTO user_profiles (
@@ -150,6 +131,8 @@ impl UserProfileRepository {
             ),
         )?;
 
+        tracing::info!("[UserProfileRepository] 数据库更新成功");
+
         // 返回更新后的资料
         self.find_by_user_id(user_id)?
             .ok_or_else(|| anyhow::anyhow!("Failed to retrieve updated profile"))
@@ -158,26 +141,7 @@ impl UserProfileRepository {
     /// 删除用户资料
     pub fn delete(&self, user_id: &str) -> Result<()> {
         let conn = self.get_conn()?;
-
         conn.execute("DELETE FROM user_profiles WHERE user_id = ?1", [user_id])?;
-
         Ok(())
-    }
-
-    /// 将数据库行转换为 LocalUserProfile
-    fn row_to_local_profile(&self, row: &rusqlite::Row) -> Result<LocalUserProfile> {
-        Ok(LocalUserProfile {
-            id: row.get(0)?,
-            user_id: row.get(1)?,
-            username: row.get(2)?,
-            phone: row.get(3)?,
-            qq: row.get(4)?,
-            wechat: row.get(5)?,
-            avatar_data: row.get(6)?,
-            avatar_mime_type: row.get(7)?,
-            bio: row.get(8)?,
-            created_at: row.get(9)?,
-            updated_at: row.get(10)?,
-        })
     }
 }

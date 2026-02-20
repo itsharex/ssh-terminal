@@ -74,29 +74,27 @@ impl UserProfileService {
 
         let server_profile = api_client.get_profile().await?;
 
-        // 保存到本地数据库
-        profile_repo.save(&server_profile)?;
+        // 转换为 UserProfile 并保存到本地数据库
+        let profile: UserProfile = server_profile.into();
+        profile_repo.save(&profile)?;
 
-        Ok(server_profile)
+        Ok(profile)
     }
 
     /// 更新用户资料
-    /// 同步到服务器
+    /// 只更新本地数据库
     pub async fn update_profile(&self, req: UpdateProfileRequest) -> Result<UserProfile> {
         let current_user = self.get_current_user()?;
 
-        let api_client = match self.get_api_client() {
-            Ok(client) => client,
-            Err(_) => self.create_temp_client(&current_user)?,
-        };
-
-        let server_profile = api_client.update_profile(&req).await?;
+        tracing::info!("[UserProfileService] 开始更新用户资料: user_id={}", current_user.user_id);
 
         // 更新本地数据库
         let profile_repo = UserProfileRepository::new(self.pool.clone());
-        profile_repo.update(&current_user.user_id, &req)?;
+        let profile = profile_repo.update(&current_user.user_id, &req)?;
 
-        Ok(server_profile)
+        tracing::info!("[UserProfileService] 本地数据库更新成功");
+
+        Ok(profile)
     }
 
     /// 删除用户资料

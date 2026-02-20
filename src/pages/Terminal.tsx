@@ -24,7 +24,7 @@ export function Terminal() {
   const [isLoading, setIsLoading] = useState(true);
   const [showRecordingManager, setShowRecordingManager] = useState(false);
   const { toggleChat } = useAIStore();
-  const { sessions, loadSessions, loadSessionsFromStorage, createTemporaryConnection, connectSession, disconnectSession, isStorageLoaded } = useSessionStore();
+  const { sessions, loadSessions, createTemporaryConnection, connectSession, disconnectSession } = useSessionStore();
   const { tabs, addTab, getActiveTab, focusTerminal } = useTerminalStore();
   const { config: terminalConfig } = useTerminalConfigStore();
 
@@ -37,11 +37,7 @@ export function Terminal() {
     const initializeSessions = async () => {
       setIsLoading(true);
       try {
-        // 只在首次加载时从存储加载配置
-        if (!isStorageLoaded) {
-          await loadSessionsFromStorage();
-        }
-        // 每次切换回终端页面时，重新从后端获取最新状态
+        // 每次切换回终端页面时，从后端获取最新状态（合并内存和数据库会话）
         await loadSessions();
       } catch (error) {
         console.error('Failed to load sessions:', error);
@@ -141,7 +137,7 @@ export function Terminal() {
       window.removeEventListener('global-open-quick-connect', handleGlobalOpenQuickConnect);
       window.removeEventListener('keybinding-terminal-open-ai-chat', handleOpenAIChat);
     };
-  }, [location.pathname, isStorageLoaded, loadSessions, loadSessionsFromStorage, disconnectSession, connectSession, addTab, toggleChat]);
+  }, [location.pathname, loadSessions, disconnectSession, connectSession, addTab, toggleChat]);
 
   // 当切换到终端页面时，聚焦当前活动标签页的终端
   useEffect(() => {

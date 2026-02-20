@@ -115,44 +115,66 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       createConnection: async (sessionId) => {
-        // 需要先获取session配置用于连接
-        const sessionData = await invoke<any>('db_ssh_session_get_by_id', { sessionId });
-        if (!sessionData) {
-          throw new Error(`Session not found: ${sessionId}`);
+        const startTime = performance.now();
+
+        // 优先使用缓存的 session 配置
+        const sessionConfig = get().sessionConfigs.get(sessionId);
+
+        if (!sessionConfig) {
+          console.warn(`[sessionStore] ⚠️  Cache miss, loading from database: ${sessionId}`);
+          const sessionData = await invoke<any>('db_ssh_session_get_by_id', { sessionId });
+          if (!sessionData) {
+            throw new Error(`Session not found: ${sessionId}`);
+          }
+
+          // 转换为 session 配置格式
+          const config = {
+            id: sessionId,
+            name: sessionData.name,
+            host: sessionData.host,
+            port: sessionData.port,
+            username: sessionData.username,
+            authMethod: sessionData.authMethod,
+            terminalType: sessionData.terminalType,
+            columns: sessionData.columns,
+            rows: sessionData.rows,
+            strictHostKeyChecking: sessionData.strictHostKeyChecking ?? true,
+            group: sessionData.groupName,
+            keepAliveInterval: sessionData.keepAliveInterval ?? 30,
+          };
+
+          // 缓存配置
+          set((state) => {
+            const newMap = new Map(state.sessionConfigs);
+            newMap.set(sessionId, config);
+            return { sessionConfigs: newMap };
+          });
+
+          await invoke('session_create_with_id', {
+            id: sessionId,
+            config: config,
+          });
+        } else {
+          console.log(`[sessionStore] ✅ Cache hit: ${sessionConfig.name} (${sessionConfig.username}@${sessionConfig.host}:${sessionConfig.port})`);
+
+          await invoke('session_create_with_id', {
+            id: sessionId,
+            config: sessionConfig,
+          });
         }
 
-        // 转换为内存session配置格式
-        const sessionConfig = {
-          name: sessionData.name,
-          host: sessionData.host,
-          port: sessionData.port,
-          username: sessionData.username,
-          authMethod: sessionData.authMethod,
-          terminalType: sessionData.terminalType,
-          columns: sessionData.columns,
-          rows: sessionData.rows,
-          strictHostKeyChecking: sessionData.strictHostKeyChecking ?? true,
-          group: sessionData.groupName,
-          keepAliveInterval: sessionData.keepAliveInterval ?? 30,
-        };
-
-        // 在内存中创建session
-        await invoke('session_create_with_id', {
-          id: sessionId,
-          config: sessionConfig,
-        });
-
-        // 调用connect创建连接实例
         const connectionId = await invoke<string>('session_connect', { sessionId });
 
         // 重新加载sessions列表
-        const sessions = await invoke<SessionInfo[]>('session_list');
-        set({ sessions });
+        await get().loadSessions();
 
         // 更新 AI Store 的活跃连接列表
         const aiStore = useAIStore.getState();
         const currentActive = Array.from(aiStore.activeConnections);
         aiStore.updateActiveConnections([...currentActive, connectionId]);
+
+        const totalTime = performance.now() - startTime;
+        console.log(`[sessionStore] ✅ createConnection complete in ${totalTime.toFixed(0)}ms`);
 
         return connectionId;
       },
@@ -220,20 +242,31 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       connectSession: async (id) => {
-        console.log(`[sessionStore] Connecting to session: ${id}`);
-        // 调用后端connect，现在返回connectionId
+        const startTime = performance.now();
+
+        // 确保 session 配置在内存中
+        const sessionConfig = get().sessionConfigs.get(id);
+
+        if (sessionConfig) {
+          console.log(`[sessionStore] ✅ Cache hit: ${sessionConfig.name}`);
+          await invoke('session_create_with_id', {
+            id: id,
+            config: sessionConfig,
+          });
+        }
+
         const connectionId = await invoke<string>('session_connect', { sessionId: id });
-        console.log(`[sessionStore] Created connection: ${connectionId}`);
 
         // 重新加载sessions列表，包含新创建的连接实例
-        const sessions = await invoke<SessionInfo[]>('session_list');
-        console.log(`[sessionStore] Loaded sessions:`, sessions);
-        set({ sessions });
+        await get().loadSessions();
 
         // 更新 AI Store 的活跃连接列表
         const aiStore = useAIStore.getState();
         const currentActive = Array.from(aiStore.activeConnections);
         aiStore.updateActiveConnections([...currentActive, connectionId]);
+
+        const totalTime = performance.now() - startTime;
+        console.log(`[sessionStore] ✅ connectSession complete in ${totalTime.toFixed(0)}ms`);
 
         return connectionId;
       },
@@ -249,14 +282,11 @@ export const useSessionStore = create<SessionStore>()(
           await invoke('session_delete', { sessionId: id });
         }
 
-        // 重新加载sessions列表
-        const sessions = await invoke<SessionInfo[]>('session_list');
-        set({ sessions });
+        // 重新加载sessions列表（包含内存和数据库会话）
+        await get().loadSessions();
 
         // 更新 AI Store 的活跃连接列表
-        // 注意：这里需要找到对应的 connectionId 并移除
-        // 暂时简化处理，直接重新加载所有活跃连接
-        const activeConnectionIds = sessions
+        const activeConnectionIds = get().sessions
           .filter(s => s.status === 'connected')
           .map(s => s.connectionId)
           .filter((id): id is string => id !== undefined);

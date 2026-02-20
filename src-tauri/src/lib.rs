@@ -24,7 +24,7 @@ use crate::services::{ApiClient, CryptoService};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 初始化 tracing 日志系统，关闭 russh 的调试日志
+    // 初始化 tracing 日志系统，使用北京时间
     // 使用环境变量 RUST_LOG 控制日志级别，默认关闭 russh 的调试日志
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| {
@@ -32,10 +32,18 @@ pub fn run() {
                 .add_directive("ssh_terminal=info".parse().unwrap()) // 我们的代码显示 INFO 及以上
                 .add_directive("russh=off".parse().unwrap()) // 完全关闭 russh 的日志
         });
-    
+
+    // 配置北京时间（UTC+8）
+    let offset = time::UtcOffset::from_hms(8, 0, 0).unwrap();
+    let format = time::format_description::parse(
+        "[year]-[month]-[day] [hour]:[minute]:[second]"
+    ).unwrap();
+    let timer = tracing_subscriber::fmt::time::OffsetTime::new(offset, format);
+
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(false) // 不显示模块路径
+        .with_timer(timer) // 使用北京时间
         .init();
 
     tauri::Builder::default()
@@ -238,7 +246,7 @@ pub fn run() {
             // 用户资料命令
             commands::user_profile_get,
             commands::user_profile_update,
-            commands::user_profile_delete,
+            commands::user_profile_sync,
             // 应用设置命令
             commands::app_settings_get_server_url,
             commands::app_settings_set_server_url,

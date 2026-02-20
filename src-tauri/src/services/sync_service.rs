@@ -77,7 +77,7 @@ impl SyncService {
                 // 获取用户资料更新
                 let profile_repo = crate::database::repositories::UserProfileRepository::new(self.pool.clone());
                 let profile = profile_repo.find_by_user_id(&current_user.user_id)?
-                    .map(|p| UpdateProfileRequest {
+                    .map(|p| crate::models::user_profile::ServerUpdateProfileRequest {
                         username: p.username,
                         phone: p.phone,
                         qq: p.qq,
@@ -93,7 +93,7 @@ impl SyncService {
                 let deleted = session_repo.get_deleted_sessions(&current_user.user_id)?;
                 let profile_repo = crate::database::repositories::UserProfileRepository::new(self.pool.clone());
                 let profile = profile_repo.find_by_user_id(&current_user.user_id)?
-                    .map(|p| UpdateProfileRequest {
+                    .map(|p| crate::models::user_profile::ServerUpdateProfileRequest {
                         username: p.username,
                         phone: p.phone,
                         qq: p.qq,
@@ -193,7 +193,7 @@ impl SyncService {
         last_sync_at: Option<i64>,
         device_id: String,
         dirty_sessions: Vec<SshSession>,
-        user_profile: Option<UpdateProfileRequest>,
+        user_profile: Option<crate::models::user_profile::ServerUpdateProfileRequest>,
         deleted_session_ids: Vec<String>,
     ) -> Result<SyncRequest> {
         // 转换脏会话
@@ -260,7 +260,9 @@ impl SyncService {
         // 2. 应用用户资料
         if let Some(server_profile) = &response.user_profile {
             let profile_repo = crate::database::repositories::UserProfileRepository::new(self.pool.clone());
-            let _ = profile_repo.save(server_profile);
+            // 转换 ServerUserProfile 为 UserProfile 并保存
+            let profile: crate::models::user_profile::UserProfile = server_profile.clone().into();
+            let _ = profile_repo.save(&profile);
         }
 
         Ok(())

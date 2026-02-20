@@ -11,7 +11,7 @@ pub struct SyncRequest {
     /// 设备 ID
     pub device_id: String,
     /// 用户资料更新（可选）
-    pub user_profile: Option<UpdateProfileRequest>,
+    pub user_profile: Option<crate::models::user_profile::ServerUpdateProfileRequest>,
     /// SSH 会话更新
     pub ssh_sessions: Vec<SshSessionPushItem>,
     /// 删除的会话 ID
@@ -125,7 +125,7 @@ pub struct ServerSyncResponse {
     pub deleted_session_ids: Vec<String>,
     pub server_versions: HashMap<String, i32>,
     /// Pull 结果
-    pub user_profile: Option<crate::models::UserProfile>,
+    pub user_profile: Option<crate::models::user_profile::ServerUserProfile>,
     pub ssh_sessions: Vec<crate::models::ServerSshSession>,
     /// 冲突信息
     pub conflicts: Vec<ServerConflictInfo>,
