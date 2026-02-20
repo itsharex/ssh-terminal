@@ -19,6 +19,7 @@ interface SessionStore {
   disconnectSession: (id: string) => Promise<void>;
   loadSessions: () => Promise<void>;
   loadSessionsFromStorage: () => Promise<void>;
+  reloadSessions: () => Promise<void>; // 强制重新加载会话和配置缓存
   saveSessions: () => Promise<void>;
 
   // 查询
@@ -400,6 +401,60 @@ export const useSessionStore = create<SessionStore>()(
       saveSessions: async () => {
         // 数据库会话会自动保存，无需手动保存
         console.log('[sessionStore] saveSessions is a no-op for database sessions');
+      },
+
+      reloadSessions: async () => {
+        // 强制重新加载会话和配置缓存（忽略 isStorageLoaded 标志）
+        console.log('[sessionStore] Force reloading sessions from database...');
+
+        try {
+          // 1. 从数据库加载所有会话
+          const dbSessions = await invoke<any[]>('db_ssh_session_list');
+          console.log('[sessionStore] Reloaded sessions from database:', dbSessions.length);
+
+          // 转换为SessionInfo格式
+          const sessionInfos: SessionInfo[] = dbSessions.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            host: s.host,
+            port: s.port,
+            username: s.username,
+            status: 'disconnected',
+            group: s.groupName,
+          }));
+
+          // 2. 重新缓存会话配置
+          const configMap = new Map<string, SessionConfig>();
+          for (const dbSession of dbSessions) {
+            // 获取完整的session配置（包含认证信息）
+            try {
+              const fullConfig = await invoke<any>('db_ssh_session_get_by_id', { sessionId: dbSession.id });
+              if (fullConfig) {
+                configMap.set(dbSession.id, {
+                  id: dbSession.id,
+                  name: fullConfig.name,
+                  host: fullConfig.host,
+                  port: fullConfig.port,
+                  username: fullConfig.username,
+                  authMethod: fullConfig.authMethod,
+                  terminalType: fullConfig.terminalType,
+                  columns: fullConfig.columns,
+                  rows: fullConfig.rows,
+                  strictHostKeyChecking: fullConfig.strictHostKeyChecking ?? true,
+                  group: fullConfig.groupName,
+                  keepAliveInterval: fullConfig.keepAliveInterval ?? 30,
+                });
+              }
+            } catch (error) {
+              console.error(`[sessionStore] Failed to reload config for session ${dbSession.id}:`, error);
+            }
+          }
+          set({ sessionConfigs: configMap, sessions: sessionInfos, isStorageLoaded: true });
+
+          console.log('[sessionStore] Reload completed:', sessionInfos.length);
+        } catch (error) {
+          console.error('[sessionStore] Failed to reload sessions:', error);
+        }
       },
 
       getSession: (id) => {

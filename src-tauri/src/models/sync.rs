@@ -70,6 +70,7 @@ pub struct SyncReport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncStatus {
+    pub user_id: String,
     pub last_sync_at: Option<i64>,
     pub pending_count: i32,
     pub conflict_count: i32,

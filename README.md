@@ -110,122 +110,6 @@
 - **date-fns** - 日期处理
 - **clsx / tailwind-merge** - CSS 类名工具
 
-## 📁 项目结构
-
-```
-ssh-terminal/
-├── src/                           # React 前端源码
-│   ├── components/                # UI 组件
-│   │   ├── layout/               # 布局组件
-│   │   │   ├── MainLayout.tsx    # 主布局
-│   │   │   ├── Sidebar.tsx       # 侧边栏
-│   │   │   └── TopBar.tsx        # 顶部栏
-│   │   ├── session/              # 会话管理组件
-│   │   │   ├── EditSessionDialog.tsx
-│   │   │   ├── QuickConnect.tsx
-│   │   │   ├── QuickConnectDialog.tsx
-│   │   │   ├── SaveSessionDialog.tsx
-│   │   │   ├── SessionCard.tsx
-│   │   │   └── SessionToolbar.tsx
-│   │   ├── settings/             # 设置组件
-│   │   │   ├── AISettings.tsx    # AI 设置
-│   │   │   └── TerminalSettings.tsx
-│   │   ├── ai/                   # AI 相关组件
-│   │   │   ├── chat/             # AI 聊天组件
-│   │   │   │   ├── AIChatLayout.tsx
-│   │   │   │   ├── AIChatMain.tsx
-│   │   │   │   ├── AIChatInput.tsx
-│   │   │   │   ├── AIChatMessageList.tsx
-│   │   │   │   └── ConversationItem.tsx
-│   │   │   ├── command/          # AI 命令组件
-│   │   │   │   ├── NLToCommandDialog.tsx
-│   │   │   │   ├── CommandExplainerDialog.tsx
-│   │   │   │   └── ErrorAnalyzerDialog.tsx
-│   │   │   └── AIConversationHistory.tsx
-│   │   ├── ssh/                  # SSH 相关组件
-│   │   │   ├── ConnectionStatusBadge.tsx
-│   │   │   └── HostKeyConfirmDialog.tsx
-│   │   ├── terminal/             # 终端组件
-│   │   │   ├── ErrorBoundary.tsx
-│   │   │   ├── TabBar.tsx
-│   │   │   └── XTermWrapper.tsx
-│   │   ├── sftp/                 # SFTP 文件管理
-│   │   │   ├── DualPane.tsx
-│   │   │   ├── FileList.tsx
-│   │   │   └── FilePane.tsx
-│   │   ├── recording/            # 录制组件
-│   │   │   ├── RecordingControls.tsx
-│   │   │   ├── RecordingManager.tsx
-│   │   │   └── VideoExportDialog.tsx
-│   │   ├── keybindings/          # 快捷键组件
-│   │   │   ├── KeybindingsSettings.tsx
-│   │   │   ├── KeybindingEditor.tsx
-│   │   │   └── KeybindingRecorder.tsx
-│   │   ├── mobile/               # 移动端组件
-│   │   │   ├── MobileLayout.tsx
-│   │   │   ├── MobileSessionList.tsx
-│   │   │   └── MobileTerminalPage.tsx
-│   │   └── ui/                   # shadcn/ui 基础组件
-│   ├── config/                   # 配置文件
-│   │   └── themes.ts             # 主题配置
-│   ├── lib/                      # 工具函数
-│   │   ├── ai/                   # AI 相关工具
-│   │   │   └── historyManager.ts
-│   │   ├── audio/                # 音频工具
-│   │   │   └── AudioCaptureManager.ts
-│   │   ├── sounds.ts             # 音效管理
-│   │   └── utils.ts              # 通用工具函数
-│   ├── pages/                    # 页面组件
-│   │   ├── SessionManager.tsx    # 会话管理页面
-│   │   ├── Settings.tsx          # 设置页面
-│   │   ├── Terminal.tsx          # 终端页面
-│   │   ├── AIChatPage.tsx        # AI 聊天页面
-│   │   └── SftpManager.tsx       # SFTP 管理页面
-│   ├── store/                    # Zustand 状态管理
-│   │   ├── sessionStore.ts       # 会话状态管理
-│   │   ├── terminalConfigStore.ts # 终端配置状态管理
-│   │   ├── terminalStore.ts      # 终端状态管理
-│   │   └── aiStore.ts            # AI 状态管理
-│   ├── types/                    # TypeScript 类型定义
-│   │   ├── ssh.ts                # SSH 相关类型
-│   │   ├── terminal.ts           # 终端相关类型
-│   │   └── ai.ts                 # AI 相关类型
-│   ├── App.tsx                   # 主应用组件
-│   ├── index.css                 # 全局样式
-│   └── main.tsx                  # 应用入口
-├── src-tauri/                    # Rust 后端源码
-│   ├── src/
-│   │   ├── commands/             # Tauri 命令
-│   │   │   ├── mod.rs
-│   │   │   ├── session.rs        # 会话管理命令
-│   │   │   ├── storage.rs        # 存储命令
-│   │   │   └── terminal.rs       # 终端命令
-│   │   ├── config/               # 配置管理
-│   │   │   ├── mod.rs
-│   │   │   └── storage.rs
-│   │   ├── ssh/                  # SSH 管理
-│   │   │   ├── mod.rs
-│   │   │   ├── manager.rs        # SSH 管理器
-│   │   │   ├── session.rs        # SSH 会话
-│   │   │   ├── connection.rs     # SSH 连接实例
-│   │   │   ├── backend.rs        # SSH 后端抽象
-│   │   │   └── backends/         # SSH 后端实现
-│   │   │       └── system_ssh.rs # 系统 SSH 实现
-│   │   ├── error.rs              # 错误处理
-│   │   ├── lib.rs                # 库入口
-│   │   └── main.rs               # 应用入口
-│   ├── capabilities/             # Tauri 权限配置
-│   │   └── default.json
-│   ├── Cargo.toml                # Rust 依赖配置
-│   ├── build.rs                  # 构建脚本
-│   └── tauri.conf.json           # Tauri 配置
-├── components.json               # shadcn/ui 配置
-├── package.json                  # Node.js 依赖
-├── tsconfig.json                 # TypeScript 配置
-├── vite.config.ts                # Vite 配置
-└── README.md                     # 项目文档
-```
-
 ## 🚀 快速开始
 
 ### 环境要求
@@ -269,6 +153,141 @@ pnpm tauri build
 ```
 
 构建产物位于 `src-tauri/target/release/bundle/` 目录。
+
+## 🐳 Docker 服务器部署
+
+如果你需要部署 ssh-terminal-server（后端服务），可以使用 Docker 快速部署。
+
+### 前置要求
+
+- Docker 已安装
+- 服务器可访问互联网（用于拉取镜像）
+
+### 快速部署步骤
+
+#### 1. 创建数据目录
+
+```bash
+# Linux
+mkdir -p /data/ssh-terminal-server/data
+chmod -R 755 /data/ssh-terminal-server
+```
+
+#### 2. 创建 Docker 网络
+
+```bash
+docker network create ssh-terminal-net
+```
+
+#### 3. 部署 Redis（如已安装可跳过）
+
+```bash
+docker run -d \
+  --name Redis7 \
+  --network ssh-terminal-net \
+  -p 6379:6379 \
+  redis:7 \
+  redis-server --requirepass your_password
+```
+
+> ⚠️ 请将 `your_password` 替换为强密码
+
+#### 4. 部署 ssh-terminal-server
+
+```bash
+docker run -d \
+  --name ssh-terminal \
+  --restart unless-stopped \
+  -p 6236:3000 \
+  -e SERVER_HOST=0.0.0.0 \
+  -e SERVER_PORT=3000 \
+  -e DATABASE_TYPE=sqlite \
+  -e DATABASE_PATH=/data/app.db \
+  # ⚠️ 改成你的 Redis 容器名或地址
+  -e REDIS_HOST=Redis7 \
+  # ⚠️ Redis 端口（一般不用改）
+  -e REDIS_PORT=6379 \
+  # ⚠️ 改成你的 Redis 密码
+  -e REDIS_PASSWORD=your_password \
+  # ⚠️ 强烈建议改成你自己的随机密钥
+  -e AUTH_JWT_SECRET=9f7d3c365454dsfsasa8f28544b5e6d7a \
+  -e AUTH_ACCESS_TOKEN_EXPIRATION_MINUTES=15 \
+  -e AUTH_REFRESH_TOKEN_EXPIRATION_DAYS=7 \
+  # ⚠️ 本机持久化目录
+  -v /data/ssh-terminal-server/data:/data \
+  --network ssh-terminal-net \
+  registry.cn-hangzhou.aliyuncs.com/pull-image/ssh-terminal-server:1.0.0
+```
+
+### 环境变量说明
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `SERVER_HOST` | 服务器监听地址 | `0.0.0.0` |
+| `SERVER_PORT` | 服务器监听端口 | `3000` |
+| `DATABASE_TYPE` | 数据库类型 | `sqlite` |
+| `DATABASE_PATH` | 数据库文件路径 | `/data/app.db` |
+| `REDIS_HOST` | Redis 主机地址 | `localhost` |
+| `REDIS_PORT` | Redis 端口 | `6379` |
+| `REDIS_PASSWORD` | Redis 密码 | - |
+| `AUTH_JWT_SECRET` | JWT 签名密钥 | - |
+| `AUTH_ACCESS_TOKEN_EXPIRATION_MINUTES` | 访问令牌过期时间（分钟） | `15` |
+| `AUTH_REFRESH_TOKEN_EXPIRATION_DAYS` | 刷新令牌过期时间（天） | `7` |
+
+### 验证部署
+
+第一次启动后，查看容器日志：
+
+```bash
+docker logs -f ssh-terminal
+```
+
+重点检查以下信息：
+- ✅ `Redis 连接成功`
+- ✅ `SQLite 初始化成功`
+- ✅ `Server started`
+
+执行健康检查：
+
+```bash
+curl http://localhost:6236/info
+```
+
+### 常用操作
+
+#### 查看日志
+
+```bash
+docker logs -f ssh-terminal
+```
+
+#### 重启服务
+
+```bash
+docker restart ssh-terminal
+```
+
+#### 停止服务
+
+```bash
+docker stop ssh-terminal
+```
+
+#### 删除容器
+
+```bash
+docker stop ssh-terminal
+docker rm ssh-terminal
+```
+
+#### 更新镜像
+
+```bash
+docker pull registry.cn-hangzhou.aliyuncs.com/pull-image/ssh-terminal-server:1.0.0
+docker stop ssh-terminal
+docker rm ssh-terminal
+# 重新运行部署命令
+```
 
 ## 🏛️ 架构设计
 

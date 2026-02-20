@@ -89,15 +89,20 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_ssh_sessions_is_deleted ON ssh_sessions(is_deleted);
 
         -- ==========================================
-        -- 同步状态表
+        -- 同步状态表（支持多用户）
         -- ==========================================
         CREATE TABLE IF NOT EXISTS sync_state (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL UNIQUE,
             last_sync_at INTEGER,
             pending_count INTEGER DEFAULT 0,
             conflict_count INTEGER DEFAULT 0,
-            last_error TEXT
+            last_error TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
         );
+
+        CREATE INDEX IF NOT EXISTS idx_sync_state_user_id ON sync_state(user_id);
 
         -- ==========================================
         -- 应用配置表（设备级配置）

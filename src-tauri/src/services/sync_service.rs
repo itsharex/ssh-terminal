@@ -58,12 +58,10 @@ impl SyncService {
         let current_user = auth_repo.find_current()?
             .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
 
-        // 2. 获取最后同步时间和脏数据
+        // 2. 获取最后同步时间和脏数据（使用用户级别的同步状态）
         let state_repo = SyncStateRepository::new(self.pool.clone());
-        let last_sync_at = state_repo.get()?.last_sync_at;
-        let device_id = auth_repo.find_current()?
-            .map(|u| u.device_id)
-            .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
+        let last_sync_at = state_repo.get(&current_user.user_id)?.last_sync_at;
+        let device_id = current_user.device_id;
 
         // 3. 根据选项获取需要推送的数据
         let session_repo = SshSessionRepository::new(self.pool.clone());
@@ -132,15 +130,29 @@ impl SyncService {
 
         // 8. 清理脏标记
         if matches!(options, SyncOptions::SyncSessions | SyncOptions::SyncAll) {
-            let dirty_sessions = SshSessionRepository::new(self.pool.clone())
-                .get_dirty_sessions(&current_user.user_id)?;
-            self.clear_dirty_markers(&dirty_sessions, response.last_sync_at, &current_user.user_id)?;
+            let session_repo = SshSessionRepository::new(self.pool.clone());
+
+            // 清理更新会话的脏标记
+            let dirty_sessions = session_repo.get_dirty_sessions(&current_user.user_id)?;
+            for session in &dirty_sessions {
+                session_repo.clear_dirty_marker(&session.id, response.last_sync_at)?;
+            }
+
+            // 清理已删除会话的脏标记
+            let deleted_sessions = session_repo.get_deleted_sessions(&current_user.user_id)?;
+            for session_id in &deleted_sessions {
+                session_repo.clear_dirty_marker(session_id, response.last_sync_at)?;
+            }
+
+            // 更新用户的最后同步时间
+            let auth_repo = UserAuthRepository::new(self.pool.clone());
+            auth_repo.update_last_sync(&current_user.user_id, response.last_sync_at)?;
         }
 
-        // 9. 更新同步状态
-        state_repo.update_last_sync(response.last_sync_at)?;
-        state_repo.update_conflict_count(response.conflicts.len() as i32)?;
-        state_repo.update_last_error(None)?;
+        // 9. 更新同步状态（使用用户级别）
+        state_repo.update_last_sync(&current_user.user_id, response.last_sync_at)?;
+        state_repo.update_conflict_count(&current_user.user_id, response.conflicts.len() as i32)?;
+        state_repo.update_last_error(&current_user.user_id, None)?;
 
         tracing::info!("Sync completed successfully");
 
@@ -283,22 +295,7 @@ impl SyncService {
 
         // 更新同步状态
         let state_repo = SyncStateRepository::new(self.pool.clone());
-        state_repo.update_conflict_count(response.conflicts.len() as i32)?;
-
-        Ok(())
-    }
-
-    /// 清理脏标记
-    fn clear_dirty_markers(&self, sessions: &[SshSession], sync_time: i64, user_id: &str) -> Result<()> {
-        let session_repo = SshSessionRepository::new(self.pool.clone());
-
-        for session in sessions {
-            session_repo.clear_dirty_marker(&session.id, sync_time)?;
-        }
-
-        // 更新用户的最后同步时间
-        let auth_repo = UserAuthRepository::new(self.pool.clone());
-        auth_repo.update_last_sync(user_id, sync_time)?;
+        state_repo.update_conflict_count(user_id, response.conflicts.len() as i32)?;
 
         Ok(())
     }
@@ -347,9 +344,7 @@ impl SyncService {
         let auth_repo = UserAuthRepository::new(self.pool.clone());
         let current_user = auth_repo.find_current()?
             .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
-        let device_id = auth_repo.find_current()?
-            .map(|u| u.device_id)
-            .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
+        let device_id = current_user.device_id;
 
         // 如果冲突已解决，重新拉取数据
         if resolve_response.resolved {
@@ -381,9 +376,9 @@ impl SyncService {
 
             // 更新同步状态
             let state_repo = SyncStateRepository::new(self.pool.clone());
-            state_repo.update_last_sync(sync_response.last_sync_at)?;
-            state_repo.update_conflict_count(sync_response.conflicts.len() as i32)?;
-            state_repo.update_last_error(None)?;
+            state_repo.update_last_sync(&current_user.user_id, sync_response.last_sync_at)?;
+            state_repo.update_conflict_count(&current_user.user_id, sync_response.conflicts.len() as i32)?;
+            state_repo.update_last_error(&current_user.user_id, None)?;
 
             report = SyncReport {
                 success: true,
@@ -401,8 +396,12 @@ impl SyncService {
 
     /// 获取同步状态
     pub fn get_sync_status(&self) -> Result<SyncStatus> {
+        let auth_repo = UserAuthRepository::new(self.pool.clone());
+        let current_user = auth_repo.find_current()?
+            .ok_or_else(|| anyhow::anyhow!("No user logged in"))?;
+
         let state_repo = SyncStateRepository::new(self.pool.clone());
-        state_repo.get()
+        state_repo.get(&current_user.user_id)
     }
 
     /// 手动触发同步（返回 Future）

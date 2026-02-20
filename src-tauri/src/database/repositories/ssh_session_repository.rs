@@ -111,7 +111,7 @@ impl SshSessionRepository {
         let now = chrono::Utc::now().timestamp();
 
         conn.execute(
-            "UPDATE ssh_sessions SET is_deleted = 1, deleted_at = ?1 WHERE id = ?2",
+            "UPDATE ssh_sessions SET is_deleted = 1, is_dirty = 1, deleted_at = ?1 WHERE id = ?2",
             (now, id),
         )?;
 
@@ -145,6 +145,8 @@ impl SshSessionRepository {
     /// 获取用户的所有 SSH 会话
     pub fn find_by_user(&self, user_id: &str) -> Result<Vec<SshSession>> {
         let conn = self.get_conn()?;
+
+        tracing::info!("[find_by_user] Querying sessions for user_id: {}", user_id);
 
         let mut stmt = conn.prepare(
             "SELECT
@@ -219,6 +221,7 @@ impl SshSessionRepository {
             });
         }
 
+        tracing::info!("[find_by_user] Found {} sessions", sessions.len());
         Ok(sessions)
     }
 
@@ -301,12 +304,12 @@ impl SshSessionRepository {
         Ok(sessions)
     }
 
-    /// 获取已删除的会话 ID
+    /// 获取已删除的会话 ID（仅返回未同步的删除操作）
     pub fn get_deleted_sessions(&self, user_id: &str) -> Result<Vec<String>> {
         let conn = self.get_conn()?;
 
         let mut stmt = conn.prepare(
-            "SELECT id FROM ssh_sessions WHERE user_id = ?1 AND is_deleted = 1"
+            "SELECT id FROM ssh_sessions WHERE user_id = ?1 AND is_deleted = 1 AND is_dirty = 1"
         )?;
 
         let rows = stmt.query_map([user_id], |row| row.get::<_, String>(0))?;
@@ -325,11 +328,12 @@ impl SshSessionRepository {
     }
 
     /// 清理脏标记
+    /// 注意：server_ver 应该由 apply_push_result 根据服务器响应更新，而不是在这里递增
     pub fn clear_dirty_marker(&self, id: &str, sync_time: i64) -> Result<()> {
         let conn = self.get_conn()?;
 
         conn.execute(
-            "UPDATE ssh_sessions SET is_dirty = 0, last_synced_at = ?1, server_ver = server_ver + 1 WHERE id = ?2",
+            "UPDATE ssh_sessions SET is_dirty = 0, last_synced_at = ?1 WHERE id = ?2",
             (sync_time, id),
         )?;
 

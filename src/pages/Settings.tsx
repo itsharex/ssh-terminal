@@ -198,28 +198,28 @@ export function Settings() {
             <Separator />
 
             {/* 自动同步 */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between opacity-50">
               <div className="space-y-0.5">
                 <Label htmlFor="auto-sync">自动同步</Label>
                 <p className="text-sm text-muted-foreground">
-                  自动同步 SSH 会话到云服务器
+                  自动同步 SSH 会话到云服务器（暂不支持）
                 </p>
               </div>
               <Switch
                 id="auto-sync"
                 checked={appSettings?.autoSyncEnabled || false}
                 onCheckedChange={handleAutoSyncChange}
-                disabled={appSettingsLoading}
+                disabled={true}
               />
             </div>
 
             <Separator />
 
             {/* 同步间隔 */}
-            <div className="space-y-2">
+            <div className="space-y-2 opacity-50">
               <Label>同步间隔</Label>
               <p className="text-sm text-muted-foreground">
-                自动同步的时间间隔（分钟）
+                自动同步的时间间隔（分钟）（暂不支持）
               </p>
               <div className="flex flex-wrap gap-2">
                 {[1, 5, 10, 30, 60].map((interval) => (
@@ -228,7 +228,7 @@ export function Settings() {
                     variant={appSettings?.syncIntervalMinutes === interval ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => handleSyncIntervalChange(interval)}
-                    disabled={appSettingsLoading}
+                    disabled={true}
                   >
                     {interval} 分钟
                   </Button>

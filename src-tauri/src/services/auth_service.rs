@@ -97,14 +97,14 @@ impl AuthService {
         // 调用服务器登录 API
         let server_result = api_client.login(&api_req).await?;
 
+        // 设置 token 到 API 客户端（必须在调用 get_profile 之前）
+        self.update_client_token(server_result.access_token.clone());
+
         // 获取用户资料以获取 user_id
-        let user_id = match api_client.get_profile().await {
-            Ok(profile) => profile.user_id,
-            Err(e) => {
-                tracing::warn!("Failed to get user profile: {}, using email as fallback user_id", e);
-                req.email.clone()
-            }
-        };
+        // 注意：必须使用服务器返回的 user_id，不能用邮箱
+        let profile = api_client.get_profile().await
+            .map_err(|e| anyhow!("Failed to get user profile after login: {}", e))?;
+        let user_id = profile.user_id;
 
         // 生成设备 ID（本地生成，固定在设备上）
         let device_id = Uuid::new_v4().to_string();
@@ -112,9 +112,6 @@ impl AuthService {
         // 计算 token 过期时间（24小时后）
         let now = chrono::Utc::now().timestamp();
         let expires_at = now + 24 * 60 * 60;
-
-        // 设置 token 到 API 客户端（server_result.access_token 是服务端返回的字段名）
-        self.update_client_token(server_result.access_token.clone());
 
         // 加密 access_token（本地安全存储）
         let token_encrypted = CryptoService::encrypt_token(&server_result.access_token, &device_id)?;

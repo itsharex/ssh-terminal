@@ -302,10 +302,14 @@ pub async fn db_ssh_session_list(
     pool: State<'_, DbPool>,
 ) -> Result<Vec<serde_json::Value>, String> {
     let current_user = get_current_user_info(&pool);
+    tracing::info!("[db_ssh_session_list] Current user_id: {}", current_user.user_id);
+
     let repo = SshSessionRepository::new(pool.inner().clone());
 
     let sessions = repo.find_by_user_id(&current_user.user_id)
         .map_err(|e| format!("Failed to list sessions: {}", e))?;
+
+    tracing::info!("[db_ssh_session_list] Found {} sessions for user {}", sessions.len(), current_user.user_id);
 
     // 转换为前端友好的格式
     let result: Vec<serde_json::Value> = sessions

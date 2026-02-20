@@ -184,28 +184,38 @@ impl SyncService {
         }
 
         // === 第二阶段：Pull - 拉取最新的服务器数据 ===
-        // 只在请求中包含 SSH 会话的更新或删除时才返回 SSH 会话列表
-        let ssh_sessions_vo = if !request.ssh_sessions.is_empty() || !request.deleted_session_ids.is_empty() {
-            // 如果有 SSH 会话的更新或删除，返回最新的会话列表
+        // 判断是否需要返回 SSH 会话列表：
+        // 1. 首次同步（last_sync_at 为 None）
+        // 2. 请求中有 SSH 会话的更新或删除
+        let should_pull_sessions = request.last_sync_at.is_none()
+            || !request.ssh_sessions.is_empty()
+            || !request.deleted_session_ids.is_empty();
+
+        let ssh_sessions_vo = if should_pull_sessions {
+            // 返回用户的所有会话列表
             let sessions = ssh_repo.find_by_user_id(user_id).await?;
             sessions
                 .into_iter()
                 .map(|s| self.session_to_vo(s))
                 .collect()
         } else {
-            // 没有更新就不返回 SSH 会话
+            // 不需要拉取，返回空列表
             vec![]
         };
 
-        // 只在更新了 user_profile 时才返回用户资料
-        let user_profile_vo = if profile_updated {
-            // 如果更新了 user_profile，返回最新的用户资料
+        // 判断是否需要返回用户资料：
+        // 1. 首次同步（last_sync_at 为 None）
+        // 2. 请求中更新了 user_profile
+        let should_pull_profile = request.last_sync_at.is_none() || profile_updated;
+
+        let user_profile_vo = if should_pull_profile {
+            // 返回用户的最新资料
             match profile_repo.find_by_user_id(user_id).await {
                 Ok(Some(profile)) => Some(self.profile_to_vo(profile)),
                 _ => None,
             }
         } else {
-            // 没有更新就不返回用户资料
+            // 不需要拉取，返回 None
             None
         };
 
