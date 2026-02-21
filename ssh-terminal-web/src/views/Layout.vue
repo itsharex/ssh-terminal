@@ -8,20 +8,31 @@
           </n-icon>
           <span class="logo-text">SSH Terminal</span>
         </div>
+        
+        <!-- 桌面端菜单 -->
         <n-menu
+          class="desktop-menu"
           mode="horizontal"
           :value="activeKey"
           :options="menuOptions"
           responsive
           @update:value="handleMenuSelect"
         />
+        
+        <!-- 移动端菜单按钮 -->
+        <n-button class="mobile-menu-btn" text @click="showMobileMenu = true">
+          <n-icon size="24">
+            <Icon icon="mdi:menu" />
+          </n-icon>
+        </n-button>
+        
         <div class="header-actions">
-          <n-dropdown :options="userMenuOptions" @select="handleUserMenuSelect">
+          <n-dropdown :options="userMenuOptions" @select="handleUserMenuSelect" class="user-dropdown">
             <n-button text>
               <template #icon>
                 <n-icon><Icon icon="mdi:account" /></n-icon>
               </template>
-              {{ authStore.user?.email || '用户' }}
+              <span class="user-email">{{ authStore.user?.email || '用户' }}</span>
             </n-button>
           </n-dropdown>
         </div>
@@ -30,11 +41,22 @@
     <n-layout-content class="content">
       <router-view />
     </n-layout-content>
+    
+    <!-- 移动端抽屉菜单 -->
+    <n-drawer v-model:show="showMobileMenu" :width="280" placement="right">
+      <n-drawer-content title="菜单" :native-scrollbar="false">
+        <n-menu
+          :value="activeKey"
+          :options="menuOptions"
+          @update:value="handleMobileMenuSelect"
+        />
+      </n-drawer-content>
+    </n-drawer>
   </n-layout>
 </template>
 
 <script setup lang="ts">
-import { computed, h } from 'vue'
+import { computed, h, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import { useMessage } from 'naive-ui'
@@ -44,6 +66,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const message = useMessage()
+const showMobileMenu = ref(false)
 
 const activeKey = computed(() => route.name as string)
 
@@ -85,6 +108,11 @@ function handleMenuSelect(key: string) {
   router.push({ name: key })
 }
 
+function handleMobileMenuSelect(key: string) {
+  handleMenuSelect(key)
+  showMobileMenu.value = false
+}
+
 async function handleUserMenuSelect(key: string) {
   if (key === 'settings') {
     router.push({ name: 'Settings' })
@@ -111,10 +139,11 @@ async function handleUserMenuSelect(key: string) {
 }
 
 .header {
-  padding: 0 20px;
-  height: 60px;
+  padding: 0 16px;
+  height: 56px;
   display: flex;
   align-items: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .header-content {
@@ -123,7 +152,7 @@ async function handleUserMenuSelect(key: string) {
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .logo {
@@ -144,11 +173,124 @@ async function handleUserMenuSelect(key: string) {
 
 .content {
   flex: 1;
-  padding: 20px;
+  padding: 16px;
   overflow-y: auto;
+}
+
+.content > * {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .header-actions {
   margin-left: auto;
+}
+
+.desktop-menu {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.mobile-menu-btn {
+  display: none;
+}
+
+.user-email {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 平板尺寸 */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 12px;
+    height: 52px;
+  }
+
+  .logo {
+    font-size: 16px;
+    gap: 10px;
+  }
+
+  .logo .n-icon {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .content {
+    padding: 12px;
+  }
+
+  .user-email {
+    max-width: 80px;
+    font-size: 13px;
+  }
+
+  .desktop-menu {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .mobile-menu-btn .n-icon {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .user-dropdown {
+    display: none;
+  }
+}
+
+/* 移动端 */
+@media (max-width: 480px) {
+  .header {
+    padding: 0 10px;
+    height: 48px;
+  }
+
+  .header-content {
+    gap: 8px;
+  }
+
+  .logo {
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .logo .n-icon {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .content {
+    padding: 10px;
+  }
+
+  .header-actions .n-button {
+    padding: 0 4px;
+    font-size: 13px;
+  }
+
+  .user-email {
+    max-width: 60px;
+    font-size: 12px;
+  }
+
+  .mobile-menu-btn {
+    display: none;
+  }
+
+  .user-dropdown {
+    display: none;
+  }
 }
 </style>

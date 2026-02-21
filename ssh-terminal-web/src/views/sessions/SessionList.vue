@@ -1,16 +1,61 @@
 <template>
-  <n-space vertical size="large">
+  <n-space vertical :size="isMobile ? 'medium' : 'large'" class="sessions-container">
     <n-card title="SSH 会话管理">
       <template #header-extra>
-        <n-button type="primary" @click="handleCreate">
+        <n-button type="primary" @click="handleCreate" :size="isMobile ? 'small' : 'medium'">
           <template #icon>
             <n-icon><Icon icon="mdi:plus" /></n-icon>
           </template>
-          新建会话
+          {{ isMobile ? '新建' : '新建会话' }}
         </n-button>
       </template>
       <n-spin :show="sshStore.loading">
+        <!-- 移动端使用卡片布局 -->
+        <template v-if="isMobile">
+          <n-space vertical :size="12">
+            <n-card v-for="session in sshStore.sessions" :key="session.id" size="small" :bordered="true">
+              <template #header>
+                <n-space align="center">
+                  <n-icon color="#18a058">
+                    <Icon icon="mdi:console" />
+                  </n-icon>
+                  <n-text strong>{{ session.name }}</n-text>
+                </n-space>
+              </template>
+              <n-space vertical :size="8">
+                <n-text depth="3" size="12">
+                  {{ session.username }}@{{ session.host }}:{{ session.port }}
+                </n-text>
+                <n-space>
+                  <n-tag v-if="session.group_name" type="info" size="small">
+                    {{ session.group_name }}
+                  </n-tag>
+                  <n-tag v-else size="small" type="default">
+                    未分组
+                  </n-tag>
+                </n-space>
+                <n-space justify="end">
+                  <n-button size="small" @click="handleEdit(session.id)">
+                    <template #icon>
+                      <n-icon><Icon icon="mdi:pencil" /></n-icon>
+                    </template>
+                    编辑
+                  </n-button>
+                  <n-button size="small" type="error" @click="handleDelete(session.id)">
+                    <template #icon>
+                      <n-icon><Icon icon="mdi:delete" /></n-icon>
+                    </template>
+                    删除
+                  </n-button>
+                </n-space>
+              </n-space>
+            </n-card>
+          </n-space>
+          <n-empty v-if="sshStore.sessions.length === 0" description="暂无会话" />
+        </template>
+        <!-- 桌面端使用表格布局 -->
         <n-data-table
+          v-else
           :columns="columns"
           :data="sshStore.sessions"
           :pagination="pagination"
@@ -24,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, h, onMounted } from 'vue'
+import { ref, h, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSshStore } from '@/stores'
 import { useMessage } from 'naive-ui'
@@ -38,6 +83,8 @@ const message = useMessage()
 
 const showDeleteModal = ref(false)
 const deletingId = ref<string | null>(null)
+
+const isMobile = computed(() => window.innerWidth < 768)
 
 const pagination = {
   pageSize: 10
@@ -150,3 +197,80 @@ async function handleConfirmDelete() {
   }
 }
 </script>
+
+<style scoped>
+.sessions-container {
+  padding: 0;
+}
+
+/* 平板尺寸 */
+@media (max-width: 768px) {
+  .sessions-container :deep(.n-card) {
+    font-size: 14px;
+  }
+
+  .sessions-container :deep(.n-card .n-card-header) {
+    font-size: 15px;
+    padding: 16px;
+  }
+
+  .sessions-container :deep(.n-card .n-card__content) {
+    padding: 16px;
+  }
+
+  .sessions-container :deep(.n-button) {
+    font-size: 14px;
+    padding: 0 16px;
+    height: 36px;
+  }
+
+  .sessions-container :deep(.n-data-table) {
+    font-size: 13px;
+  }
+}
+
+/* 移动端 */
+@media (max-width: 480px) {
+  .sessions-container :deep(.n-card) {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .sessions-container :deep(.n-card .n-card-header) {
+    font-size: 14px;
+    padding: 12px;
+  }
+
+  .sessions-container :deep(.n-card .n-card__content) {
+    padding: 12px;
+  }
+
+  .sessions-container :deep(.n-card[size="small"]) {
+    padding: 0;
+  }
+
+  .sessions-container :deep(.n-card[size="small"] .n-card__content) {
+    padding: 8px;
+  }
+
+  .sessions-container :deep(.n-button) {
+    font-size: 13px;
+    padding: 0 12px;
+    height: 34px;
+  }
+
+  .sessions-container :deep(.n-button .n-button__content) {
+    gap: 4px;
+  }
+
+  .sessions-container :deep(.n-tag) {
+    font-size: 11px;
+    padding: 0 6px;
+    height: 20px;
+  }
+
+  .sessions-container :deep(.n-text) {
+    font-size: 12px;
+  }
+}
+</style>
