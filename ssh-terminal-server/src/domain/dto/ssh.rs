@@ -53,6 +53,7 @@ pub struct UpdateSshSessionRequest {
 pub struct ListSshSessionsRequest {
     pub page: Option<u64>,
     pub page_size: Option<u64>,
+    #[allow(dead_code)]
     pub group_name: Option<String>,
 }
 

@@ -1,11 +1,13 @@
 use crate::error::ErrorResponse;
 use crate::infra::middleware::logging::{log_info, RequestId};
+use crate::infra::middleware::Language;
 use crate::domain::dto::auth::{RegisterRequest, LoginRequest, RefreshRequest, DeleteUserRequest};
 use crate::domain::vo::auth::{RegisterResult, LoginResult, RefreshResult};
 use crate::domain::vo::ApiResponse;
 use crate::repositories::user_repository::UserRepository;
 use crate::repositories::user_profile_repository::UserProfileRepository;
 use crate::services::auth_service::AuthService;
+use crate::utils::i18n::{t, MessageKey};
 use crate::AppState;
 use axum::{
     extract::{Extension, State},
@@ -16,6 +18,7 @@ use serde_json::json;
 /// 注册
 pub async fn register(
     Extension(request_id): Extension<RequestId>,
+    Language(language): Language,
     State(state): State<AppState>,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<Json<ApiResponse<RegisterResult>>, ErrorResponse> {
@@ -28,7 +31,8 @@ pub async fn register(
     match service.register(payload).await {
         Ok((user_model, access_token, refresh_token)) => {
             let data = RegisterResult::from((user_model, access_token, refresh_token));
-            let response = ApiResponse::success(data);
+            let message = t(Some(language.as_str()), MessageKey::SuccessRegister);
+            let response = ApiResponse::success_with_message(data, &message);
             log_info(&request_id, "注册成功", &response);
             Ok(Json(response))
         }
@@ -42,6 +46,7 @@ pub async fn register(
 /// 登录
 pub async fn login(
     Extension(request_id): Extension<RequestId>,
+    Language(language): Language,
     State(state): State<AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<ApiResponse<LoginResult>>, ErrorResponse> {
@@ -54,7 +59,8 @@ pub async fn login(
     match service.login(payload).await {
         Ok((user_model, access_token, refresh_token)) => {
             let data = LoginResult::from((user_model, access_token, refresh_token));
-            let response = ApiResponse::success(data);
+            let message = t(Some(language.as_str()), MessageKey::SuccessLogin);
+            let response = ApiResponse::success_with_message(data, &message);
             log_info(&request_id, "登录成功", &response);
             Ok(Json(response))
         }
@@ -68,6 +74,7 @@ pub async fn login(
 /// 刷新 Token
 pub async fn refresh(
     Extension(request_id): Extension<RequestId>,
+    Language(language): Language,
     State(state): State<AppState>,
     Json(payload): Json<RefreshRequest>,
 ) -> Result<Json<ApiResponse<RefreshResult>>, ErrorResponse> {
@@ -90,7 +97,8 @@ pub async fn refresh(
                 access_token,
                 refresh_token,
             };
-            let response = ApiResponse::success(data);
+            let message = t(Some(language.as_str()), MessageKey::SuccessRefreshToken);
+            let response = ApiResponse::success_with_message(data, &message);
 
             log_info(
                 &request_id,
@@ -109,6 +117,7 @@ pub async fn refresh(
 /// 删除账号
 pub async fn delete_account(
     Extension(request_id): Extension<RequestId>,
+    Language(language): Language,
     State(state): State<AppState>,
     Extension(user_id): Extension<String>,
     Json(payload): Json<DeleteUserRequest>,
@@ -127,7 +136,8 @@ pub async fn delete_account(
     match service.delete_user(delete_request).await {
         Ok(_) => {
             log_info(&request_id, "账号删除成功", &format!("user_id={}", user_id));
-            let response = ApiResponse::success_with_message((), "账号删除成功");
+            let message = t(Some(language.as_str()), MessageKey::SuccessDeleteAccount);
+            let response = ApiResponse::success_with_message((), &message);
             Ok(Json(response))
         }
         Err(e) => {
@@ -137,9 +147,10 @@ pub async fn delete_account(
     }
 }
 
-/// 刷新令牌
+/// 删除刷新令牌
 pub async fn delete_refresh_token(
     Extension(request_id): Extension<RequestId>,
+    Language(language): Language,
     State(state): State<AppState>,
     Extension(user_id): Extension<String>,
 ) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
@@ -152,12 +163,13 @@ pub async fn delete_refresh_token(
     match service.delete_refresh_token(&user_id).await {
         Ok(_) => {
             log_info(&request_id, "刷新令牌删除成功", &format!("user_id={}", user_id));
-            let response = ApiResponse::success_with_message((), "刷新令牌删除成功");
+            let message = t(Some(language.as_str()), MessageKey::SuccessDeleteRefreshToken);
+            let response = ApiResponse::success_with_message((), &message);
             Ok(Json(response))
         }
         Err(e) => {
             log_info(&request_id, "刷新令牌删除失败", &e.to_string());
-            Err(ErrorResponse::new(e.to_string()))
+            Err(ErrorResponse::internal(t(Some(language.as_str()), MessageKey::ErrorDeleteFailed)))
         }
     }
 }

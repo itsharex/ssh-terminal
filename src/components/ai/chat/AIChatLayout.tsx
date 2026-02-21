@@ -4,6 +4,7 @@
  * 提供左侧边栏（服务器列表）和右侧聊天区域的布局
  */
 
+import { useTranslation } from 'react-i18next';
 import { useAIStore } from '@/store/aiStore';
 import { AIChatSidebar } from './AIChatSidebar';
 import { AIChatMain } from './AIChatMain';
@@ -15,6 +16,7 @@ interface AIChatLayoutProps {
 }
 
 export function AIChatLayout({ onNewChat, sidebarOpen, setSidebarOpen }: AIChatLayoutProps) {
+  const { t } = useTranslation();
   const { currentServerId } = useAIStore();
 
   // 阻止滚轮事件传播
@@ -46,24 +48,24 @@ export function AIChatLayout({ onNewChat, sidebarOpen, setSidebarOpen }: AIChatL
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold mb-2">开始新的对话</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('ai.chat.newConversation')}</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {!sidebarOpen && (
                   <button
                     onClick={() => setSidebarOpen(true)}
                     className="text-primary hover:underline"
                   >
-                    打开侧边栏
+                    {t('ai.chat.openSidebar')}
                   </button>
                 )}
-                {sidebarOpen ? '从左侧选择一个服务器，或创建新对话' : '点击上方按钮打开侧边栏选择服务器'}
+                {sidebarOpen ? t('ai.chat.selectServerOrNew') : t('ai.chat.clickToOpenSidebar')}
               </p>
               {!sidebarOpen && (
                 <button
                   onClick={() => setSidebarOpen(true)}
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                 >
-                  打开侧边栏
+                  {t('ai.chat.openSidebar')}
                 </button>
               )}
             </div>

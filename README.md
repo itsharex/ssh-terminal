@@ -23,92 +23,6 @@
 
 ![设置页面](./public/setting-page.svg)
 
-## ✨ 特性
-
-### 🖥️ 核心功能
-- **多会话管理** - 支持同时管理多个 SSH 连接，使用标签页切换
-- **终端模拟** - 基于 xterm.js 提供完整的终端模拟体验
-- **会话持久化** - 保存 SSH 连接配置，方便快速重连
-- **主题支持** - 支持 8 种终端主题（One Dark、Dracula、Nord、Tokyo Night、Monokai、GitHub Light、Solarized Light/Dark）
-- **音效系统** - 操作反馈音效
-- **主机密钥验证** - 自动检测并提示主机密钥确认
-
-### 🔧 高级特性
-- **心跳保活** - 可配置的心跳间隔（0-120秒）防止连接断开
-- **会话分组** - 支持将会话按分组组织
-- **快速连接** - 临时连接不保存配置
-- **连接实例与配置分离** - 一个配置可以创建多个连接实例
-- **加密存储** - 使用 AES-256-GCM 加密保存密码和密钥
-- **快捷键系统** - 完整的快捷键绑定和自定义功能
-
-### 🤖 AI 智能助手
-- **自然语言转命令** - 用自然语言描述需求，AI 自动生成命令
-- **命令解释** - 选中命令后 AI 提供详细解释和用法说明
-- **错误分析** - AI 分析终端错误并提供解决方案
-- **AI 对话界面** - 独立的 AI 聊天页面，支持多轮对话和历史记录
-- **语音输入** - 支持语音输入命令和对话内容
-- **会话历史管理** - 按服务器分组管理 AI 对话历史
-- **多 AI Provider 支持** - 支持 OpenAI、Claude、DeepSeek 等多个 AI 服务商
-- **AI 缓存池** - 智能 Provider 缓存和负载均衡
-
-### 📁 SFTP 文件管理
-- **双面板文件浏览器** - 类似 WinSCP 的双面板界面
-- **文件上传下载** - 支持文件和文件夹的传输
-- **远程文件操作** - 支持删除、重命名、移动等操作
-- **文件预览** - 支持文本文件预览
-
-### 🎬 录制功能
-- **终端录制** - 录制终端操作为视频
-- **视频导出** - 支持多种格式导出（GIF、MP4、WebM）
-- **录制管理** - 管理和回放录制内容
-
-### 📱 跨平台支持
-- **桌面端** - Windows、macOS、Linux
-- **移动端适配** - 响应式设计，支持移动设备
-- **触摸优化** - 移动端专门的交互优化
-
-### 🔨 开发者工具（仅开发模式）
-- **DOM to SVG** - 选择页面元素并导出为 SVG 矢量图形（[使用文档](./docs/DOM_TO_SVG.md)）
-
-## 📚 文档
-
-- **[快捷键列表](./docs/Shortcuts.md)** - 所有快捷键及其生效范围
-- **[DOM to SVG 使用指南](./docs/DOM_TO_SVG.md)** - 开发者工具使用文档
-
-## 🏗️ 技术栈
-
-### 前端技术栈
-- **React 19** - 最新的 React 版本，支持现代特性
-- **TypeScript 5.8+** - 完整的类型安全支持
-- **shadcn/ui** - 基于 Radix UI 的美观、可访问的 UI 组件库
-- **Tailwind CSS 4.0** - 实用优先的 CSS 框架
-- **Zustand** - 轻量级状态管理库
-- **React Router 7** - 前端路由管理
-- **xterm.js** - 终端模拟器核心库
-- **React Hook Form + Zod** - 表单管理和验证
-
-### 后端技术栈
-- **Rust** - 高性能、安全的系统编程语言
-- **Tauri 2.0** - 跨平台桌面应用框架
-- **tokio** - 异步运行时
-- **portable-pty** - 跨平台 PTY 支持
-- **serde** - 序列化/反序列化
-- **aes-gcm + argon2** - 加密存储
-
-### 开发工具
-- **pnpm** - 快速、节省磁盘空间的包管理器
-- **Vite** - 现代化的前端构建工具
-- **ESLint** - 代码质量检查和格式化
-
-### AI & 音频
-- **OpenAI / Anthropic API** - AI 服务提供商
-- **Web Audio API** - 音频录制和处理
-- **Web Speech API** - 语音识别
-
-### 其他依赖
-- **axios** - HTTP 请求库
-- **date-fns** - 日期处理
-- **clsx / tailwind-merge** - CSS 类名工具
 
 ## 🚀 快速开始
 
@@ -261,25 +175,6 @@ curl http://localhost:6236/info
 docker logs -f ssh-terminal
 ```
 
-#### 重启服务
-
-```bash
-docker restart ssh-terminal
-```
-
-#### 停止服务
-
-```bash
-docker stop ssh-terminal
-```
-
-#### 删除容器
-
-```bash
-docker stop ssh-terminal
-docker rm ssh-terminal
-```
-
 #### 更新镜像
 
 ```bash
@@ -288,6 +183,135 @@ docker stop ssh-terminal
 docker rm ssh-terminal
 # 重新运行部署命令
 ```
+
+## ✨ 特性
+
+### 🖥️ 核心功能
+- **多会话管理** - 支持同时管理多个 SSH 连接，使用标签页切换
+- **终端模拟** - 基于 xterm.js 提供完整的终端模拟体验
+- **会话持久化** - 保存 SSH 连接配置，方便快速重连
+- **主题支持** - 支持 8 种终端主题（One Dark、Dracula、Nord、Tokyo Night、Monokai、GitHub Light、Solarized Light/Dark）
+- **音效系统** - 操作反馈音效
+- **主机密钥验证** - 自动检测并提示主机密钥确认
+
+### 🔧 高级特性
+- **心跳保活** - 可配置的心跳间隔（0-120秒）防止连接断开
+- **会话分组** - 支持将会话按分组组织
+- **快速连接** - 临时连接不保存配置
+- **连接实例与配置分离** - 一个配置可以创建多个连接实例
+- **加密存储** - 使用 AES-256-GCM 加密保存密码和密钥
+- **快捷键系统** - 完整的快捷键绑定和自定义功能
+- **russh 纯 Rust 后端** - 除了系统 SSH，还支持纯 Rust 实现的 SSH 客户端，提供更好的跨平台兼容性
+- **本地数据库存储** - 使用 SQLite 存储会话配置、用户资料等数据
+
+### ☁️ 云同步功能
+- **多设备同步** - 支持在不同设备间同步 SSH 会话、用户资料等数据
+- **增量同步** - 只同步变更的数据，提高同步效率
+- **冲突检测与解决** - 自动检测数据冲突，提供多种解决策略（保留服务器、保留本地、保留两者）
+- **自动同步** - 可配置的自动同步间隔
+- **离线支持** - 本地数据持久化，离线时仍可正常使用
+
+### 👤 用户认证
+- **账号系统** - 支持用户注册、登录、登出
+- **多账号切换** - 支持在多个账号间快速切换
+- **Token 认证** - 基于 JWT 的安全认证机制（Access Token + Refresh Token）
+- **本地匿名模式** - 未登录时可使用本地模式，数据仅保存在本地
+- **用户资料管理** - 支持头像上传、用户信息编辑
+- **账号删除** - 支持删除账号及相关数据
+
+### 📹 视频录制系统
+- **视频录制** - 使用 Canvas.captureStream 捕获终端画面
+  - 支持 WebM (VP9/VP8) 和 MP4 (H.264) 格式
+  - 三种质量预设：Low (500 kbps)、Medium (2 Mbps)、High (5 Mbps)
+  - 使用 WebGL 渲染器提高性能
+- **音频录制** - 支持麦克风和扬声器同步录制
+  - 麦克风录制：单声道，48kHz 采样率，支持回声消除、噪声抑制
+  - 扬声器录制：Windows WASAPI Loopback Recording，2.0x 音量增益补偿
+- **事件录制** - 记录所有终端交互事件（input/output/resize/metadata）
+- **录制控制** - 支持 2 秒倒计时、暂停/恢复
+- **录制管理** - 录制文件保存、加载、删除、导出
+- **回放功能** - 基于事件的回放引擎，支持变速播放
+
+### 🤖 AI 智能助手
+- **自然语言转命令** - 用自然语言描述需求，AI 自动生成命令
+- **命令解释** - 选中命令后 AI 提供详细解释和用法说明
+- **错误分析** - AI 分析终端错误并提供解决方案
+- **AI 对话界面** - 独立的 AI 聊天页面，支持多轮对话和历史记录
+- **会话历史管理** - 按服务器分组管理 AI 对话历史
+- **多 AI Provider 支持** - 支持 OpenAI、Ollama、Qwen、文心一言等多个 AI 服务商
+- **AI 缓存池** - 智能 Provider 缓存和负载均衡
+- **流式响应** - 支持 AI 流式输出，提升交互体验
+
+### 📁 SFTP 文件管理
+- **双面板文件浏览器** - 类似 WinSCP 的双面板界面
+- **文件上传下载** - 支持文件和文件夹的传输
+- **远程文件操作** - 支持删除、重命名、移动等操作
+- **文件预览** - 支持文本文件预览
+
+### 🎬 录制功能
+- **终端录制** - 录制终端操作为视频
+- **视频导出** - 支持多种格式导出（GIF、MP4、WebM）
+- **录制管理** - 管理和回放录制内容
+
+### 📱 跨平台支持
+- **桌面端** - Windows、macOS、Linux
+- **移动端适配** - 响应式设计，支持移动设备
+- **触摸优化** - 移动端专门的交互优化
+
+### 🔨 开发者工具（仅开发模式）
+- **DOM to SVG** - 选择页面元素并导出为 SVG 矢量图形（[使用文档](./docs/DOM_TO_SVG.md)）
+
+## 📚 文档
+
+- **[快捷键列表](./docs/Shortcuts.md)** - 所有快捷键及其生效范围
+- **[DOM to SVG 使用指南](./docs/DOM_TO_SVG.md)** - 开发者工具使用文档
+
+## 🏗️ 技术栈
+
+### 前端技术栈
+- **React 19** - 最新的 React 版本，支持现代特性
+- **TypeScript 5.8+** - 完整的类型安全支持
+- **shadcn/ui** - 基于 Radix UI 的美观、可访问的 UI 组件库
+- **Tailwind CSS 4.0** - 实用优先的 CSS 框架
+- **Zustand** - 轻量级状态管理库
+- **React Router 7** - 前端路由管理
+- **xterm.js** - 终端模拟器核心库
+- **React Hook Form + Zod** - 表单管理和验证
+
+### 后端技术栈
+- **Rust** - 高性能、安全的系统编程语言
+- **Tauri 2.0** - 跨平台桌面应用框架
+- **tokio** - 异步运行时
+- **portable-pty** - 跨平台 PTY 支持
+- **serde** - 序列化/反序列化
+- **aes-gcm + argon2** - 加密存储
+- **russh** - 纯 Rust SSH 实现
+
+### 后端服务器技术栈 (ssh-terminal-server)
+- **Rust** - 高性能后端开发语言
+- **Axum 0.7** - 现代异步 Web 框架
+- **SeaORM 1.1** - 异步 ORM 框架
+- **Redis 0.27** - Refresh Token 缓存
+- **JWT 9.x** - JSON Web Token 认证
+- **Argon2 0.5** - 密码哈希算法
+- **tracing** - 结构化日志框架
+- **数据库支持** - SQLite / MySQL / PostgreSQL
+
+### 开发工具
+- **pnpm** - 快速、节省磁盘空间的包管理器
+- **Vite** - 现代化的前端构建工具
+- **ESLint** - 代码质量检查和格式化
+
+### AI & 音频
+- **OpenAI / Anthropic API** - AI 服务提供商
+- **Web Audio API** - 音频录制和处理
+- **Web Speech API** - 语音识别
+
+### 其他依赖
+- **axios** - HTTP 请求库
+- **date-fns** - 日期处理
+- **clsx / tailwind-merge** - CSS 类名工具
+
 
 ## 🏛️ 架构设计
 
@@ -347,11 +371,119 @@ docker rm ssh-terminal
                          │ External APIs
                          ↓
 ┌─────────────────────────────────────────────────────────────────┐
+│               Backend Server (ssh-terminal-server)               │
+├─────────────────────────────────────────────────────────────────┤
+│  API Endpoints:                                                  │
+│    - POST /auth/register      - 用户注册                         │
+│    - POST /auth/login         - 用户登录                         │
+│    - POST /auth/refresh       - 刷新 Token                       │
+│    - GET  /api/user/profile   - 获取用户资料                     │
+│    - PUT  /api/user/profile   - 更新用户资料                     │
+│    - GET  /api/ssh/sessions   - 获取 SSH 会话列表                │
+│    - POST /api/ssh/sessions   - 创建 SSH 会话                    │
+│    - POST /api/sync           - 数据同步                         │
+│    - POST /api/sync/resolve-conflict  - 解决冲突                 │
+│       ↓                                                         │
+│  Services:                                                       │
+│    - AuthService (认证服务)                                      │
+│    - SyncService (同步服务)                                      │
+│       ↓                                                         │
+│  Repositories:                                                   │
+│    - UserRepository (用户数据访问)                               │
+│    - UserProfileRepository (用户资料数据访问)                    │
+│    - SshSessionRepository (SSH 会话数据访问)                     │
+│       ↓                                                         │
+│  Storage:                                                        │
+│    - SQLite/MySQL/PostgreSQL (数据库)                            │
+│    - Redis (Refresh Token 缓存)                                 │
+└─────────────────────────────────────────────────────────────────┘
+                         ↑
+                         │ External APIs
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
 │                    External Services                             │
 ├─────────────────────────────────────────────────────────────────┤
-│  - OpenAI API    - Anthropic API    - DeepSeek API              │
+│  - OpenAI API    - Ollama API    - Qwen API    - Wenxin API      │
 │  - SSH Servers   - SFTP Servers                                  │
 └─────────────────────────────────────────────────────────────────┘
+
+### 认证流程
+
+```
+┌──────────────┐
+│   用户登录    │
+└──────┬───────┘
+       ↓
+┌─────────────────────┐
+│ POST /auth/login    │
+│ (邮箱 + 密码)       │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ 验证密码 (Argon2)   │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ 生成 Access Token   │
+│ (15分钟过期)        │
+│ 生成 Refresh Token  │
+│ (7天过期)           │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ Refresh Token 存入  │
+│ Redis Set           │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ 返回 Token 对       │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ 后续请求携带        │
+│ Access Token        │
+└─────────────────────┘
+```
+
+### 同步流程
+
+```
+┌──────────────┐
+│  手动/自动同步  │
+└──────┬───────┘
+       ↓
+┌─────────────────────┐
+│ POST /api/sync      │
+│ (携带 Access Token) │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ 1. 检查用户状态     │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ 2. 冲突检测         │
+│ (对比 last_sync_at) │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ 3. Push 阶段        │
+│ - 上传用户资料      │
+│ - 上传 SSH 会话     │
+│ - 处理删除操作      │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ 4. Pull 阶段        │
+│ - 拉取更新的数据    │
+│ - 增量同步          │
+└──────┬──────────────┘
+       ↓
+┌─────────────────────┐
+│ 5. 返回同步结果     │
+│ - 更新的数据        │
+│ - 冲突信息          │
+└─────────────────────┘
 ```
 
 ### 数据流
@@ -378,13 +510,127 @@ docker rm ssh-terminal
 4. **AI Conversation（AI 对话）** - AI 聊天会话，支持多轮对话和历史记录
 5. **AI Provider（AI 服务商）** - 支持多个 AI 服务提供商，可配置和切换
 
+### 数据库架构
+
+#### 客户端本地数据库 (SQLite)
+
+```
+src-tauri/data/app.db
+├── user_auth              # 用户认证表
+│   ├── id (PK)
+│   ├── email              # 邮箱
+│   ├── password_hash      # 密码哈希
+│   ├── device_id          # 设备ID（用于加密）
+│   ├── created_at
+│   └── deleted_at
+│
+├── ssh_sessions           # SSH 会话表
+│   ├── id (PK)
+│   ├── user_id            # 用户ID（关联 user_auth）
+│   ├── name               # 会话名称
+│   ├── host               # 主机地址
+│   ├── port               # 端口
+│   ├── username           # 用户名
+│   ├── auth_method        # 认证方式
+│   ├── password_encrypted # 加密密码
+│   ├── private_key_encrypted # 加密私钥
+│   ├── group_name         # 分组名称
+│   ├── server_ver         # 服务器版本号
+│   ├── client_ver         # 客户端版本号
+│   ├── last_sync_at       # 最后同步时间
+│   ├── created_at
+│   └── deleted_at
+│
+├── user_profiles          # 用户资料表
+│   ├── id (PK)
+│   ├── user_id            # 用户ID（关联 user_auth）
+│   ├── username           # 用户名
+│   ├── bio                # 简介
+│   ├── avatar_base64      # 头像（Base64）
+│   ├── phone              # 电话
+│   ├── qq                 # QQ号
+│   ├── wechat             # 微信号
+│   ├── server_ver         # 服务器版本号
+│   ├── client_ver         # 客户端版本号
+│   ├── last_sync_at       # 最后同步时间
+│   ├── created_at
+│   └── deleted_at
+│
+├── app_settings           # 应用设置表
+│   ├── id (PK)
+│   ├── server_url         # 服务器地址
+│   ├── auto_sync_enabled  # 自动同步开关
+│   ├── sync_interval_minutes  # 同步间隔
+│   ├── language           # 语言设置
+│   └── updated_at
+│
+└── sync_state             # 同步状态表
+    ├── id (PK)
+    ├── last_sync_at       # 最后同步时间
+    ├── pending_count      # 待同步数量
+    └── conflict_count    # 冲突数量
+```
+
+#### 服务器数据库 (SQLite/MySQL/PostgreSQL)
+
+```
+ssh-terminal-server 数据库
+├── users                  # 用户表
+│   ├── id (PK, 10位数字)
+│   ├── email              # 邮箱（唯一）
+│   ├── password_hash      # Argon2 密码哈希
+│   ├── created_at
+│   └── deleted_at
+│
+├── user_profiles          # 用户资料表
+│   ├── id (PK)
+│   ├── user_id (FK → users.id)
+│   ├── username           # 用户名
+│   ├── bio                # 简介
+│   ├── avatar_base64      # 头像
+│   ├── phone              # 电话
+│   ├── qq                 # QQ号
+│   ├── wechat             # 微信号
+│   ├── server_ver         # 服务器版本号
+│   ├── client_ver         # 客户端版本号
+│   ├── last_sync_at       # 最后同步时间
+│   ├── created_at
+│   └── deleted_at
+│
+└── ssh_sessions           # SSH 会话表
+    ├── id (PK)
+    ├── user_id (FK → users.id)
+    ├── name               # 会话名称
+    ├── host               # 主机地址
+    ├── port               # 端口
+    ├── username           # 用户名
+    ├── auth_method        # 认证方式
+    ├── password_encrypted # 加密密码
+    ├── private_key_encrypted # 加密私钥
+    ├── passphrase_encrypted # 加密私钥密码
+    ├── group_name         # 分组名称
+    ├── server_ver         # 服务器版本号
+    ├── client_ver         # 客户端版本号
+    ├── last_sync_at       # 最后同步时间
+    ├── created_at
+    └── deleted_at
+```
+
+### 数据同步策略
+
+1. **版本控制** - 每条记录维护 `server_ver` 和 `client_ver` 两个版本号
+2. **冲突检测** - 比较记录的 `updated_at` 和版本号判断冲突
+3. **增量同步** - 只同步 `last_sync_at` 之后变更的数据
+4. **软删除** - 使用 `deleted_at` 字段标记删除，支持数据恢复
+
 ## 🤖 AI 功能详解
 
 ### 支持的 AI Provider
 
 - **OpenAI** - GPT-4、GPT-3.5 等模型
-- **Anthropic Claude** - Claude 3.5 Sonnet、Claude 3 Opus 等
-- **DeepSeek** - DeepSeek-V3、DeepSeek-Coder 等
+- **Ollama** - 本地大模型部署
+- **Qwen (通义千问)** - 阿里云大模型服务
+- **Wenxin (文心一言)** - 百度大模型服务
 - **其他兼容 OpenAI API 的服务**
 
 ### AI 功能模块
@@ -445,6 +691,62 @@ docker rm ssh-terminal
 3. 点击快捷键项右侧的编辑按钮
 4. 按下新的快捷键组合
 5. 点击保存
+
+## 🎬 录制功能详解
+
+### 录制架构
+
+```
+用户点击录制
+    ↓
+2 秒倒计时
+    ↓
+┌─────────────────────┐
+│  1. TerminalRecorder │ - 记录终端事件
+│     (input/output)   │
+├─────────────────────┤
+│  2. VideoRecorder    │ - 捕获 Canvas 画面
+│     canvas.captureStream(30)     │
+│     MediaRecorder (WebM/MP4)     │
+├─────────────────────┤
+│  3. AudioCaptureManager  │ - 捕获音频
+│     麦克风 + 扬声器         │
+│     AudioContext 混合       │
+└─────────────────────┘
+    ↓
+停止录制
+    ↓
+保存录制文件 (JSON) + 视频文件
+```
+
+### 录制质量设置
+
+| 质量 | 视频码率 | 音频质量 | 适用场景 |
+|------|----------|----------|----------|
+| Low | 500 kbps | Low | 长时间录制、存储空间有限 |
+| Medium | 2 Mbps | Medium | 日常使用、平衡质量和大小 |
+| High | 5 Mbps | High | 演示、教学、需要高质量 |
+
+### 音频录制配置
+
+- **采样率**：48 kHz
+- **通道数**：单声道
+- **音频缓冲区**：300 个音频包（约 5 秒）
+- **音频包大小**：960 样本（20ms @ 48kHz）
+- **扬声器音量增益**：2.0x（补偿 WASAPI Loopback 音量较低）
+
+### 录制文件格式
+
+- **录制文件**：JSON 格式，包含所有终端事件
+- **视频文件**：WebM (VP9/VP8) 或 MP4 (H.264)
+- **音频**：嵌入到视频文件中
+
+### 回放功能
+
+- 支持基于事件的回放
+- 可调节播放速度（0.5x、1x、1.5x、2x）
+- 暂停/恢复播放
+- 跳转到任意时间点
 
 ## 🎨 主题系统
 
@@ -637,7 +939,7 @@ MIT License
 
 <div align="center">
 
-**最后更新**：2026年1月31日
+**最后更新**：2026年2月21日
 
 Made with ❤️ using Tauri + React
 

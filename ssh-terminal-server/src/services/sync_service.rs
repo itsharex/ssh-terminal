@@ -5,6 +5,7 @@ use crate::domain::vo::sync::*;
 use crate::repositories::ssh_session_repository::SshSessionRepository;
 use crate::repositories::user_profile_repository::UserProfileRepository;
 use crate::repositories::user_repository::UserRepository;
+use crate::utils::i18n::{t, t_with_vars, MessageKey};
 use chrono::Utc;
 use uuid;
 
@@ -18,15 +19,16 @@ impl SyncService {
     }
 
     /// 统一同步 - 先 Push，后 Pull
-    pub async fn sync(&self, request: SyncRequest, user_id: &str) -> Result<SyncResponse> {
+    pub async fn sync(&self, request: SyncRequest, user_id: &str, language: Option<&str>) -> Result<SyncResponse> {
+        let lang = language;
         // 检查用户是否已被软删除
         let user_repo = UserRepository::new(self.db.clone());
         match user_repo.find_by_id_raw(user_id).await? {
             Some(user) if user.deleted_at.is_some() => {
-                return Err(anyhow::anyhow!("用户已被删除，无法同步"));
+                return Err(anyhow::anyhow!("{}", t(lang, MessageKey::ErrorUserDeleted)));
             }
             None => {
-                return Err(anyhow::anyhow!("用户不存在"));
+                return Err(anyhow::anyhow!("{}", t(lang, MessageKey::ErrorUserNotFound)));
             }
             _ => {}
         }
@@ -53,7 +55,7 @@ impl SyncService {
                 if let Some(req_last_sync) = request.last_sync_at {
                     if existing.updated_at > req_last_sync {
                         // 服务器有更新，客户端也推送了更新 → 冲突
-                        conflicts.push(self.create_session_conflict_info(session_item, existing));
+                        conflicts.push(self.create_session_conflict_info(session_item, existing, lang));
                         session_conflict_ids.push(session_item.id.clone());
                     }
                 }
@@ -66,7 +68,7 @@ impl SyncService {
                 if let Some(req_last_sync) = request.last_sync_at {
                     if existing_profile.updated_at > req_last_sync {
                         // 服务器有更新，客户端也推送了更新 → 冲突
-                        conflicts.push(self.create_profile_conflict_info(existing_profile));
+                        conflicts.push(self.create_profile_conflict_info(existing_profile, lang));
                         profile_has_conflict = true;
                     }
                 }
@@ -79,7 +81,7 @@ impl SyncService {
         let mut server_versions = std::collections::HashMap::new();
 
         // 1. 处理用户资料更新（跳过有冲突的）
-        let profile_updated = if let Some(profile_req) = request.user_profile {
+        let _profile_updated = if let Some(profile_req) = request.user_profile {
             if profile_has_conflict {
                 tracing::warn!("Skipping profile update due to conflict");
                 false
@@ -153,7 +155,7 @@ impl SyncService {
                     // 检查版本冲突
                     if session_item.client_ver < existing.server_ver {
                         // 产生冲突
-                        conflicts.push(self.create_conflict_info(&session_item, &existing));
+                        conflicts.push(self.create_conflict_info(&session_item, &existing, language));
                     } else {
                         // 更新会话
                         let updated = crate::domain::entities::ssh_sessions::Model {
@@ -317,15 +319,15 @@ impl SyncService {
             None
         } else {
             let mut messages = Vec::new();
-            
+
             if conflicts.iter().any(|c| c.entity_type == "ssh_session") {
-                messages.push("部分 SSH 会话已保留服务器版本");
+                messages.push(t(lang, MessageKey::ConflictSshSessionKeepServer));
             }
-            
+
             if conflicts.iter().any(|c| c.entity_type == "user_profile") {
-                messages.push("用户资料已保留服务器版本");
+                messages.push(t(lang, MessageKey::ConflictUserProfileKeepServer));
             }
-            
+
             if !messages.is_empty() {
                 Some(messages.join("，"))
             } else {
@@ -348,45 +350,41 @@ impl SyncService {
     }
 
     /// Resolve Conflict - 解决冲突
-    pub async fn resolve_conflict(&self, request: ResolveConflictRequest) -> Result<ResolveConflictResponse> {
+    pub async fn resolve_conflict(&self, request: ResolveConflictRequest, language: Option<&str>) -> Result<ResolveConflictResponse> {
+        let lang = language;
         match request.strategy {
             ConflictStrategy::KeepServer => {
-                // 保留服务器版本（不做任何操作）
                 Ok(ResolveConflictResponse {
                     conflict_id: request.conflict_id.clone(),
                     resolved: true,
                     new_id: None,
-                    message: "Kept server version".to_string(),
+                    message: t(lang, MessageKey::SuccessKeepServer),
                 })
             }
             ConflictStrategy::KeepLocal => {
-                // 使用客户端数据强制更新
-                if let Some(_client_data) = request.client_data {
-                    // TODO: 解析 client_data 并更新
+                if request.client_data.is_some() {
                     Ok(ResolveConflictResponse {
                         conflict_id: request.conflict_id.clone(),
                         resolved: true,
                         new_id: None,
-                        message: "Kept local version".to_string(),
+                        message: t(lang, MessageKey::SuccessKeepLocal),
                     })
                 } else {
                     Ok(ResolveConflictResponse {
                         conflict_id: request.conflict_id.clone(),
                         resolved: false,
                         new_id: None,
-                        message: "Missing client data".to_string(),
+                        message: t(lang, MessageKey::ErrorMissingClientData),
                     })
                 }
             }
             ConflictStrategy::KeepBoth => {
-                // 创建副本
                 let new_id = format!("{}-conflict-{}", request.conflict_id, uuid::Uuid::new_v4());
-
                 Ok(ResolveConflictResponse {
                     conflict_id: request.conflict_id.clone(),
                     resolved: true,
                     new_id: Some(new_id),
-                    message: "Created a copy with conflict resolution".to_string(),
+                    message: t(lang, MessageKey::SuccessKeepBoth),
                 })
             }
         }
@@ -397,7 +395,9 @@ impl SyncService {
         &self,
         client_item: &SshSessionPushItem,
         server_item: &crate::domain::entities::ssh_sessions::Model,
+        language: Option<&str>,
     ) -> ConflictInfo {
+        let lang = language;
         ConflictInfo {
             id: client_item.id.clone(),
             entity_type: "ssh_session".to_string(),
@@ -413,9 +413,10 @@ impl SyncService {
                 "groupName": server_item.group_name,
                 "serverVer": server_item.server_ver,
             })),
-            message: format!(
-                "Conflict: client version {} < server version {}",
-                client_item.client_ver, server_item.server_ver
+            message: t_with_vars(
+                lang,
+                MessageKey::ConflictVersionConflict,
+                &[("client", &client_item.client_ver.to_string()), ("server", &server_item.server_ver.to_string())]
             ),
         }
     }
@@ -425,7 +426,9 @@ impl SyncService {
         &self,
         client_item: &SshSessionPushItem,
         server_item: &crate::domain::entities::ssh_sessions::Model,
+        language: Option<&str>,
     ) -> ConflictInfo {
+        let lang = language;
         ConflictInfo {
             id: client_item.id.clone(),
             entity_type: "ssh_session".to_string(),
@@ -437,7 +440,11 @@ impl SyncService {
                 "name": server_item.name,
                 "serverVer": server_item.server_ver,
             })),
-            message: format!("会话 '{}' 有冲突", client_item.name),
+            message: t_with_vars(
+                lang,
+                MessageKey::ConflictSessionConflict,
+                &[("name", &client_item.name)]
+            ),
         }
     }
 
@@ -445,7 +452,9 @@ impl SyncService {
     fn create_profile_conflict_info(
         &self,
         server_item: &crate::domain::entities::user_profiles::Model,
+        language: Option<&str>,
     ) -> ConflictInfo {
+        let lang = language;
         ConflictInfo {
             id: server_item.user_id.clone(),
             entity_type: "user_profile".to_string(),
@@ -456,7 +465,7 @@ impl SyncService {
                 "username": server_item.username,
                 "serverVer": server_item.server_ver,
             })),
-            message: "用户资料有冲突".to_string(),
+            message: t(lang, MessageKey::ConflictProfileConflict),
         }
     }
 

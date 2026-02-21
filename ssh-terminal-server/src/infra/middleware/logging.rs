@@ -115,7 +115,22 @@ let now_beijing = time::OffsetDateTime::now_utc()
     let new_req = Request::from_parts(parts, Body::from(body_bytes));
 
     // 4️⃣ 调用下一个处理器
-    let response = next.run(new_req).await;
+    let (response, response_body_bytes) = {
+        let (parts, body) = next.run(new_req).await.into_parts();
+        let body_bytes = match to_bytes(body, usize::MAX).await {
+            Ok(bytes) => bytes,
+            Err(_) => Bytes::new(),
+        };
+        let response = Response::from_parts(parts, Body::from(body_bytes.clone()));
+        (response, body_bytes)
+    };
+
+    // 5️⃣ 打印响应体
+    let response_body_str = String::from_utf8_lossy(&response_body_bytes).to_string();
+    if !response_body_str.is_empty() {
+        let prettified_body = prettify_json_with_truncation(&response_body_str);
+        tracing::info!("[{}] 📤 响应体:\n{}", request_id, prettified_body);
+    }
 
     // 第3条日志：请求完成
     let duration = start.elapsed();

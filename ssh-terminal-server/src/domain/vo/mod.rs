@@ -20,6 +20,7 @@ pub struct ApiResponse<T> {
 
 impl<T: Serialize> ApiResponse<T> {
     /// 成功响应（200）
+    #[allow(dead_code)]
     pub fn success(data: T) -> Self {
         Self {
             code: 200,
@@ -33,6 +34,17 @@ impl<T: Serialize> ApiResponse<T> {
         Self {
             code: 200,
             message: message.to_string(),
+            data: Some(data),
+        }
+    }
+
+    /// 成功响应（使用默认消息）
+    #[allow(dead_code)]
+    pub fn success_default(data: T) -> Self {
+        crate::utils::i18n::t_success_default(Some(crate::utils::i18n::ZH_CN));
+        Self {
+            code: 200,
+            message: crate::utils::i18n::t_success_default(Some(crate::utils::i18n::ZH_CN)),
             data: Some(data),
         }
     }

@@ -1,5 +1,6 @@
 use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, DatabaseConnection, Set, ActiveModelTrait, PaginatorTrait};
 use crate::domain::entities::users;
+use crate::utils::i18n::{t, MessageKey};
 use anyhow::Result;
 
 /// 用户数据访问仓库
@@ -24,7 +25,7 @@ impl UserRepository {
             .filter(users::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("查询失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorQueryFailed), e))?;
 
         Ok(user)
     }
@@ -36,7 +37,7 @@ impl UserRepository {
             .filter(users::Column::DeletedAt.is_null())
             .count(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("查询失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorQueryFailed), e))?;
 
         Ok(count as i64)
     }
@@ -48,7 +49,7 @@ impl UserRepository {
             .filter(users::Column::DeletedAt.is_null())
             .count(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("查询失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorQueryFailed), e))?;
 
         Ok(count as i64)
     }
@@ -59,7 +60,7 @@ impl UserRepository {
             .filter(users::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("查询失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorQueryFailed), e))?;
 
         Ok(user.map(|u| u.password_hash))
     }
@@ -69,7 +70,7 @@ impl UserRepository {
         let user = users::Entity::find_by_id(user_id)
             .one(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("查询失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorQueryFailed), e))?;
 
         Ok(user)
     }
@@ -80,7 +81,7 @@ impl UserRepository {
             .filter(users::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("查询失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorQueryFailed), e))?;
 
         Ok(user.map(|u| u.email))
     }
@@ -107,24 +108,25 @@ impl UserRepository {
         users::Entity::insert(user_model)
             .exec(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("插入失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorInsertFailed), e))?;
 
         // 查询返回的完整用户对象（包含自动填充的时间戳）
         let user = users::Entity::find_by_id(user_id)
             .one(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("查询失败: {}", e))?
-            .ok_or_else(|| anyhow::anyhow!("插入后查询失败"))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorQueryFailed), e))?
+            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorInsertQueryFailed)))?;
 
         Ok(user)
     }
 
     /// 根据 ID 删除用户（硬删除，已弃用，建议使用 soft_delete）
+    #[allow(dead_code)]
     pub async fn delete_by_id(&self, id: &str) -> Result<()> {
         users::Entity::delete_by_id(id)
             .exec(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("删除失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorDeleteFailed), e))?;
 
         Ok(())
     }
@@ -135,14 +137,14 @@ impl UserRepository {
             .filter(users::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("查询失败: {}", e))?
-            .ok_or_else(|| anyhow::anyhow!("用户不存在或已删除"))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorQueryFailed), e))?
+            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorUserNotFoundOrDeleted)))?;
 
         let mut user_active: users::ActiveModel = user.into();
         user_active.deleted_at = Set(Some(chrono::Utc::now().timestamp()));
         user_active.update(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("软删除失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorSoftDeleteFailed), e))?;
 
         Ok(())
     }

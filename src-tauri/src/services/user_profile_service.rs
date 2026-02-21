@@ -1,7 +1,7 @@
 use anyhow::Result;
 use anyhow::anyhow;
 
-use crate::database::repositories::{UserProfileRepository, UserAuthRepository};
+use crate::database::repositories::{UserProfileRepository, UserAuthRepository, AppSettingsRepository};
 use crate::database::DbPool;
 use crate::models::user_profile::*;
 use crate::services::api_client::ApiClient;
@@ -46,11 +46,12 @@ impl UserProfileService {
 
     /// 创建临时 API 客户端（带 token）
     fn create_temp_client(&self, user: &crate::models::user_auth::UserAuth) -> Result<ApiClient> {
-        // 获取语言设置
+        // 从 app_settings 获取服务器地址和语言设置
         let settings_repo = AppSettingsRepository::new(self.pool.clone());
+        let server_url = settings_repo.get_server_url()?;
         let language = settings_repo.get_language().ok();
 
-        let client = ApiClient::new(user.server_url.clone(), language)?;
+        let client = ApiClient::new(server_url, language)?;
         let token = crate::services::CryptoService::decrypt_token(
             &user.access_token_encrypted,
             &user.device_id

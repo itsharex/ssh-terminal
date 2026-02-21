@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// 统一同步响应
 #[derive(Debug, Serialize)]

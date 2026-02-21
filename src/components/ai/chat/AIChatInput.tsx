@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,6 +10,7 @@ interface AIChatInputProps {
 }
 
 export function AIChatInput({ serverId }: AIChatInputProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [textareaHeight, setTextareaHeight] = useState('auto');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -95,7 +97,7 @@ export function AIChatInput({ serverId }: AIChatInputProps) {
         <Alert variant="default" className="pt-4 pb-2 px-3 relative flex items-center gap-1.5 [&>svg]:static [&>svg]:mt-0.5 [&>svg~*]:pl-0">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
           <AlertDescription className="text-xs leading-normal">
-            当前服务器离线。您可以继续询问通用技术问题，但无法执行服务器相关操作。
+            {t('ai.chat.inputOfflineHint')}
           </AlertDescription>
         </Alert>
       )}
@@ -126,8 +128,8 @@ export function AIChatInput({ serverId }: AIChatInputProps) {
             onKeyDown={handleKeyDown}
             placeholder={
               isOnline
-                ? '输入你的问题... (Enter 发送, Shift+Enter 换行)'
-                : '输入消息（离线模式）... (Enter 发送, Shift+Enter 换行)'
+                ? t('ai.chat.inputPlaceholderOnline')
+                : t('ai.chat.inputPlaceholderOffline')
             }
             style={{
               height: textareaHeight,
@@ -150,7 +152,7 @@ export function AIChatInput({ serverId }: AIChatInputProps) {
 
         {/* 字符计数 */}
         <div className="absolute bottom-1.5 left-3 text-xs text-muted-foreground pointer-events-none">
-          {input.length} 字符
+          {t('ai.chat.inputCharacterCount', { count: input.length })}
         </div>
       </div>
     </div>

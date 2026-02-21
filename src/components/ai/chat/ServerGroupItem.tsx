@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ServerConversationGroup } from '@/types/ai';
 import { ChevronDown, ChevronRight, Server, Activity, MessageSquare } from 'lucide-react';
@@ -17,6 +18,7 @@ interface ServerGroupItemProps {
 }
 
 export function ServerGroupItem({ group }: ServerGroupItemProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
   const { selectServer, getServerActiveConnectionCount, loadServerGroups } = useAIStore();
@@ -27,7 +29,7 @@ export function ServerGroupItem({ group }: ServerGroupItemProps) {
       await loadServerGroups();
     } catch (error) {
       console.error('刷新列表失败:', error);
-      toast.error('刷新列表失败');
+      toast.error(t('ai.conversation.refreshFailed'));
     }
   };
 
@@ -62,13 +64,13 @@ export function ServerGroupItem({ group }: ServerGroupItemProps) {
             {activeConnectionCount > 0 && (
               <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                 <Activity className="w-3 h-3" />
-                <span>{activeConnectionCount} 在线</span>
+                <span>{activeConnectionCount} {t('ai.status.online')}</span>
               </div>
             )}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
             {group.serverIdentity.username}@{group.serverIdentity.host}:{group.serverIdentity.port}
-            {' '}• {group.totalConversations} 个对话
+            {' '}• {t('ai.conversation.totalCount', { count: group.totalConversations })}
           </div>
         </div>
 
@@ -79,7 +81,7 @@ export function ServerGroupItem({ group }: ServerGroupItemProps) {
             handleSelectServer();
           }}
           className="opacity-0 group-hover:opacity-100 transition-opacity"
-          title="开始新对话"
+          title={t('ai.chat.newConversation')}
         >
           <MessageSquare className="w-4 h-4 text-muted-foreground hover:text-primary cursor-pointer" />
         </div>

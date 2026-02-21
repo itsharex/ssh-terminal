@@ -1,6 +1,7 @@
 use anyhow::Result;
 use sea_orm::{DatabaseConnection, EntityTrait, QueryFilter, ColumnTrait, ActiveModelTrait, Set};
 use crate::domain::entities::user_profiles::{self, Entity as UserProfile};
+use crate::utils::i18n::{t, MessageKey};
 
 pub struct UserProfileRepository {
     db: DatabaseConnection,
@@ -62,23 +63,23 @@ impl UserProfileRepository {
         UserProfile::insert(active_model)
             .exec(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("插入失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorInsertFailed), e))?;
 
         // 查询返回的完整 profile 对象
         let result = UserProfile::find_by_id(profile_id)
             .one(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("查询失败: {}", e))?
-            .ok_or_else(|| anyhow::anyhow!("插入后查询失败"))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorQueryFailed), e))?
+            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorInsertQueryFailed)))?;
 
         Ok(result)
     }
 
     /// 更新用户资料
-    pub async fn update(&self, user_id: &str, mut profile: user_profiles::Model) -> Result<user_profiles::Model> {
+    pub async fn update(&self, user_id: &str, profile: user_profiles::Model) -> Result<user_profiles::Model> {
         let existing = self.find_by_user_id(user_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("User profile not found"))?;
+            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorUserProfileNotFound)))?;
 
         // 在应用层设置当前时间
         let now = chrono::Utc::now().timestamp();
@@ -107,7 +108,7 @@ impl UserProfileRepository {
     pub async fn soft_delete(&self, user_id: &str) -> Result<()> {
         let existing = self.find_by_user_id(user_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("User profile not found"))?;
+            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorUserProfileNotFound)))?;
 
         let now = chrono::Utc::now().timestamp();
         let active_model = user_profiles::ActiveModel {

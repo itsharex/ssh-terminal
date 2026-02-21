@@ -1,10 +1,12 @@
 use axum::{extract::{Path, Query, State}, Json};
 use validator::Validate;
+use crate::error::ErrorResponse;
 use crate::domain::dto::ssh::*;
 use crate::domain::vo::{ApiResponse, ssh::*};
 use crate::repositories::ssh_session_repository::SshSessionRepository;
 use crate::domain::entities::ssh_sessions;
-use crate::infra::middleware::UserId;
+use crate::infra::middleware::{UserId, Language};
+use crate::utils::i18n::{t, MessageKey};
 use crate::AppState;
 use chrono::Utc;
 
@@ -12,15 +14,15 @@ use chrono::Utc;
 pub async fn create_session_handler(
     State(state): State<AppState>,
     UserId(user_id): UserId,
-    Json(mut request): Json<CreateSshSessionRequest>,
+    Language(language): Language,
+    Json(request): Json<CreateSshSessionRequest>,
 ) -> Result<Json<ApiResponse<SshSessionVO>>, axum::http::StatusCode> {
-    // 验证请求
-    if let Err(errors) = request.validate() {
+    if let Err(_errors) = request.validate() {
         return Err(axum::http::StatusCode::BAD_REQUEST);
     }
 
     let repo = SshSessionRepository::new(state.pool);
-    
+
     let session = ssh_sessions::Model {
         id: uuid::Uuid::new_v4().to_string(),
         user_id: user_id.clone(),
@@ -42,11 +44,12 @@ pub async fn create_session_handler(
         updated_at: Utc::now().timestamp(),
         deleted_at: None,
     };
-    
+
     match repo.create(session).await {
         Ok(created) => {
             let vo = session_to_vo(created);
-            Ok(Json(ApiResponse::success(vo)))
+            let message = t(Some(language.as_str()), MessageKey::SuccessCreateSession);
+            Ok(Json(ApiResponse::success_with_message(vo, &message)))
         }
         Err(e) => {
             tracing::error!("Failed to create SSH session: {}", e);
@@ -59,29 +62,31 @@ pub async fn create_session_handler(
 pub async fn list_sessions_handler(
     State(state): State<AppState>,
     UserId(user_id): UserId,
+    Language(language): Language,
     Query(params): Query<ListSshSessionsRequest>,
 ) -> Result<Json<ApiResponse<PaginatedSshSessions>>, axum::http::StatusCode> {
     let repo = SshSessionRepository::new(state.pool);
-    
+
     match repo.find_by_user_id(&user_id).await {
         Ok(sessions) => {
             let page = params.page.unwrap_or(1);
             let page_size = params.page_size.unwrap_or(20);
             let total = sessions.len() as u64;
-            
+
             let vo_list: Vec<SshSessionVO> = sessions
                 .into_iter()
                 .map(session_to_vo)
                 .collect();
-            
+
             let paginated = PaginatedSshSessions {
                 data: vo_list,
                 total,
                 page,
                 page_size,
             };
-            
-            Ok(Json(ApiResponse::success(paginated)))
+
+            let message = t(Some(language.as_str()), MessageKey::SuccessListSessions);
+            Ok(Json(ApiResponse::success_with_message(paginated, &message)))
         }
         Err(e) => {
             tracing::error!("Failed to list SSH sessions: {}", e);
@@ -94,18 +99,20 @@ pub async fn list_sessions_handler(
 pub async fn get_session_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<ApiResponse<SshSessionVO>>, axum::http::StatusCode> {
+    Language(language): Language,
+) -> Result<Json<ApiResponse<SshSessionVO>>, ErrorResponse> {
     let repo = SshSessionRepository::new(state.pool);
-    
+
     match repo.find_by_id(&id).await {
         Ok(Some(session)) => {
             let vo = session_to_vo(session);
-            Ok(Json(ApiResponse::success(vo)))
+            let message = t(Some(language.as_str()), MessageKey::SuccessGetSession);
+            Ok(Json(ApiResponse::success_with_message(vo, &message)))
         }
-        Ok(None) => Err(axum::http::StatusCode::NOT_FOUND),
+        Ok(None) => Err(ErrorResponse::not_found(t(None, MessageKey::ErrorSshSessionNotFound))),
         Err(e) => {
             tracing::error!("Failed to get SSH session: {}", e);
-            Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+            Err(ErrorResponse::internal(e.to_string()))
         }
     }
 }
@@ -114,6 +121,7 @@ pub async fn get_session_handler(
 pub async fn update_session_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    Language(language): Language,
     Json(request): Json<UpdateSshSessionRequest>,
 ) -> Result<Json<ApiResponse<SshSessionVO>>, axum::http::StatusCode> {
     let repo = SshSessionRepository::new(state.pool);
@@ -145,7 +153,8 @@ pub async fn update_session_handler(
     match repo.update(&id, updated).await {
         Ok(session) => {
             let vo = session_to_vo(session);
-            Ok(Json(ApiResponse::success(vo)))
+            let message = t(Some(language.as_str()), MessageKey::SuccessUpdateSession);
+            Ok(Json(ApiResponse::success_with_message(vo, &message)))
         }
         Err(e) => {
             tracing::error!("Failed to update SSH session: {}", e);
@@ -158,14 +167,18 @@ pub async fn update_session_handler(
 pub async fn delete_session_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<ApiResponse<()>>, axum::http::StatusCode> {
+    Language(language): Language,
+) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
     let repo = SshSessionRepository::new(state.pool);
-    
+
     match repo.soft_delete(&id).await {
-        Ok(_) => Ok(Json(ApiResponse::success(()))),
+        Ok(_) => {
+            let message = t(Some(language.as_str()), MessageKey::SuccessDeleteSession);
+            Ok(Json(ApiResponse::success_with_message((), &message)))
+        }
         Err(e) => {
             tracing::error!("Failed to delete SSH session: {}", e);
-            Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+            Err(ErrorResponse::internal(t(Some(language.as_str()), MessageKey::ErrorDeleteFailed)))
         }
     }
 }

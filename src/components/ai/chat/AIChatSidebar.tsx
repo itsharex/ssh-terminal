@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Plus } from 'lucide-react';
@@ -12,6 +13,7 @@ import { useAIStore } from '@/store/aiStore';
 import { ServerList } from './ServerList';
 
 export function AIChatSidebar({ onNewChat }: { onNewChat: () => void }) {
+  const { t } = useTranslation();
   const { serverGroups } = useAIStore();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -31,13 +33,13 @@ export function AIChatSidebar({ onNewChat }: { onNewChat: () => void }) {
       <div className="p-4 border-b border-border space-y-3 shrink-0">
         <Button onClick={onNewChat} className="w-full" size="sm">
           <Plus className="w-4 h-4 mr-2" />
-          新建对话
+          {t('ai.chat.newChat')}
         </Button>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="搜索服务器..."
+            placeholder={t('ai.chat.searchServer')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"

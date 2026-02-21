@@ -2,6 +2,7 @@ use anyhow::Result;
 use sea_orm::{DatabaseConnection, EntityTrait, ActiveModelTrait, QueryFilter, ColumnTrait, QueryOrder};
 use sea_orm::prelude::Expr;
 use crate::domain::entities::ssh_sessions::{self, Entity as SshSession};
+use crate::utils::i18n::{t, MessageKey};
 
 pub struct SshSessionRepository {
     db: DatabaseConnection,
@@ -85,16 +86,16 @@ impl SshSessionRepository {
         let result = SshSession::find_by_id(session_id)
             .one(&self.db)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("插入后查询失败"))?;
+            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorInsertQueryFailed)))?;
 
         Ok(result)
     }
 
     /// 更新会话
-    pub async fn update(&self, id: &str, mut session: ssh_sessions::Model) -> Result<ssh_sessions::Model> {
+    pub async fn update(&self, id: &str, session: ssh_sessions::Model) -> Result<ssh_sessions::Model> {
         let existing = self.find_by_id(id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("SSH session not found"))?;
+            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorSshSessionNotFound)))?;
 
         // 在应用层设置当前时间
         let now = chrono::Utc::now().timestamp();
@@ -129,7 +130,7 @@ impl SshSessionRepository {
     pub async fn soft_delete(&self, id: &str) -> Result<()> {
         let existing = self.find_by_id(id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("SSH session not found"))?;
+            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorSshSessionNotFound)))?;
 
         let now = chrono::Utc::now().timestamp();
         let active_model = ssh_sessions::ActiveModel {
@@ -168,7 +169,7 @@ impl SshSessionRepository {
             .col_expr(ssh_sessions::Column::DeletedAt, Expr::val(now).into())
             .exec(&self.db)
             .await
-            .map_err(|e| anyhow::anyhow!("批量软删除失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}, {}", t(None, MessageKey::ErrorBatchSoftDeleteFailed), e))?;
 
         Ok(result.rows_affected)
     }
@@ -177,7 +178,7 @@ impl SshSessionRepository {
     pub async fn soft_delete_with_time(&self, id: &str, delete_time: i64) -> Result<()> {
         let existing = self.find_by_id(id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("SSH session not found"))?;
+            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorSshSessionNotFound)))?;
 
         let active_model = ssh_sessions::ActiveModel {
             id: sea_orm::Set(existing.id),
@@ -206,6 +207,7 @@ impl SshSessionRepository {
     }
 
     /// 批量创建会话
+    #[allow(dead_code)]
     pub async fn batch_create(&self, sessions: Vec<ssh_sessions::Model>) -> Result<Vec<ssh_sessions::Model>> {
         let mut results = Vec::new();
         

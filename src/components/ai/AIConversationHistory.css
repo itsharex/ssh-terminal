@@ -130,6 +130,9 @@
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
   margin-top: 0.125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .meta-icon {

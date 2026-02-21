@@ -1,4 +1,4 @@
-﻿import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +13,6 @@ import {
 } from "lucide-react";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { cn } from "@/lib/utils";
-import { UserArea } from "@/components/user/UserArea";
-import { useAuthStore } from "@/store/authStore";
 import { useTranslation } from 'react-i18next';
 
 interface NavigationItem {
@@ -31,7 +29,6 @@ interface NavigationSection {
 export function Sidebar() {
   const { t } = useTranslation();
   const { isCollapsed, toggleSidebar } = useSidebarStore();
-  const { isAuthenticated } = useAuthStore();
 
   const navigationItems: NavigationSection[] = [
     {
@@ -146,19 +143,6 @@ export function Sidebar() {
           ))}
         </div>
       </nav>
-
-      {/* Status Section */}
-      <div className="p-4 border-t border-border">
-        {isCollapsed ? (
-          // 折叠状态：显示简单的状态
-          <div className="text-xs text-muted-foreground text-center">
-            {isAuthenticated ? "✓" : "🔌"}
-          </div>
-        ) : (
-          // 展开状态：显示用户区域
-          <UserArea />
-        )}
-      </div>
     </aside>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FolderOpen } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SessionCard } from '@/components/session/SessionCard';
 import { SessionToolbar } from '@/components/session/SessionToolbar';
 import { SaveSessionDialog } from '@/components/session/SaveSessionDialog';
@@ -12,6 +13,7 @@ import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
 
 export function SessionManager() {
+  const { t } = useTranslation();
   const location = useLocation();
   const { sessions, loadSessions, createSession, getSessionConfig } = useSessionStore();
   const { config: terminalConfig } = useTerminalConfigStore();
@@ -115,7 +117,7 @@ export function SessionManager() {
     const grouped: Record<string, typeof filteredSessions> = {};
 
     filteredSessions.forEach(session => {
-      const group = session.group || '默认分组';
+      const group = session.group || t('session.defaultGroup');
       if (!grouped[group]) {
         grouped[group] = [];
       }
@@ -146,15 +148,15 @@ export function SessionManager() {
             <FolderOpen className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
           </div>
           <h2 className="text-lg sm:text-xl font-semibold mb-2">
-            {search || statusFilter !== 'all' ? '没有匹配的会话' : '没有保存的会话'}
+            {search || statusFilter !== 'all' ? t('sessions.empty.noMatches') : t('sessions.empty.noSessions')}
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground">
             {search || statusFilter !== 'all'
-              ? '尝试调整搜索条件或筛选器'
-              : '创建你的第一个 SSH 会话配置'}
+              ? t('sessions.empty.noMatchesHint')
+              : t('sessions.empty.noSessionsHint')}
           </p>
           <p className="text-xs sm:text-sm text-muted-foreground mt-2">
-            前往 <span className="font-medium">终端</span> 页面创建新连接
+            {t('sessions.empty.navigateToTerminal')}
           </p>
         </div>
       ) : (

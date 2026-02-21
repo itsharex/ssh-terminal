@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 pub struct UserAuth {
     pub id: i64,
     pub user_id: String,
-    pub server_url: String,
     pub email: String,
     pub password_encrypted: String,
     pub password_nonce: String,

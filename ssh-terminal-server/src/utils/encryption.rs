@@ -7,10 +7,12 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 
 /// 服务器端加密服务
 /// 用于二次加密客户端已加密的 SSH 认证信息
+#[allow(dead_code)]
 pub struct ServerEncryptionService {
     cipher: Aes256Gcm,
 }
 
+#[allow(dead_code)]
 impl ServerEncryptionService {
     /// 从环境变量读取密钥
     pub fn from_env() -> Result<Self> {

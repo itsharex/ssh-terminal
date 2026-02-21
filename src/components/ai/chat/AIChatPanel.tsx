@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Trash2, MessageSquare, AlertCircle, Settings, Terminal, ArrowDown, ExternalLink, Send } from 'lucide-react';
@@ -11,6 +12,7 @@ import { AILoadingIndicator } from './AILoadingIndicator';
 import { playSound, SoundEffect } from '@/lib/sounds';
 
 export function AIChatPanel() {
+  const { t } = useTranslation();
   const {
     isChatOpen,
     toggleChat,
@@ -204,9 +206,9 @@ export function AIChatPanel() {
       <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
         <Terminal className="h-8 w-8 text-muted-foreground" />
       </div>
-      <h3 className="font-semibold mb-2">无终端连接</h3>
+      <h3 className="font-semibold mb-2">{t('ai.chat.noConnection')}</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        请先打开一个终端连接，然后才能与 AI 对话
+        {t('ai.chat.noConnectionHint')}
       </p>
     </div>
   );
@@ -217,13 +219,13 @@ export function AIChatPanel() {
       <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
         <AlertCircle className="h-8 w-8 text-muted-foreground" />
       </div>
-      <h3 className="font-semibold mb-2">未配置 AI 服务</h3>
+      <h3 className="font-semibold mb-2">{t('ai.chat.noConfig')}</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        请先在设置中配置并启用 AI Provider
+        {t('ai.chat.noConfigHint')}
       </p>
       <Button onClick={() => window.location.href = '/settings'}>
         <Settings className="h-4 w-4 mr-2" />
-        前往设置
+        {t('ai.chat.goToSettings')}
       </Button>
     </div>
   );
@@ -234,9 +236,9 @@ export function AIChatPanel() {
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
         <MessageSquare className="h-8 w-8 text-primary/60" />
       </div>
-      <h3 className="font-semibold mb-2">开始与 AI 对话</h3>
+      <h3 className="font-semibold mb-2">{t('ai.chat.startConversation')}</h3>
       <p className="text-sm text-muted-foreground">
-        你可以询问 Linux 命令、系统操作、脚本编写等问题
+        {t('ai.chat.startConversationHint')}
       </p>
     </div>
   );
@@ -247,8 +249,8 @@ export function AIChatPanel() {
   return (
     <Sheet open={isChatOpen} onOpenChange={toggleChat}>
       <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
-        <SheetTitle className="sr-only">AI 助手</SheetTitle>
-        <SheetDescription className="sr-only">与 AI 助手进行对话，询问命令解释、错误分析等问题</SheetDescription>
+        <SheetTitle className="sr-only">{t('ai.chat.assistant')}</SheetTitle>
+        <SheetDescription className="sr-only">{t('ai.chat.assistantDescription')}</SheetDescription>
 
         {/* 渐变装饰条 */}
         <div className="h-1 bg-gradient-to-r from-blue-500/40 via-purple-500/60 to-pink-500/40" />
@@ -256,24 +258,24 @@ export function AIChatPanel() {
         {/* 头部 */}
         <div className="h-14 border-b flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <span className="text-base font-semibold">AI 助手</span>
+            <span className="text-base font-semibold">{t('ai.chat.assistant')}</span>
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleGoToFullPage}
-              title="查看完整历史"
+              title={t('ai.chat.viewFullHistory')}
             >
               <ExternalLink className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">完整界面</span>
+              <span className="hidden sm:inline">{t('ai.chat.fullInterface')}</span>
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleClear}
               disabled={!currentServerId || messages.length === 0}
-              title="清空聊天记录"
+              title={t('ai.chat.clearHistory')}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -352,7 +354,7 @@ export function AIChatPanel() {
                         }
                       }
                     }}
-                    placeholder="输入你的问题... (Enter 发送, Shift+Enter 换行)"
+                    placeholder={t('ai.chat.inputPlaceholderOnline')}
                     style={{
                       height: textareaHeight,
                       maxHeight: '224px', // 7行 × 32px/行 = 224px
@@ -374,7 +376,7 @@ export function AIChatPanel() {
 
                 {/* 字符计数 */}
                 <div className="absolute bottom-1.5 left-3 text-xs text-muted-foreground pointer-events-none">
-                  {input.length} 字符
+                  {t('ai.chat.inputCharacterCount', { count: input.length })}
                 </div>
               </div>
             </div>

@@ -1,4 +1,5 @@
 use crate::config::database::{DatabaseConfig, DatabaseType};
+use crate::utils::i18n::{t, t_with_vars, MessageKey};
 use sea_orm::{
     ConnectionTrait, Database, DatabaseConnection, DbBackend, EntityName, EntityTrait, ConnectOptions, Schema,
     Statement,
@@ -17,7 +18,7 @@ const SQLITE_SQL: &str = include_str!("../docs/sql/sqlite.sql");
 pub async fn create_pool(config: &DatabaseConfig) -> anyhow::Result<DbPool> {
     let url = config
         .build_url()
-        .map_err(|e| anyhow::anyhow!("数据库配置错误: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorDatabaseConfigError), e))?;
 
     tracing::debug!("数据库连接 URL: {}", url);
 
@@ -34,7 +35,7 @@ pub async fn create_pool(config: &DatabaseConfig) -> anyhow::Result<DbPool> {
 
     let pool = Database::connect(opt)
         .await
-        .map_err(|e| anyhow::anyhow!("数据库连接失败: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorDatabaseConnectionFailed), e))?;
 
     tracing::info!("已连接到数据库: {}", sanitize_url(&url));
 
@@ -59,7 +60,7 @@ pub async fn health_check(pool: &DbPool) -> anyhow::Result<()> {
     // 使用官方推荐的 ping 方法
     pool.ping()
         .await
-        .map_err(|e| anyhow::anyhow!("数据库健康检查失败: {}", e))
+        .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorDatabaseHealthCheckFailed), e))
 }
 
 /// 初始化数据库和表结构
@@ -104,20 +105,20 @@ async fn init_mysql_database(config: &DatabaseConfig) -> anyhow::Result<()> {
     let database_name = config
         .database
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("MySQL 需要配置 database.database"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorMysqlDatabaseRequired)))?;
 
     let host = config
         .host
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("MySQL 需要配置 database.host"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorMysqlHostRequired)))?;
     let user = config
         .user
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("MySQL 需要配置 database.user"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorMysqlUserRequired)))?;
     let password = config
         .password
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("MySQL 需要配置 database.password"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorMysqlPasswordRequired)))?;
 
     // 连接到 MySQL 服务器（不指定数据库）
     let url = format!(
@@ -135,7 +136,7 @@ async fn init_mysql_database(config: &DatabaseConfig) -> anyhow::Result<()> {
 
     let conn = Database::connect(opt)
         .await
-        .map_err(|e| anyhow::anyhow!("连接 MySQL 服务器失败: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorMysqlConnectionFailed), e))?;
 
     // 检查数据库是否存在，不存在则创建
     let query = format!(
@@ -148,7 +149,7 @@ async fn init_mysql_database(config: &DatabaseConfig) -> anyhow::Result<()> {
         query,
     ))
     .await
-    .map_err(|e| anyhow::anyhow!("创建 MySQL 数据库失败: {}", e))?;
+    .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorMysqlDatabaseCreateFailed), e))?;
 
     tracing::info!("✅ MySQL 数据库 '{}' 检查完成", database_name);
 
@@ -160,20 +161,20 @@ async fn init_postgresql_database(config: &DatabaseConfig) -> anyhow::Result<()>
     let database_name = config
         .database
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("PostgreSQL 需要配置 database.database"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorPostgresqlDatabaseRequired)))?;
 
     let host = config
         .host
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("PostgreSQL 需要配置 database.host"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorPostgresqlHostRequired)))?;
     let user = config
         .user
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("PostgreSQL 需要配置 database.user"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorPostgresqlUserRequired)))?;
     let password = config
         .password
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("PostgreSQL 需要配置 database.password"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorPostgresqlPasswordRequired)))?;
 
     // 连接到 PostgreSQL 默认数据库（postgres）
     let url = format!(
@@ -191,7 +192,7 @@ async fn init_postgresql_database(config: &DatabaseConfig) -> anyhow::Result<()>
 
     let conn = Database::connect(opt)
         .await
-        .map_err(|e| anyhow::anyhow!("连接 PostgreSQL 服务器失败: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorPostgresqlConnectionFailed), e))?;
 
     // 检查数据库是否存在，不存在则创建
     // PostgreSQL 不支持 CREATE DATABASE IF NOT EXISTS，需要先查询
@@ -223,7 +224,7 @@ async fn init_postgresql_database(config: &DatabaseConfig) -> anyhow::Result<()>
                 create_query,
             ))
             .await
-            .map_err(|e| anyhow::anyhow!("创建 PostgreSQL 数据库失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorPostgresqlDatabaseCreateFailed), e))?;
 
             tracing::info!("✅ PostgreSQL 数据库 '{}' 创建成功", database_name);
         }
@@ -237,14 +238,14 @@ async fn init_sqlite_database(config: &DatabaseConfig) -> anyhow::Result<()> {
     let path = config
         .path
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("SQLite 需要配置 database.path"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorSqlitePathRequired)))?;
 
     // 如果是相对路径，转换为绝对路径
     let absolute_path = if path.is_absolute() {
         path.clone()
     } else {
         std::env::current_dir()
-            .map_err(|e| anyhow::anyhow!("获取当前目录失败: {}", e))?
+            .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorGetCurrentDirFailed), e))?
             .join(path)
     };
 
@@ -255,7 +256,7 @@ async fn init_sqlite_database(config: &DatabaseConfig) -> anyhow::Result<()> {
         // 如果父目录不存在，则创建
         if !parent.exists() {
             std::fs::create_dir_all(parent)
-                .map_err(|e| anyhow::anyhow!("创建 SQLite 数据库目录失败: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorSqliteDirCreateFailed), e))?;
             tracing::info!("✅ SQLite 数据库目录创建成功: {}", parent.display());
         } else {
             tracing::info!("SQLite 数据库目录已存在: {}", parent.display());
@@ -265,7 +266,7 @@ async fn init_sqlite_database(config: &DatabaseConfig) -> anyhow::Result<()> {
     // 如果数据库文件不存在，创建空文件
     if !absolute_path.exists() {
         std::fs::File::create(&absolute_path)
-            .map_err(|e| anyhow::anyhow!("创建 SQLite 数据库文件失败: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorSqliteFileCreateFailed), e))?;
         tracing::info!("✅ SQLite 数据库文件创建成功: {}", absolute_path.display());
     } else {
         tracing::info!("SQLite 数据库文件已存在: {}", absolute_path.display());
@@ -313,7 +314,7 @@ where
             if err_msg.contains("already exists") || (err_msg.contains("table") && err_msg.contains("exists")) {
                 tracing::info!("✅ {}已存在", table_name);
             } else {
-                return Err(anyhow::anyhow!("创建{}失败: {}", table_name, e));
+                return Err(anyhow::anyhow!("{}: {}", t_with_vars(None, MessageKey::ErrorCreateTableFailed, &[("table", table_name)]), e));
             }
         }
     }

@@ -1,3 +1,5 @@
+#![recursion_limit = "512"]
+
 mod cli;
 mod config;
 mod db;
@@ -16,6 +18,7 @@ use axum::{
 use clap::Parser;
 use cli::CliArgs;
 use tower_http::cors::{Any, CorsLayer};
+use crate::utils::i18n::{t, MessageKey};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// 应用状态
@@ -76,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
     // 初始化 Redis 客户端
     let redis_client = infra::redis::redis_client::RedisClient::new(&config.redis.build_url())
         .await
-        .map_err(|e| anyhow::anyhow!("Redis 初始化失败: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisInitFailed), e))?;
 
     tracing::info!("Redis 连接池初始化成功");
 
@@ -151,6 +154,10 @@ async fn main() -> anyhow::Result<()> {
     // ========== 合并路由 ==========
     let app = public_routes
         .merge(protected_routes)
+        // 语言中间件（应用于所有路由）
+        .layer(axum::middleware::from_fn(
+            infra::middleware::language::language_middleware,
+        ))
         // CORS（应用于所有路由）
         .layer(
             CorsLayer::new()

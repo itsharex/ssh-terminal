@@ -1,10 +1,11 @@
 use axum::{extract::State, Json};
-use validator::Validate;
 use crate::domain::dto::user::UpdateProfileRequest;
 use crate::domain::vo::{ApiResponse, user::UserProfileResult};
 use crate::repositories::user_profile_repository::UserProfileRepository;
 use crate::domain::entities::user_profiles;
-use crate::infra::middleware::UserId;
+use crate::infra::middleware::{UserId, Language};
+use crate::utils::i18n::{t, MessageKey};
+use crate::error::ErrorResponse;
 use crate::AppState;
 use chrono::Utc;
 
@@ -12,20 +13,21 @@ use chrono::Utc;
 pub async fn get_profile_handler(
     State(state): State<AppState>,
     UserId(user_id): UserId,
+    Language(language): Language,
 ) -> Result<Json<ApiResponse<UserProfileResult>>, axum::http::StatusCode> {
     let repo = UserProfileRepository::new(state.pool.clone());
     let user_repo = crate::repositories::user_repository::UserRepository::new(state.pool);
 
     match repo.find_by_user_id(&user_id).await {
         Ok(Some(profile)) => {
-            // 获取用户 email（只获取未删除用户的邮箱）
             let email = match user_repo.get_email_by_id(&user_id).await {
                 Ok(Some(email)) => email,
                 Ok(None) => String::new(),
                 Err(_) => String::new(),
             };
             let vo = profile_to_result(profile, email);
-            Ok(Json(ApiResponse::success(vo)))
+            let message = t(Some(language.as_str()), MessageKey::SuccessGetProfile);
+            Ok(Json(ApiResponse::success_with_message(vo, &message)))
         }
         Ok(None) => Err(axum::http::StatusCode::NOT_FOUND),
         Err(e) => {
@@ -39,6 +41,7 @@ pub async fn get_profile_handler(
 pub async fn update_profile_handler(
     State(state): State<AppState>,
     UserId(user_id): UserId,
+    Language(language): Language,
     Json(request): Json<UpdateProfileRequest>,
 ) -> Result<Json<ApiResponse<UserProfileResult>>, axum::http::StatusCode> {
     let repo = UserProfileRepository::new(state.pool.clone());
@@ -70,14 +73,14 @@ pub async fn update_profile_handler(
             
             match repo.create(new_profile).await {
                 Ok(created) => {
-                    // 获取用户 email（只获取未删除用户的邮箱）
                     let email = match user_repo.get_email_by_id(&user_id).await {
                         Ok(Some(email)) => email,
                         Ok(None) => String::new(),
                         Err(_) => String::new(),
                     };
                     let vo = profile_to_result(created, email);
-                    return Ok(Json(ApiResponse::success(vo)));
+                    let message = t(Some(language.as_str()), MessageKey::SuccessCreateProfile);
+                    return Ok(Json(ApiResponse::success_with_message(vo, &message)));
                 }
                 Err(e) => {
                     tracing::error!("Failed to create user profile: {}", e);
@@ -103,14 +106,14 @@ pub async fn update_profile_handler(
     
     match repo.update(&user_id, updated).await {
         Ok(profile) => {
-            // 获取用户 email（只获取未删除用户的邮箱）
             let email = match user_repo.get_email_by_id(&user_id).await {
                 Ok(Some(email)) => email,
                 Ok(None) => String::new(),
                 Err(_) => String::new(),
             };
             let vo = profile_to_result(profile, email);
-            Ok(Json(ApiResponse::success(vo)))
+            let message = t(Some(language.as_str()), MessageKey::SuccessUpdateProfile);
+            Ok(Json(ApiResponse::success_with_message(vo, &message)))
         }
         Err(e) => {
             tracing::error!("Failed to update user profile: {}", e);
@@ -123,14 +126,18 @@ pub async fn update_profile_handler(
 pub async fn delete_profile_handler(
     State(state): State<AppState>,
     UserId(user_id): UserId,
-) -> Result<Json<ApiResponse<()>>, axum::http::StatusCode> {
+    Language(language): Language,
+) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
     let repo = UserProfileRepository::new(state.pool);
-    
+
     match repo.soft_delete(&user_id).await {
-        Ok(_) => Ok(Json(ApiResponse::success(()))),
+        Ok(_) => {
+            let message = t(Some(language.as_str()), MessageKey::SuccessDeleteProfile);
+            Ok(Json(ApiResponse::success_with_message((), &message)))
+        }
         Err(e) => {
             tracing::error!("Failed to delete user profile: {}", e);
-            Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+            Err(ErrorResponse::internal(t(Some(language.as_str()), MessageKey::ErrorDeleteFailed)))
         }
     }
 }

@@ -1,8 +1,9 @@
 use crate::AppState;
 use crate::repositories::user_repository::UserRepository;
+use crate::error::ErrorResponse;
+use crate::infra::middleware::UserId;
 use axum::{
     extract::{Request, State},
-    http::{HeaderMap, StatusCode},
     middleware::Next,
     response::Response,
 };
@@ -19,18 +20,18 @@ pub struct Claims {
 /// JWT 认证中间件
 pub async fn auth_middleware(
     State(state): State<AppState>,
-    headers: HeaderMap,
     mut req: Request,
     next: Next,
-) -> Result<Response, StatusCode> {
+) -> Result<Response, ErrorResponse> {
     // 1. 提取 Authorization header
+    let headers = req.headers();
     let auth_header = headers
         .get("Authorization")
         .and_then(|h| h.to_str().ok())
-        .ok_or(StatusCode::UNAUTHORIZED)?;
+        .ok_or_else(|| ErrorResponse::unauthorized("Missing authorization header"))?;
 
     if !auth_header.starts_with("Bearer ") {
-        return Err(StatusCode::UNAUTHORIZED);
+        return Err(ErrorResponse::unauthorized("Invalid authorization header format"));
     }
 
     let token = &auth_header[7..];
@@ -43,7 +44,7 @@ pub async fn auth_middleware(
         &DecodingKey::from_secret(jwt_secret.as_ref()),
         &Validation::default(),
     )
-    .map_err(|_| StatusCode::UNAUTHORIZED)?;
+    .map_err(|_| ErrorResponse::unauthorized("Invalid or expired token"))?;
 
     let user_id = &token_data.claims.sub;
 
@@ -52,15 +53,15 @@ pub async fn auth_middleware(
     let user = user_repo
         .find_by_id_raw(user_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| ErrorResponse::internal("Failed to verify user"))?;
 
     if user.map(|u| u.deleted_at.is_some()).unwrap_or(true) {
         // 用户不存在或已被删除
-        return Err(StatusCode::UNAUTHORIZED);
+        return Err(ErrorResponse::unauthorized("User not found or deleted"));
     }
 
     // 4. 将 user_id 添加到请求扩展
-    req.extensions_mut().insert(user_id.clone());
+    req.extensions_mut().insert(UserId(user_id.clone()));
 
     Ok(next.run(req).await)
 }

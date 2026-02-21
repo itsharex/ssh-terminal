@@ -6,12 +6,14 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAIStore } from '@/store/aiStore';
 import { AIChatLayout } from '@/components/ai/chat/AIChatLayout';
 import { playSound, SoundEffect } from '@/lib/sounds';
 
 export function AIChatPage() {
+  const { t } = useTranslation();
   const { conversationId, serverId } = useParams();
   const navigate = useNavigate();
   const {
@@ -56,7 +58,7 @@ export function AIChatPage() {
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-muted-foreground">加载中...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );

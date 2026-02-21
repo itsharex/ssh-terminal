@@ -1,4 +1,4 @@
-﻿{
+{
   "app": {
     "name": "SSH Terminal"
   },
@@ -23,6 +23,57 @@
     "settings": "设置",
     "logout": "登出",
     "login": "登录"
+  },
+  "auth": {
+    "login": {
+      "title": "登录账号",
+      "description": "登录以启用 SSH 会话云同步功能",
+      "button": "登录",
+      "loading": "登录中...",
+      "success": "登录成功",
+      "successDescription": "欢迎回来！",
+      "failed": "登录失败",
+      "fields": {
+        "email": "邮箱",
+        "emailPlaceholder": "your-email@example.com",
+        "password": "密码",
+        "passwordPlaceholder": "•••••••••"
+      }
+    },
+    "register": {
+      "title": "注册新账号",
+      "description": "注册账号以使用 SSH 会话云同步功能",
+      "button": "注册",
+      "loading": "注册中...",
+      "success": "注册成功",
+      "successDescription": "账号已创建，欢迎使用！",
+      "failed": "注册失败",
+      "fields": {
+        "email": "邮箱",
+        "emailPlaceholder": "your-email@example.com",
+        "password": "设置密码",
+        "passwordPlaceholder": "•••••••••"
+      }
+    },
+    "switch": {
+      "toRegister": "没有账号？去注册",
+      "toLogin": "已有账号？去登录"
+    },
+    "actions": {
+      "cancel": "取消"
+    },
+    "hints": {
+      "serverUrlConfig": "服务器地址可在设置中配置",
+      "minPasswordLength": "密码至少需要6个字符"
+    },
+    "error": {
+      "serverUrlNotSet": "请先在设置中配置服务器地址",
+      "networkError": "网络连接失败，请检查网络设置",
+      "invalidCredentials": "邮箱或密码错误",
+      "emailAlreadyExists": "该邮箱已被注册",
+      "weakPassword": "密码强度不足",
+      "unknownError": "未知错误，请稍后重试"
+    }
   },
   "terminal": {
     "newConnection": "新建连接",
@@ -314,10 +365,6 @@
       "passphrasePlaceholder": "如果私钥有密码保护",
       "terminalType": "终端类型",
       "terminalTypeHint": "指定终端模拟的类型，通常使用默认值即可"
-    },
-    "auth": {
-      "password": "密码",
-      "publicKey": "公钥"
     },
     "search": {
       "placeholder": "搜索会话..."
@@ -900,7 +947,46 @@
       "inputCharacterCount": "{{count}} 字符",
       "errorSendFailed": "发送失败:",
       "headerOnline": "在线",
-      "headerOffline": "离线"
+      "headerOffline": "离线",
+      "newConversation": "开始新的对话",
+      "openSidebar": "打开侧边栏",
+      "selectServerOrNew": "从左侧选择一个服务器，或创建新对话",
+      "clickToOpenSidebar": "点击上方按钮打开侧边栏选择服务器",
+      "newChat": "新建对话",
+      "searchServer": "搜索服务器...",
+      "noHistory": "暂无历史对话",
+      "clickToCreateNew": "点击上方按钮创建新对话",
+      "assistant": "AI 助手",
+      "assistantDescription": "与 AI 助手进行对话，询问命令解释、错误分析等问题",
+      "noConnection": "无终端连接",
+      "noConnectionHint": "请先打开一个终端连接，然后才能与 AI 对话",
+      "noConfig": "未配置 AI 服务",
+      "noConfigHint": "请先在设置中配置并启用 AI Provider",
+      "goToSettings": "前往设置",
+      "startConversation": "开始与 AI 对话",
+      "startConversationHint": "你可以询问 Linux 命令、系统操作、脚本编写等问题",
+      "viewFullHistory": "查看完整历史",
+      "fullInterface": "完整界面",
+      "clearHistory": "清空聊天记录"
+    },
+    "conversation": {
+      "archived": "(已归档)",
+      "messageCount": "{{count}} 条消息",
+      "totalCount": "{{count}} 个对话",
+      "actionExport": "导出",
+      "actionUnarchive": "取消归档",
+      "actionArchive": "归档",
+      "actionDelete": "删除",
+      "confirmDeleteMessage": "确定要删除这个对话吗？",
+      "confirmDeleteAction": "删除",
+      "deleteSuccess": "对话已删除",
+      "deleteFailed": "删除失败",
+      "exportSuccess": "导出成功",
+      "exportSuccessDescription": "文件已保存到下载文件夹: {{filename}}",
+      "exportFailed": "导出失败",
+      "archiveSuccess": "归档状态已更新",
+      "operationFailed": "操作失败",
+      "refreshFailed": "刷新列表失败"
     },
     "explain": {
       "noProvider": "请先在设置中配置并启用 AI Provider",
@@ -940,23 +1026,6 @@
       "actionAnalyzing": "分析中...",
       "actionRetry": "重新分析",
       "actionClose": "关闭"
-    },
-    "conversation": {
-      "archived": "(已归档)",
-      "messageCount": "条消息",
-      "actionExport": "导出",
-      "actionArchive": "归档",
-      "actionUnarchive": "取消归档",
-      "actionDelete": "删除",
-      "confirmDeleteMessage": "确定要删除这个对话吗？",
-      "confirmDeleteAction": "删除",
-      "deleteSuccess": "对话已删除",
-      "deleteFailed": "删除失败",
-      "exportSuccess": "导出成功",
-      "exportSuccessDescription": "文件已保存到下载文件夹: {{filename}}",
-      "exportFailed": "导出失败",
-      "archiveSuccess": "归档状态已更新",
-      "operationFailed": "操作失败"
     },
     "cache": {
       "title": "AI Provider 缓存管理",

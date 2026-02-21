@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AIHistoryManager } from '@/lib/ai/historyManager';
 import type { AIConversationMeta } from '@/types/ai';
 import {
@@ -40,6 +41,7 @@ export function AIConversationHistory({
   onSelectConversation,
   currentConversationId
 }: AIConversationHistoryProps) {
+  const { t, i18n } = useTranslation();
   const [conversations, setConversations] = useState<AIConversationMeta[]>([]);
   const [filteredConversations, setFilteredConversations] = useState<AIConversationMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,15 +174,16 @@ export function AIConversationHistory({
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const locale = i18n.language === 'zh-CN' ? 'zh-CN' : 'en-US';
 
     if (diffDays === 0) {
-      return '今天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      return `${t('date.justNow')} ${date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffDays === 1) {
-      return '昨天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      return `${t('date.yesterday')} ${date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffDays < 7) {
-      return `${diffDays} 天前`;
+      return t('date.daysAgo', { days: diffDays });
     } else {
-      return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
     }
   };
 
@@ -244,7 +247,7 @@ export function AIConversationHistory({
                           <Clock className="meta-icon" />
                           <span>{formatDate(conv.updatedAt)}</span>
                           <span>•</span>
-                          <span>{conv.messageCount} 条消息</span>
+                          <span>{t('ai.conversation.messageCount', { count: conv.messageCount })}</span>
                         </div>
                       </div>
                     </>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,6 +21,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ isOpen, onClose }: LoginFormProps) {
+  const { t } = useTranslation();
   const { login, register, isLoading, clearError } = useAuthStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -33,14 +35,14 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
       if (mode === 'login') {
         await login({ email, password });
         playSound(SoundEffect.SUCCESS);
-        toast.success('登录成功', {
-          description: '欢迎回来！',
+        toast.success(t('auth.login.success'), {
+          description: t('auth.login.successDescription'),
         });
       } else {
         await register({ email, password });
         playSound(SoundEffect.SUCCESS);
-        toast.success('注册成功', {
-          description: '账号已创建，欢迎使用！',
+        toast.success(t('auth.register.success'), {
+          description: t('auth.register.successDescription'),
         });
       }
       onClose();
@@ -51,8 +53,8 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
     } catch (error) {
       // 错误已经在 store 中设置了，这里显示 toast
       playSound(SoundEffect.ERROR);
-      const errorMessage = error instanceof Error ? error.message : '操作失败';
-      toast.error(mode === 'login' ? '登录失败' : '注册失败', {
+      const errorMessage = error instanceof Error ? error.message : t('auth.error.unknownError');
+      toast.error(mode === 'login' ? t('auth.login.failed') : t('auth.register.failed'), {
         description: errorMessage,
       });
       console.error('Auth failed:', error);
@@ -78,21 +80,19 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{mode === 'login' ? '登录账号' : '注册新账号'}</DialogTitle>
+          <DialogTitle>{mode === 'login' ? t('auth.login.title') : t('auth.register.title')}</DialogTitle>
           <DialogDescription>
-            {mode === 'login'
-              ? '登录以启用 SSH 会话云同步功能'
-              : '注册账号以使用 SSH 会话云同步功能'}
+            {mode === 'login' ? t('auth.login.description') : t('auth.register.description')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">邮箱</Label>
+            <Label htmlFor="email">{t(`auth.${mode}.fields.email`)}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="your-email@example.com"
+              placeholder={t(`auth.${mode}.fields.emailPlaceholder`)}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -100,13 +100,11 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">
-              {mode === 'login' ? '密码' : '设置密码'}
-            </Label>
+            <Label htmlFor="password">{t(`auth.${mode}.fields.password`)}</Label>
             <Input
               id="password"
               type="password"
-              placeholder="•••••••••"
+              placeholder={t(`auth.${mode}.fields.passwordPlaceholder`)}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -121,25 +119,23 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
               onClick={handleSwitchMode}
               className="text-sm"
             >
-              {mode === 'login'
-                ? '没有账号？去注册'
-                : '已有账号？去登录'}
+              {mode === 'login' ? t('auth.switch.toRegister') : t('auth.switch.toLogin')}
             </Button>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={handleClose}>
-                取消
+                {t('auth.actions.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading
-                  ? (mode === 'login' ? '登录中...' : '注册中...')
-                  : (mode === 'login' ? '登录' : '注册')}
+                  ? t(`auth.${mode}.loading`)
+                  : t(`auth.${mode}.button`)}
               </Button>
             </div>
           </div>
         </form>
 
         <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-          服务器地址可在设置中配置
+          {t('auth.hints.serverUrlConfig')}
         </div>
       </DialogContent>
     </Dialog>

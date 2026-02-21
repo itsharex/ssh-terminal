@@ -39,13 +39,13 @@ impl AppSettingsRepository {
     pub fn get_server_url(&self) -> Result<String> {
         let conn = self.get_conn()?;
 
-        let server_url: String = conn.query_row(
+        let server_url: Option<String> = conn.query_row(
             "SELECT default_server_url FROM app_settings WHERE id = 1",
             [],
             |row| row.get(0),
         )?;
 
-        Ok(server_url)
+        server_url.ok_or_else(|| anyhow::anyhow!("Server URL not configured"))
     }
 
     /// 更新默认服务器地址
@@ -151,8 +151,9 @@ impl AppSettingsRepository {
             "#,
             [],
             |row| {
+                let server_url: Option<String> = row.get(0)?;
                 Ok(AppSettings {
-                    server_url: row.get(0)?,
+                    server_url: server_url.unwrap_or_default(),
                     auto_sync_enabled: row.get::<_, i64>(1)? == 1,
                     sync_interval_minutes: row.get(2)?,
                     theme: row.get(3)?,

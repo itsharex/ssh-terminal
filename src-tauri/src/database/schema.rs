@@ -14,7 +14,6 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS user_auth (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL UNIQUE,
-            server_url TEXT NOT NULL,
             email TEXT NOT NULL,
             password_encrypted TEXT NOT NULL,
             password_nonce TEXT NOT NULL,
@@ -109,7 +108,7 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
         -- ==========================================
         CREATE TABLE IF NOT EXISTS app_settings (
             id INTEGER PRIMARY KEY,
-            default_server_url TEXT NOT NULL DEFAULT 'http://localhost:3000',
+            default_server_url TEXT,  -- 改为可为 NULL
             auto_sync_enabled BOOLEAN DEFAULT 0,
             sync_interval_minutes INTEGER DEFAULT 5,
             theme TEXT DEFAULT 'system',
@@ -117,10 +116,10 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
             updated_at INTEGER NOT NULL
         );
 
-        -- 初始化默认配置
+        -- 初始化默认配置（default_server_url 为 NULL，需要用户首次使用时设置）
         INSERT OR IGNORE INTO app_settings
-            (id, default_server_url, auto_sync_enabled, sync_interval_minutes, theme, language, updated_at)
-        VALUES (1, 'http://localhost:3000', 0, 5, 'system', 'zh-CN', strftime('%s', 'now'));
+            (id, auto_sync_enabled, sync_interval_minutes, theme, language, updated_at)
+        VALUES (1, 0, 5, 'system', 'zh-CN', strftime('%s', 'now'));
         ",
     )?;
 

@@ -68,13 +68,13 @@ pub fn run() {
             app.manage(api_client_state.clone() as ApiClientStateWrapper);
 
             // 在应用启动时初始化 API Client
-            // 1. 获取服务器地址
+            // 1. 获取服务器地址（如果为空，使用默认值）
             let app_settings_repo = AppSettingsRepository::new(db_pool_for_init.clone());
             let server_url = match app_settings_repo.get_server_url() {
                 Ok(url) => url,
-                Err(e) => {
-                    tracing::warn!("Failed to get server_url: {}", e);
-                    return Err(e.into());
+                Err(_) => {
+                    tracing::warn!("Server URL not configured, using default: http://localhost:3000");
+                    "http://localhost:3000".to_string()
                 }
             };
 
@@ -87,7 +87,7 @@ pub fn run() {
                 let language = app_settings_repo.get_language().ok();
 
                 // 3. 创建并初始化 ApiClient
-                match ApiClient::new(server_url, language) {
+                match ApiClient::new(server_url.clone(), language) {
                     Ok(client) => {
                         // 4. 解密并设置 token
                         match CryptoService::decrypt_token(

@@ -29,12 +29,11 @@ impl UserAuthRepository {
 
         conn.execute(
             "INSERT INTO user_auth (
-                user_id, server_url, email, password_encrypted, password_nonce,
+                user_id, email, password_encrypted, password_nonce,
                 access_token_encrypted, refresh_token_encrypted, token_expires_at, device_id,
                 last_sync_at, is_current, created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
             ON CONFLICT(user_id) DO UPDATE SET
-                server_url = excluded.server_url,
                 email = excluded.email,
                 password_encrypted = excluded.password_encrypted,
                 password_nonce = excluded.password_nonce,
@@ -47,7 +46,6 @@ impl UserAuthRepository {
                 updated_at = excluded.updated_at",
             (
                 &auth.user_id,
-                &auth.server_url,
                 &auth.email,
                 &auth.password_encrypted,
                 &auth.password_nonce,
@@ -71,7 +69,7 @@ impl UserAuthRepository {
 
         let mut stmt = conn.prepare(
             "SELECT
-                id, user_id, server_url, email, password_encrypted, password_nonce,
+                id, user_id, email, password_encrypted, password_nonce,
                 access_token_encrypted, refresh_token_encrypted, token_expires_at, device_id,
                 last_sync_at, is_current, created_at, updated_at
             FROM user_auth
@@ -114,7 +112,7 @@ impl UserAuthRepository {
 
         let mut stmt = conn.prepare(
             "SELECT
-                id, user_id, server_url, email, password_encrypted, password_nonce,
+                id, user_id, email, password_encrypted, password_nonce,
                 access_token_encrypted, refresh_token_encrypted, token_expires_at, device_id,
                 last_sync_at, is_current, created_at, updated_at
             FROM user_auth
@@ -136,7 +134,7 @@ impl UserAuthRepository {
 
         let mut stmt = conn.prepare(
             "SELECT
-                id, user_id, server_url, email, password_encrypted, password_nonce,
+                id, user_id, email, password_encrypted, password_nonce,
                 access_token_encrypted, refresh_token_encrypted, token_expires_at, device_id,
                 last_sync_at, is_current, created_at, updated_at
             FROM user_auth
@@ -158,7 +156,7 @@ impl UserAuthRepository {
 
         let mut stmt = conn.prepare(
             "SELECT
-                id, user_id, server_url, email, password_encrypted, password_nonce,
+                id, user_id, email, password_encrypted, password_nonce,
                 access_token_encrypted, refresh_token_encrypted, token_expires_at, device_id,
                 last_sync_at, is_current, created_at, updated_at
             FROM user_auth
@@ -173,21 +171,20 @@ impl UserAuthRepository {
                 row.get::<_, String>(3)?,
                 row.get::<_, String>(4)?,
                 row.get::<_, String>(5)?,
-                row.get::<_, String>(6)?,
-                row.get::<_, Option<String>>(7)?,
-                row.get::<_, Option<i64>>(8)?,
-                row.get::<_, String>(9)?,
-                row.get::<_, Option<i64>>(10)?,
-                row.get::<_, i32>(11)?,
+                row.get::<_, Option<String>>(6)?,
+                row.get::<_, Option<i64>>(7)?,
+                row.get::<_, String>(8)?,
+                row.get::<_, Option<i64>>(9)?,
+                row.get::<_, i32>(10)?,
+                row.get::<_, i64>(11)?,
                 row.get::<_, i64>(12)?,
-                row.get::<_, i64>(13)?,
             ))
         })?;
 
         let mut auths = Vec::new();
         for row in rows {
             let (
-                id, user_id, server_url, email, password_encrypted, password_nonce,
+                id, user_id, email, password_encrypted, password_nonce,
                 access_token_encrypted, refresh_token_encrypted, token_expires_at, device_id,
                 last_sync_at, is_current, created_at, updated_at,
             ) = row?;
@@ -195,7 +192,6 @@ impl UserAuthRepository {
             auths.push(UserAuth {
                 id,
                 user_id,
-                server_url,
                 email,
                 password_encrypted,
                 password_nonce,
@@ -295,18 +291,17 @@ impl UserAuthRepository {
         Ok(UserAuth {
             id: row.get(0)?,
             user_id: row.get(1)?,
-            server_url: row.get(2)?,
-            email: row.get(3)?,
-            password_encrypted: row.get(4)?,
-            password_nonce: row.get(5)?,
-            access_token_encrypted: row.get(6)?,
-            refresh_token_encrypted: row.get(7)?,
-            token_expires_at: row.get(8)?,
-            device_id: row.get(9)?,
-            last_sync_at: row.get(10)?,
-            is_current: row.get::<_, i32>(11)? != 0,
-            created_at: row.get(12)?,
-            updated_at: row.get(13)?,
+            email: row.get(2)?,
+            password_encrypted: row.get(3)?,
+            password_nonce: row.get(4)?,
+            access_token_encrypted: row.get(5)?,
+            refresh_token_encrypted: row.get(6)?,
+            token_expires_at: row.get(7)?,
+            device_id: row.get(8)?,
+            last_sync_at: row.get(9)?,
+            is_current: row.get::<_, i32>(10)? != 0,
+            created_at: row.get(11)?,
+            updated_at: row.get(12)?,
         })
     }
 }

@@ -126,7 +126,6 @@ impl AuthService {
         let auth = UserAuth {
             id: 0,
             user_id: user_id.clone(),
-            server_url: server_url.clone(),
             email: req.email.clone(),
             password_encrypted: password_encrypted.0,
             password_nonce: password_encrypted.1,
@@ -223,7 +222,6 @@ impl AuthService {
         let auth = UserAuth {
             id: 0,
             user_id: server_result.user_id.clone(),
-            server_url: server_url.clone(),
             email: req.email.clone(),
             password_encrypted: password_encrypted.0,
             password_nonce: password_encrypted.1,
@@ -287,12 +285,13 @@ impl AuthService {
             .clone()
             .unwrap_or_default();
 
-        // 获取语言设置
+        // 从 app_settings 获取服务器地址和语言设置
         let settings_repo = AppSettingsRepository::new(self.pool.clone());
+        let server_url = settings_repo.get_server_url()?;
         let language = settings_repo.get_language().ok();
 
         // 创建 API 客户端
-        let api_client = ApiClient::new(auth.server_url.clone(), language)?;
+        let api_client = ApiClient::new(server_url.clone(), language)?;
 
         // 设置 access_token
         api_client.set_token(token.clone());
@@ -336,7 +335,7 @@ impl AuthService {
                     user_id: auth.user_id.clone(),
                     email: auth.email.clone(),
                     device_id: auth.device_id.clone(),
-                    server_url: auth.server_url.clone(),
+                    server_url,
                     expires_at: auth.token_expires_at.unwrap_or(0),
                 })
             }
@@ -366,7 +365,7 @@ impl AuthService {
                     user_id: auth.user_id.clone(),
                     email: auth.email.clone(),
                     device_id: auth.device_id.clone(),
-                    server_url: auth.server_url.clone(),
+                    server_url,
                     expires_at: auth.token_expires_at.unwrap_or(0),
                 })
             }
@@ -425,12 +424,13 @@ impl AuthService {
         let auth = repo.find_current()?
             .ok_or_else(|| anyhow!("Failed to find current user after switch"))?;
 
-        // 获取语言设置
+        // 从 app_settings 获取服务器地址和语言设置
         let settings_repo = AppSettingsRepository::new(self.pool.clone());
+        let server_url = settings_repo.get_server_url()?;
         let language = settings_repo.get_language().ok();
 
         // 创建并初始化 ApiClient
-        let api_client = ApiClient::new(auth.server_url.clone(), language)?;
+        let api_client = ApiClient::new(server_url.clone(), language)?;
 
         // 解密并设置 access_token
         let token = CryptoService::decrypt_token(&auth.access_token_encrypted, &auth.device_id)?;

@@ -4,6 +4,7 @@
  * 显示按服务器分组的历史对话列表
  */
 
+import { useTranslation } from 'react-i18next';
 import { ServerConversationGroup } from '@/types/ai';
 import { ServerGroupItem } from './ServerGroupItem';
 import { Server } from 'lucide-react';
@@ -13,13 +14,15 @@ interface ServerListProps {
 }
 
 export function ServerList({ groups }: ServerListProps) {
+  const { t } = useTranslation();
+
   if (groups.length === 0) {
     return (
       <div className="flex items-center justify-center h-full min-h-[200px] text-center">
         <div className="px-4">
           <Server className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className="text-muted-foreground text-sm">暂无历史对话</p>
-          <p className="text-xs mt-1 text-muted-foreground">点击上方按钮创建新对话</p>
+          <p className="text-muted-foreground text-sm">{t('ai.chat.noHistory')}</p>
+          <p className="text-xs mt-1 text-muted-foreground">{t('ai.chat.clickToCreateNew')}</p>
         </div>
       </div>
     );

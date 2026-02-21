@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { User, LoginRequest, RegisterRequest, AuthResponse } from '@/types/auth';
+import i18n from '@/i18n/config';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -50,6 +51,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (req) => {
     set({ isLoading: true, error: null });
     try {
+      // 检查 server_url 是否已配置
+      const serverUrl = await getServerUrl();
+      if (!serverUrl || serverUrl.trim() === '') {
+        throw new Error(i18n.t('auth.error.serverUrlNotSet'));
+      }
+
       const res = await invoke<AuthResponse>('auth_login', { req });
       const user: User = await createUserWithServerUrl(res);
       set({ isAuthenticated: true, currentUser: user, isLoading: false });
@@ -95,6 +102,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   register: async (req) => {
     set({ isLoading: true, error: null });
     try {
+      // 检查 server_url 是否已配置
+      const serverUrl = await getServerUrl();
+      if (!serverUrl || serverUrl.trim() === '') {
+        throw new Error(i18n.t('auth.error.serverUrlNotSet'));
+      }
+
       const res = await invoke<AuthResponse>('auth_register', { req });
       const user: User = await createUserWithServerUrl(res);
       set({ isAuthenticated: true, currentUser: user, isLoading: false });
@@ -149,71 +162,69 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         sessionStore.clearSessions();
         userProfileStore.clearProfile();
-        console.log('[authStore] User data cleared after logout');
       } catch (clearError) {
         console.error('[authStore] Failed to clear data after logout:', clearError);
-        // 清除失败不影响登出成功
       }
     } catch (error) {
-      set({ isLoading: false });
+      const errorMessage = error as string;
+      set({ error: errorMessage, isLoading: false });
       throw error;
     }
   },
 
-  /// 检查是否有当前用户密码（用于判断是否需要自动登录或显示登录界面）
   hasCurrentUser: async () => {
     try {
-      const hasUser = await invoke<boolean>('auth_has_current_user');
-      return hasUser;
-    } catch (error) {
-      console.error('Failed to check current user:', error);
+      const user = await invoke<User | null>('auth_get_current_user');
+      return user !== null;
+    } catch {
       return false;
     }
   },
 
-  /// 自动登录（从数据库读取加密密码后自动登录）
   autoLogin: async () => {
     set({ isLoading: true, error: null });
     try {
-      const res = await invoke<AuthResponse>('auth_auto_login');
-      const user: User = await createUserWithServerUrl(res);
-      set({ isAuthenticated: true, currentUser: user, isLoading: false });
+      const user = await invoke<User | null>('auth_get_current_user');
+      if (user) {
+        // 如果有用户数据，也补充 serverUrl
+        const serverUrl = await getServerUrl();
+        user.serverUrl = serverUrl;
+        set({ isAuthenticated: true, currentUser: user, isLoading: false });
 
-      // 自动登录成功后只从本地 SQLite 加载会话和用户资料，不同步服务器
-      try {
-        const { useSessionStore } = await import('./sessionStore');
-        const { useUserProfileStore } = await import('./userProfileStore');
-        const sessionStore = useSessionStore.getState();
-        const userProfileStore = useUserProfileStore.getState();
-        const authStore = get();
+        // 自动登录后尝试同步
+        try {
+          const { useSyncStore } = await import('./syncStore');
+          const { useSessionStore } = await import('./sessionStore');
+          const syncStore = useSyncStore.getState();
+          const sessionStore = useSessionStore.getState();
+          const authStore = get();
 
-        await sessionStore.reloadSessions();
-        await userProfileStore.loadProfile();
-        await authStore.getCurrentUser();
-        console.log('[authStore] Auto login local data loaded');
-      } catch (loadError) {
-        console.error('[authStore] Failed to load local data after auto login:', loadError);
-        // 加载本地数据失败不影响自动登录成功
+          await syncStore.syncNow();
+          await sessionStore.reloadSessions();
+          await authStore.getCurrentUser();
+          console.log('[authStore] Auto-login sync completed');
+        } catch (syncError) {
+          console.error('[authStore] Failed to sync after auto-login:', syncError);
+        }
+      } else {
+        set({ isAuthenticated: false, currentUser: null, isLoading: false });
       }
     } catch (error) {
-      // 不设置 error 状态，因为这是静默自动登录，失败应该不显示错误
-      set({ isLoading: false });
-      // 抛出错误让调用者知道自动登录失败
-      throw error;
+      console.error('[authStore] Auto-login failed:', error);
+      set({ isAuthenticated: false, currentUser: null, isLoading: false });
     }
   },
 
   getCurrentUser: async () => {
     try {
-      const user = await invoke<any>('auth_get_current_user');
+      const user = await invoke<User | null>('auth_get_current_user');
       if (user) {
-        // 如果有用户数据，也补充 serverUrl
         const serverUrl = await getServerUrl();
         user.serverUrl = serverUrl;
+        set({ currentUser: user });
       }
-      set({ isAuthenticated: !!user, currentUser: user });
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      console.error('[authStore] Failed to get current user:', error);
     }
   },
 
@@ -221,10 +232,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await invoke('auth_switch_account', { userId });
-      // 切换后需要重新登录，因为密码不会自动恢复
-      set({ isAuthenticated: false, currentUser: null, isLoading: false });
+      const user = await invoke<User | null>('auth_get_current_user');
+      if (user) {
+        const serverUrl = await getServerUrl();
+        user.serverUrl = serverUrl;
+        set({ isAuthenticated: true, currentUser: user, isLoading: false });
+
+        // 切换账号后重新同步
+        try {
+          const { useSyncStore } = await import('./syncStore');
+          const { useSessionStore } = await import('./sessionStore');
+          const syncStore = useSyncStore.getState();
+          const sessionStore = useSessionStore.getState();
+
+          await syncStore.syncNow();
+          await sessionStore.reloadSessions();
+          console.log('[authStore] Account switch sync completed');
+        } catch (syncError) {
+          console.error('[authStore] Failed to sync after account switch:', syncError);
+        }
+      } else {
+        set({ isAuthenticated: false, currentUser: null, isLoading: false });
+      }
     } catch (error) {
-      set({ isLoading: false });
+      const errorMessage = error as string;
+      set({ error: errorMessage, isLoading: false });
       throw error;
     }
   },
@@ -232,8 +264,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   refreshToken: async () => {
     try {
       await invoke('auth_refresh_token');
+      const user = await invoke<User | null>('auth_get_current_user');
+      if (user) {
+        const serverUrl = await getServerUrl();
+        user.serverUrl = serverUrl;
+        set({ currentUser: user });
+      }
     } catch (error) {
-      console.error('Failed to refresh token:', error);
+      console.error('[authStore] Failed to refresh token:', error);
       throw error;
     }
   },

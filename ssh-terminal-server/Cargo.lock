@@ -2718,6 +2718,7 @@ dependencies = [
  "config",
  "jsonwebtoken",
  "log",
+ "once_cell",
  "rand",
  "redis",
  "sea-orm",

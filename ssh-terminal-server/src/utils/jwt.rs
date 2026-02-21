@@ -2,6 +2,7 @@ use anyhow::Result;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use crate::utils::i18n::{t, MessageKey};
 
 /// JWT 工具类，负责生成和验证 JWT token
 pub struct TokenService;
@@ -81,7 +82,7 @@ impl TokenService {
             &DecodingKey::from_secret(jwt_secret.as_ref()),
             &Validation::default(),
         )
-        .map_err(|e| anyhow::anyhow!("Token 解码失败: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorTokenDecodeFailed), e))?;
 
         Ok(token_data.claims.sub)
     }

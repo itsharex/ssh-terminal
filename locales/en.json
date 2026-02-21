@@ -1,4 +1,4 @@
-﻿{
+{
   "app": {
     "name": "SSH Terminal"
   },
@@ -23,6 +23,57 @@
     "settings": "Settings",
     "logout": "Logout",
     "login": "Login"
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "description": "Login to enable SSH session cloud sync",
+      "button": "Login",
+      "loading": "Logging in...",
+      "success": "Login successful",
+      "successDescription": "Welcome back!",
+      "failed": "Login failed",
+      "fields": {
+        "email": "Email",
+        "emailPlaceholder": "your-email@example.com",
+        "password": "Password",
+        "passwordPlaceholder": "•••••••••"
+      }
+    },
+    "register": {
+      "title": "Create Account",
+      "description": "Register to use SSH session cloud sync",
+      "button": "Register",
+      "loading": "Registering...",
+      "success": "Registration successful",
+      "successDescription": "Account created, welcome!",
+      "failed": "Registration failed",
+      "fields": {
+        "email": "Email",
+        "emailPlaceholder": "your-email@example.com",
+        "password": "Set Password",
+        "passwordPlaceholder": "•••••••••"
+      }
+    },
+    "switch": {
+      "toRegister": "No account? Register",
+      "toLogin": "Already have an account? Login"
+    },
+    "actions": {
+      "cancel": "Cancel"
+    },
+    "hints": {
+      "serverUrlConfig": "Server address can be configured in settings",
+      "minPasswordLength": "Password must be at least 6 characters"
+    },
+    "error": {
+      "serverUrlNotSet": "Please configure server address in settings first",
+      "networkError": "Network connection failed, please check network settings",
+      "invalidCredentials": "Invalid email or password",
+      "emailAlreadyExists": "This email is already registered",
+      "weakPassword": "Password is too weak",
+      "unknownError": "Unknown error, please try again later"
+    }
   },
   "terminal": {
     "newConnection": "New Connection",
@@ -199,8 +250,8 @@
     },
     "field": {
       "name": "Session Name",
-      "namePlaceholder": "e.g., Production Server",
-      "nameHint": "Specify an easy-to-remember name for this connection",
+      "namePlaceholder": "e.g. Production Server",
+      "nameHint": "Specify a memorable name for this connection configuration",
       "host": "Host Address",
       "hostPlaceholder": "192.168.1.100 or example.com",
       "port": "Port",
@@ -217,13 +268,9 @@
       "privateKeyPath": "Private Key Path",
       "privateKeyPathPlaceholder": "~/.ssh/id_rsa",
       "passphrase": "Private Key Passphrase (Optional)",
-      "passphrasePlaceholder": "If private key has password protection",
+      "passphrasePlaceholder": "If private key is password protected",
       "terminalType": "Terminal Type",
       "terminalTypeHint": "Specify the terminal emulation type, usually use default value"
-    },
-    "auth": {
-      "password": "Password",
-      "publicKey": "Public Key"
     },
     "search": {
       "placeholder": "Search sessions..."
@@ -708,7 +755,46 @@
       "inputCharacterCount": "{{count}} characters",
       "errorSendFailed": "Send failed:",
       "headerOnline": "Online",
-      "headerOffline": "Offline"
+      "headerOffline": "Offline",
+      "newConversation": "Start New Conversation",
+      "openSidebar": "Open Sidebar",
+      "selectServerOrNew": "Select a server from the left, or create a new conversation",
+      "clickToOpenSidebar": "Click the button above to open the sidebar and select a server",
+      "newChat": "New Chat",
+      "searchServer": "Search server...",
+      "noHistory": "No conversation history",
+      "clickToCreateNew": "Click the button above to create a new conversation",
+      "assistant": "AI Assistant",
+      "assistantDescription": "Chat with AI assistant, ask about command explanations, error analysis, etc.",
+      "noConnection": "No Terminal Connection",
+      "noConnectionHint": "Please open a terminal connection first, then you can chat with AI",
+      "noConfig": "AI Service Not Configured",
+      "noConfigHint": "Please configure and enable AI Provider in settings first",
+      "goToSettings": "Go to Settings",
+      "startConversation": "Start AI Conversation",
+      "startConversationHint": "You can ask about Linux commands, system operations, scripting, etc.",
+      "viewFullHistory": "View Full History",
+      "fullInterface": "Full Interface",
+      "clearHistory": "Clear Chat History"
+    },
+    "conversation": {
+      "archived": "(Archived)",
+      "messageCount": "{{count}} messages",
+      "totalCount": "{{count}} conversations",
+      "actionExport": "Export",
+      "actionUnarchive": "Unarchive",
+      "actionArchive": "Archive",
+      "actionDelete": "Delete",
+      "confirmDeleteMessage": "Are you sure you want to delete this conversation?",
+      "confirmDeleteAction": "Delete",
+      "deleteSuccess": "Conversation deleted",
+      "deleteFailed": "Delete failed",
+      "exportSuccess": "Export successful",
+      "exportSuccessDescription": "File saved to downloads folder: {{filename}}",
+      "exportFailed": "Export failed",
+      "archiveSuccess": "Archive status updated",
+      "operationFailed": "Operation failed",
+      "refreshFailed": "Failed to refresh list"
     },
     "explain": {
       "noProvider": "Please configure and enable AI Provider in settings first",
@@ -748,23 +834,6 @@
       "actionAnalyzing": "Analyzing...",
       "actionRetry": "Retry",
       "actionClose": "Close"
-    },
-    "conversation": {
-      "archived": "(Archived)",
-      "messageCount": "messages",
-      "actionExport": "Export",
-      "actionArchive": "Archive",
-      "actionUnarchive": "Unarchive",
-      "actionDelete": "Delete",
-      "confirmDeleteMessage": "Are you sure you want to delete this conversation?",
-      "confirmDeleteAction": "Delete",
-      "deleteSuccess": "Conversation deleted",
-      "deleteFailed": "Delete failed",
-      "exportSuccess": "Export successful",
-      "exportSuccessDescription": "File saved to downloads folder: {{filename}}",
-      "exportFailed": "Export failed",
-      "archiveSuccess": "Archive status updated",
-      "operationFailed": "Operation failed"
     },
     "cache": {
       "title": "AI Provider Cache Management",
