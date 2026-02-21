@@ -17,6 +17,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, C
 import { normalizeKeyCombo } from '@/lib/keybindingParser';
 import { keybindingActionExecutor } from '@/lib/keybindingActions';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import '@xterm/xterm/css/xterm.css';
 
 interface XTermWrapperProps {
@@ -25,6 +26,7 @@ interface XTermWrapperProps {
 }
 
 export function XTermWrapper({ connectionId }: XTermWrapperProps) {
+  const { t } = useTranslation();
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalRefInstance = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -819,53 +821,53 @@ export function XTermWrapper({ connectionId }: XTermWrapperProps) {
         <ContextMenuContent>
           <ContextMenuItem disabled={!hasSelection} onClick={handleCopy}>
             <Copy className="h-4 w-4 mr-2" />
-            复制
+            {t('terminal.contextMenu.copy')}
           </ContextMenuItem>
           <ContextMenuItem onClick={handlePaste}>
             <Clipboard className="h-4 w-4 mr-2" />
-            粘贴
+            {t('terminal.contextMenu.paste')}
           </ContextMenuItem>
           <ContextMenuItem onClick={handleFind}>
             <Search className="h-4 w-4 mr-2" />
-            查找...
+            {t('terminal.contextMenu.find')}
           </ContextMenuItem>
 
           <ContextMenuSeparator />
 
           <ContextMenuItem disabled={!hasSelection} onClick={handleErrorAnalyze} className="gap-2">
             <Sparkles className="h-4 w-4" />
-            AI 分析错误
+            {t('terminal.contextMenu.analyzeError')}
           </ContextMenuItem>
 
           <ContextMenuSeparator />
 
           <ContextMenuItem onClick={handleClear}>
             <Trash2 className="h-4 w-4 mr-2" />
-            清屏
+            {t('terminal.contextMenu.clear')}
           </ContextMenuItem>
           <ContextMenuItem onClick={handleReset}>
             <RotateCcw className="h-4 w-4 mr-2" />
-            重置终端
+            {t('terminal.contextMenu.reset')}
           </ContextMenuItem>
           <ContextMenuItem onClick={handleZoomIn}>
             <ZoomIn className="h-4 w-4 mr-2" />
-            放大
+            {t('terminal.contextMenu.zoomIn')}
           </ContextMenuItem>
           <ContextMenuItem onClick={handleZoomOut}>
             <ZoomOut className="h-4 w-4 mr-2" />
-            缩小
+            {t('terminal.contextMenu.zoomOut')}
           </ContextMenuItem>
 
           <ContextMenuSeparator />
 
           <ContextMenuItem onClick={handleRestartSession}>
-            重启会话
+            {t('terminal.contextMenu.restartSession')}
           </ContextMenuItem>
 
           <ContextMenuSeparator />
 
           <ContextMenuItem onClick={handleExportLog}>
-            导出日志
+            {t('terminal.contextMenu.exportLog')}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>

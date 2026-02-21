@@ -19,7 +19,6 @@ import { MobileSessionList } from "@/components/mobile/MobileSessionList";
 import { MobileTerminalPage } from "@/components/mobile/MobileTerminalPage";
 import { isMobileDevice, isAndroid, isIOS } from "@/lib/utils";
 import { globalKeyHandler } from "@/lib/globalKeyHandler";
-import '@/i18n/config';
 
 function AppContent() {
   const navigate = useNavigate();

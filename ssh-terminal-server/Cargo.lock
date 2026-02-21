@@ -2705,7 +2705,7 @@ dependencies = [
 
 [[package]]
 name = "ssh-terminal-server"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "aes-gcm",
  "anyhow",

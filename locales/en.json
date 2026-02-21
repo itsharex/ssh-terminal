@@ -2,6 +2,11 @@
   "app": {
     "name": "SSH Terminal"
   },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
   "nav": {
     "section": {
       "connection": "Connection",
@@ -82,7 +87,19 @@
     "loading": "Loading sessions...",
     "noActiveSession": "No active SSH session",
     "noActiveSessionHint": "Click the button below to create a new SSH connection, or select another feature from the sidebar",
-    "selectOrCreateTab": "Select or create a tab to get started"
+    "selectOrCreateTab": "Select or create a tab to get started",
+    "contextMenu": {
+      "copy": "Copy",
+      "paste": "Paste",
+      "find": "Find...",
+      "analyzeError": "AI Analyze Error",
+      "clear": "Clear Screen",
+      "reset": "Reset Terminal",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out",
+      "restartSession": "Restart Session",
+      "exportLog": "Export Log"
+    }
   },
   "page": {
     "terminal": "Terminal",
@@ -190,6 +207,10 @@
     }
   },
   "session": {
+    "auth": {
+      "password": "Password",
+      "publicKey": "Public Key"
+    },
     "error": {
       "createConnectionFailed": "Failed to create new connection",
       "connectionFailed": "Connection failed",
@@ -969,7 +990,7 @@
       "navigateToTerminal": "Go to Terminal page to create new connection"
     }
   },
-  "theme": {
+  "terminalTheme": {
     "oneDark": "One Dark",
     "solarizedDark": "Solarized Dark",
     "solarizedLight": "Solarized Light",

@@ -130,7 +130,7 @@ docker run -d \
   # ⚠️ 本机持久化目录
   -v /data/ssh-terminal-server/data:/data \
   --network ssh-terminal-net \
-  registry.cn-hangzhou.aliyuncs.com/pull-image/ssh-terminal-server:1.0.0
+  registry.cn-hangzhou.aliyuncs.com/pull-image/ssh-terminal-server:latest
 ```
 
 ### 环境变量说明

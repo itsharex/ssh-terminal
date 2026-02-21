@@ -2,6 +2,11 @@
   "app": {
     "name": "SSH Terminal"
   },
+  "theme": {
+    "light": "亮色",
+    "dark": "暗色",
+    "system": "跟随系统"
+  },
   "nav": {
     "section": {
       "connection": "连接",
@@ -82,7 +87,19 @@
     "loading": "正在加载会话...",
     "noActiveSession": "没有活动的 SSH 会话",
     "noActiveSessionHint": "点击下方按钮创建新的 SSH 连接，或从侧边栏选择其他功能",
-    "selectOrCreateTab": "选择或创建一个标签页开始使用"
+    "selectOrCreateTab": "选择或创建一个标签页开始使用",
+    "contextMenu": {
+      "copy": "复制",
+      "paste": "粘贴",
+      "find": "查找...",
+      "analyzeError": "AI 分析错误",
+      "clear": "清屏",
+      "reset": "重置终端",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "restartSession": "重启会话",
+      "exportLog": "导出日志"
+    }
   },
   "page": {
     "terminal": "终端",
@@ -190,6 +207,10 @@
     "resetAll": "重置所有"
   },
   "session": {
+    "auth": {
+      "password": "密码",
+      "publicKey": "公钥"
+    },
     "error": {
       "createConnectionFailed": "创建新连接失败",
       "connectionFailed": "连接失败",
@@ -1162,7 +1183,7 @@
     }
   },
 
-  "theme": {
+  "terminalTheme": {
     "oneDark": "One Dark",
     "solarizedDark": "Solarized Dark",
     "solarizedLight": "Solarized Light",
