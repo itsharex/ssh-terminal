@@ -34,11 +34,12 @@ pub struct ApiClient {
     refresh_token_encrypted: Arc<Mutex<Option<String>>>,
     device_id: Arc<Mutex<Option<String>>>,
     token_update_callback: TokenUpdateCallback,
+    language: Arc<Mutex<Option<String>>>,
 }
 
 impl ApiClient {
     /// 创建新的 API 客户端实例
-    pub fn new(server_url: String) -> Result<Self> {
+    pub fn new(server_url: String, language: Option<String>) -> Result<Self> {
         // 规范化服务器 URL（去除末尾斜杠）
         let server_url = server_url.trim_end_matches('/').to_string();
 
@@ -53,6 +54,7 @@ impl ApiClient {
             refresh_token_encrypted: Arc::new(Mutex::new(None)),
             device_id: Arc::new(Mutex::new(None)),
             token_update_callback: Arc::new(Mutex::new(None)),
+            language: Arc::new(Mutex::new(language)),
         })
     }
 
@@ -98,6 +100,18 @@ impl ApiClient {
         *guard = None;
     }
 
+    /// 获取当前语言
+    pub fn get_language(&self) -> Option<String> {
+        let guard = self.language.lock().unwrap();
+        guard.clone()
+    }
+
+    /// 设置语言
+    pub fn set_language(&self, language: String) {
+        let mut guard = self.language.lock().unwrap();
+        *guard = Some(language);
+    }
+
     /// 判断错误是否是 token 刷新失败（refresh_token 也失效）
     pub fn is_refresh_failure(error: &anyhow::Error) -> bool {
         let error_str = error.to_string();
@@ -135,12 +149,17 @@ impl ApiClient {
         let url = self.build_url(path);
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
+        let language = self.get_language();
 
-        match self.client
+        let mut request = self.client
             .get(&url)
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
-            .send()
-            .await
+            .header(header::AUTHORIZATION, format!("Bearer {}", token));
+
+        if let Some(lang) = language {
+            request = request.header("Accept-Language", lang);
+        }
+
+        match request.send().await
         {
             Ok(response) => {
                 match self.handle_response(response).await {
@@ -150,12 +169,17 @@ impl ApiClient {
                         tracing::info!("Retrying request with new token: GET {}", path);
                         let new_token = self.get_token()
                             .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
+                        let language = self.get_language();
 
-                        let response = self.client
+                        let mut request = self.client
                             .get(&url)
-                            .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
-                            .send()
-                            .await?;
+                            .header(header::AUTHORIZATION, format!("Bearer {}", new_token));
+
+                        if let Some(lang) = language {
+                            request = request.header("Accept-Language", lang);
+                        }
+
+                        let response = request.send().await?;
 
                         self.handle_response(response).await
                     }
@@ -191,14 +215,18 @@ impl ApiClient {
         let url = self.build_url(path);
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
+        let language = self.get_language();
 
-        match self.client
+        let mut request = self.client
             .post(&url)
             .header(header::AUTHORIZATION, format!("Bearer {}", token))
-            .header(header::CONTENT_TYPE, "application/json")
-            .json(body)
-            .send()
-            .await
+            .header(header::CONTENT_TYPE, "application/json");
+
+        if let Some(lang) = language {
+            request = request.header("Accept-Language", lang);
+        }
+
+        match request.json(body).send().await
         {
             Ok(response) => {
                 match self.handle_response(response).await {
@@ -208,14 +236,18 @@ impl ApiClient {
                         tracing::info!("Retrying request with new token: POST {}", path);
                         let new_token = self.get_token()
                             .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
+                        let language = self.get_language();
 
-                        let response = self.client
+                        let mut request = self.client
                             .post(&url)
                             .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
-                            .header(header::CONTENT_TYPE, "application/json")
-                            .json(body)
-                            .send()
-                            .await?;
+                            .header(header::CONTENT_TYPE, "application/json");
+
+                        if let Some(lang) = language {
+                            request = request.header("Accept-Language", lang);
+                        }
+
+                        let response = request.json(body).send().await?;
 
                         self.handle_response(response).await
                     }
@@ -251,14 +283,18 @@ impl ApiClient {
         let url = self.build_url(path);
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
+        let language = self.get_language();
 
-        match self.client
+        let mut request = self.client
             .put(&url)
             .header(header::AUTHORIZATION, format!("Bearer {}", token))
-            .header(header::CONTENT_TYPE, "application/json")
-            .json(body)
-            .send()
-            .await
+            .header(header::CONTENT_TYPE, "application/json");
+
+        if let Some(lang) = language {
+            request = request.header("Accept-Language", lang);
+        }
+
+        match request.json(body).send().await
         {
             Ok(response) => {
                 match self.handle_response(response).await {
@@ -268,14 +304,18 @@ impl ApiClient {
                         tracing::info!("Retrying request with new token: PUT {}", path);
                         let new_token = self.get_token()
                             .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
+                        let language = self.get_language();
 
-                        let response = self.client
+                        let mut request = self.client
                             .put(&url)
                             .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
-                            .header(header::CONTENT_TYPE, "application/json")
-                            .json(body)
-                            .send()
-                            .await?;
+                            .header(header::CONTENT_TYPE, "application/json");
+
+                        if let Some(lang) = language {
+                            request = request.header("Accept-Language", lang);
+                        }
+
+                        let response = request.json(body).send().await?;
 
                         self.handle_response(response).await
                     }
@@ -311,12 +351,17 @@ impl ApiClient {
         let url = self.build_url(path);
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
+        let language = self.get_language();
 
-        match self.client
+        let mut request = self.client
             .delete(&url)
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
-            .send()
-            .await
+            .header(header::AUTHORIZATION, format!("Bearer {}", token));
+
+        if let Some(lang) = language {
+            request = request.header("Accept-Language", lang);
+        }
+
+        match request.send().await
         {
             Ok(response) => {
                 match self.handle_response(response).await {
@@ -326,12 +371,17 @@ impl ApiClient {
                         tracing::info!("Retrying request with new token: DELETE {}", path);
                         let new_token = self.get_token()
                             .ok_or_else(|| anyhow::anyhow!("No access token available after refresh"))?;
+                        let language = self.get_language();
 
-                        let response = self.client
+                        let mut request = self.client
                             .delete(&url)
-                            .header(header::AUTHORIZATION, format!("Bearer {}", new_token))
-                            .send()
-                            .await?;
+                            .header(header::AUTHORIZATION, format!("Bearer {}", new_token));
+
+                        if let Some(lang) = language {
+                            request = request.header("Accept-Language", lang);
+                        }
+
+                        let response = request.send().await?;
 
                         self.handle_response(response).await
                     }

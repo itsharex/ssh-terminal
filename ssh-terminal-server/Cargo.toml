@@ -49,6 +49,7 @@ rand = "0.8"
 clap = { version = "4", features = ["derive", "env"] }
 validator = { version = "0.16", features = ["derive"] }
 log = "0.4.29"
+once_cell = "1.19"
 
 # 优化发布版本
 [profile.release]

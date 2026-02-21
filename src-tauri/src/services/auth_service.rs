@@ -75,12 +75,13 @@ impl AuthService {
     pub async fn login(&self, req: LoginRequest) -> Result<AuthResponse> {
         tracing::info!("Login request for: {}", req.email);
 
-        // 从 app_settings 获取服务器地址
+        // 从 app_settings 获取服务器地址和语言设置
         let settings_repo = AppSettingsRepository::new(self.pool.clone());
         let server_url = settings_repo.get_server_url()?;
+        let language = settings_repo.get_language().ok();
 
         // 创建 API 客户端
-        let api_client = ApiClient::new(server_url.clone())?;
+        let api_client = ApiClient::new(server_url.clone(), language)?;
 
         // 设置到全局状态（如果有）
         if let Some(state) = &self.api_client_state {
@@ -177,12 +178,13 @@ impl AuthService {
     pub async fn register(&self, req: RegisterRequest) -> Result<AuthResponse> {
         tracing::info!("Register request for: {}", req.email);
 
-        // 从 app_settings 获取服务器地址
+        // 从 app_settings 获取服务器地址和语言设置
         let settings_repo = AppSettingsRepository::new(self.pool.clone());
         let server_url = settings_repo.get_server_url()?;
+        let language = settings_repo.get_language().ok();
 
         // 创建 API 客户端
-        let api_client = ApiClient::new(server_url.clone())?;
+        let api_client = ApiClient::new(server_url.clone(), language)?;
 
         // 设置到全局状态（如果有）
         if let Some(state) = &self.api_client_state {
@@ -285,8 +287,12 @@ impl AuthService {
             .clone()
             .unwrap_or_default();
 
+        // 获取语言设置
+        let settings_repo = AppSettingsRepository::new(self.pool.clone());
+        let language = settings_repo.get_language().ok();
+
         // 创建 API 客户端
-        let api_client = ApiClient::new(auth.server_url.clone())?;
+        let api_client = ApiClient::new(auth.server_url.clone(), language)?;
 
         // 设置 access_token
         api_client.set_token(token.clone());
@@ -419,8 +425,12 @@ impl AuthService {
         let auth = repo.find_current()?
             .ok_or_else(|| anyhow!("Failed to find current user after switch"))?;
 
+        // 获取语言设置
+        let settings_repo = AppSettingsRepository::new(self.pool.clone());
+        let language = settings_repo.get_language().ok();
+
         // 创建并初始化 ApiClient
-        let api_client = ApiClient::new(auth.server_url.clone())?;
+        let api_client = ApiClient::new(auth.server_url.clone(), language)?;
 
         // 解密并设置 access_token
         let token = CryptoService::decrypt_token(&auth.access_token_encrypted, &auth.device_id)?;

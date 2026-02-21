@@ -83,8 +83,11 @@ pub fn run() {
             if let Some(current_user) = user_auth_repo.find_current().ok().flatten() {
                 tracing::info!("Found current user, initializing API client");
 
+                // 获取语言设置
+                let language = app_settings_repo.get_language().ok();
+
                 // 3. 创建并初始化 ApiClient
-                match ApiClient::new(server_url) {
+                match ApiClient::new(server_url, language) {
                     Ok(client) => {
                         // 4. 解密并设置 token
                         match CryptoService::decrypt_token(

@@ -46,7 +46,11 @@ impl UserProfileService {
 
     /// 创建临时 API 客户端（带 token）
     fn create_temp_client(&self, user: &crate::models::user_auth::UserAuth) -> Result<ApiClient> {
-        let client = ApiClient::new(user.server_url.clone())?;
+        // 获取语言设置
+        let settings_repo = AppSettingsRepository::new(self.pool.clone());
+        let language = settings_repo.get_language().ok();
+
+        let client = ApiClient::new(user.server_url.clone(), language)?;
         let token = crate::services::CryptoService::decrypt_token(
             &user.access_token_encrypted,
             &user.device_id

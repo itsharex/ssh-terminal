@@ -74,9 +74,18 @@ pub async fn app_settings_get_language(
 pub async fn app_settings_set_language(
     language: String,
     pool: State<'_, DbPool>,
+    api_client_state: State<'_, crate::commands::auth::ApiClientStateWrapper>,
 ) -> Result<(), String> {
     let repo = AppSettingsRepository::new(pool.inner().clone());
-    repo.set_language(&language).map_err(|e| e.to_string())
+    repo.set_language(&language).map_err(|e| e.to_string())?;
+
+    // 更新 ApiClient 的语言设置
+    if let Ok(client) = api_client_state.get_client() {
+        client.set_language(language.clone());
+        tracing::info!("Updated ApiClient language to: {}", language);
+    }
+
+    Ok(())
 }
 
 /// 获取所有应用设置
