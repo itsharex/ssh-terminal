@@ -2,6 +2,7 @@ use crate::AppState;
 use crate::repositories::user_repository::UserRepository;
 use crate::error::ErrorResponse;
 use crate::infra::middleware::UserId;
+use crate::utils::i18n::{t, MessageKey};
 use axum::{
     extract::{Request, State},
     middleware::Next,
@@ -28,10 +29,10 @@ pub async fn auth_middleware(
     let auth_header = headers
         .get("Authorization")
         .and_then(|h| h.to_str().ok())
-        .ok_or_else(|| ErrorResponse::unauthorized("Missing authorization header"))?;
+        .ok_or_else(|| ErrorResponse::unauthorized(t(None, MessageKey::ErrorMissingAuthHeader)))?;
 
     if !auth_header.starts_with("Bearer ") {
-        return Err(ErrorResponse::unauthorized("Invalid authorization header format"));
+        return Err(ErrorResponse::unauthorized(t(None, MessageKey::ErrorInvalidAuthFormat)));
     }
 
     let token = &auth_header[7..];
@@ -44,7 +45,7 @@ pub async fn auth_middleware(
         &DecodingKey::from_secret(jwt_secret.as_ref()),
         &Validation::default(),
     )
-    .map_err(|_| ErrorResponse::unauthorized("Invalid or expired token"))?;
+    .map_err(|_| ErrorResponse::unauthorized(t(None, MessageKey::ErrorInvalidToken)))?;
 
     let user_id = &token_data.claims.sub;
 
@@ -53,11 +54,11 @@ pub async fn auth_middleware(
     let user = user_repo
         .find_by_id_raw(user_id)
         .await
-        .map_err(|_| ErrorResponse::internal("Failed to verify user"))?;
+        .map_err(|_| ErrorResponse::internal(t(None, MessageKey::ErrorVerifyUserFailed)))?;
 
     if user.map(|u| u.deleted_at.is_some()).unwrap_or(true) {
         // 用户不存在或已被删除
-        return Err(ErrorResponse::unauthorized("User not found or deleted"));
+        return Err(ErrorResponse::unauthorized(t(None, MessageKey::ErrorUserNotFoundOrDeleted)));
     }
 
     // 4. 将 user_id 添加到请求扩展

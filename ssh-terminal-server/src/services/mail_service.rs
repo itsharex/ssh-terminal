@@ -40,30 +40,32 @@ impl MailService {
         let rate_limit = MailRateLimit::new(self.redis_client.clone());
         let queue = MailQueue::new(self.redis_client.clone());
 
-        // 1. 检查限频（60秒内只能发送一次）
-        let can_send = rate_limit.check_rate_limit(user_id).await
-            .context("Failed to check rate limit")?;
-
-        if !can_send {
-            let ttl = rate_limit.get_rate_ttl(user_id).await.unwrap_or(60);
-            let message = i18n::t(
-                Some(lang),
-                MessageKey::ErrorEmailRateLimit,
-            );
-            return Ok(EmailResult::failed(format!("{} ({})", message, ttl)));
-        }
-
-        // 2. 检查每日限制（每天最多发送 10 次）
+        // 1. 检查每日限制（每天最多发送 10 次）
         let can_send_daily = rate_limit.check_daily_limit(user_id).await
             .context("Failed to check daily limit")?;
 
         if !can_send_daily {
             let daily_count = rate_limit.get_daily_count(user_id).await.unwrap_or(10);
-            let message = i18n::t(
+            let message = i18n::t_with_vars(
                 Some(lang),
                 MessageKey::ErrorEmailDailyLimit,
+                &[("count", &daily_count.to_string())],
             );
-            return Ok(EmailResult::failed(format!("{} ({}/10)", message, daily_count)));
+            return Err(anyhow::anyhow!("{}", message));
+        }
+
+        // 2. 检查限频（60秒内只能发送一次）
+        let can_send = rate_limit.check_rate_limit(user_id).await
+            .context("Failed to check rate limit")?;
+
+        if !can_send {
+            let ttl = rate_limit.get_rate_ttl(user_id).await.unwrap_or(60);
+            let message = i18n::t_with_vars(
+                Some(lang),
+                MessageKey::ErrorEmailRateLimit,
+                &[("ttl", &ttl.to_string())],
+            );
+            return Err(anyhow::anyhow!("{}", message));
         }
 
         // 3. 生成 6 位数字验证码
@@ -100,10 +102,6 @@ impl MailService {
             .context("Failed to push mail task to queue")?;
 
         // 7. 返回成功结果
-        let _message = i18n::t(
-            Some(lang),
-            MessageKey::SuccessEmailQueued,
-        );
         Ok(EmailResult::success())
     }
 

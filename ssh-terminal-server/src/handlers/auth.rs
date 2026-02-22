@@ -1,6 +1,7 @@
 use crate::error::ErrorResponse;
 use crate::infra::middleware::logging::{log_info, RequestId};
 use crate::infra::middleware::Language;
+use crate::infra::middleware::UserId;
 use crate::domain::dto::auth::{RegisterRequest, LoginRequest, RefreshRequest, DeleteUserRequest};
 use crate::domain::vo::auth::{RegisterResult, LoginResult, RefreshResult};
 use crate::domain::vo::ApiResponse;
@@ -137,7 +138,7 @@ pub async fn delete_account(
     Extension(request_id): Extension<RequestId>,
     Language(language): Language,
     State(state): State<AppState>,
-    Extension(user_id): Extension<String>,
+    UserId(user_id): UserId,
     Json(payload): Json<DeleteUserRequest>,
 ) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
     log_info(&request_id, "删除账号请求", &format!("user_id={}", user_id));
@@ -176,7 +177,7 @@ pub async fn delete_refresh_token(
     Extension(request_id): Extension<RequestId>,
     Language(language): Language,
     State(state): State<AppState>,
-    Extension(user_id): Extension<String>,
+    UserId(user_id): UserId,
 ) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
     log_info(&request_id, "删除刷新令牌请求", &format!("user_id={}", user_id));
 

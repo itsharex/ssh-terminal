@@ -5,22 +5,12 @@ use serde::{Deserialize, Serialize};
 pub struct EmailResult {
     /// 是否成功入队
     pub queued: bool,
-    /// 消息提示
-    pub message: String,
 }
 
 impl EmailResult {
     pub fn success() -> Self {
         Self {
             queued: true,
-            message: "邮件已加入发送队列".to_string(),
-        }
-    }
-
-    pub fn failed(message: String) -> Self {
-        Self {
-            queued: false,
-            message,
         }
     }
 }

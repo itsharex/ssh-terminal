@@ -1,5 +1,4 @@
 use crate::domain::vo::ApiResponse;
-use crate::utils::i18n::t_error_default;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -17,7 +16,7 @@ impl ErrorResponse {
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::BAD_REQUEST,
-            message: format!("{}: {}", t_error_default(None), message.into()),
+            message: message.into(),
         }
     }
 

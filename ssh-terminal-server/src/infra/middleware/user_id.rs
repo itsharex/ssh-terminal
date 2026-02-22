@@ -3,6 +3,7 @@ use axum::{
 };
 use async_trait::async_trait;
 use crate::error::ErrorResponse;
+use crate::utils::i18n::{t, MessageKey};
 
 /// 用户 ID extractor
 /// 从请求扩展中提取 user_id（由认证中间件设置）
@@ -25,6 +26,6 @@ where
             .extensions
             .get::<UserId>()
             .cloned()
-            .ok_or_else(|| ErrorResponse::unauthorized("User ID not found in request"))
+            .ok_or_else(|| ErrorResponse::unauthorized(t(None, MessageKey::ErrorUserIdNotFound)))
     }
 }

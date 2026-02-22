@@ -89,3 +89,26 @@ windows = { version = "0.52", features = [
   "Win32_Media_Audio",
   "Win32_System_Com",
 ] }
+
+
+# ==========================================
+# Tauri 客户端编译优化配置
+# ==========================================
+
+# 1. 开发环境 (cargo tauri dev)
+# 解决 Windows 链接器 PDB 报错，并大幅提升二次编译速度
+[profile.dev]
+incremental = true # 开启增量编译
+
+[profile.dev.package."*"]
+debug = false      # 关键：第三方依赖不生成调试符号（这就是解决报错的核心）
+opt-level = 1      # 稍微优化依赖库，避免界面卡顿（特别是加密和绘图部分）
+
+# 2. 生产环境 (cargo tauri build)
+# 针对桌面端应用的体积和性能优化
+[profile.release]
+codegen-units = 1  # 牺牲编译速度，换取更小的体积和更快的运行速度
+lto = true         # 开启链接时优化 (Link Time Optimization)
+opt-level = "z"    # 极致优化体积 (也可以改成 "s")
+panic = "abort"    # 发生 panic 直接退出，移除堆栈展开逻辑（减小体积）
+strip = true       # 自动剥离符号文件，防止反汇编并减小体积

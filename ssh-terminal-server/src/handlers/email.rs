@@ -7,9 +7,8 @@ use crate::infra::middleware::user_id::UserId;
 use crate::infra::mail::queue::MailQueue;
 use crate::repositories::email_log_repository::EmailLogRepository;
 use crate::services::mail_service::MailService;
-use crate::utils::i18n::{t, MessageKey};
-use axum::{extract::{Extension, State}, Json};
-use tracing::info;
+    use crate::utils::i18n::{t, t_with_vars, MessageKey};
+    use axum::{extract::{Extension, State}, Json};use tracing::info;
 
 /// 发送验证码邮件（公开 API，无需认证）
 pub async fn send_verify_code_handler(
@@ -40,14 +39,20 @@ pub async fn send_verify_code_handler(
         .send_verify_code(temp_user_id, &payload.email, &language)
         .await
     {
-        Ok(result) => {
-            let message = t(Some(language.as_str()), MessageKey::SuccessEmailQueued);
-            let response = ApiResponse::success_with_message(result, &message);
+        Ok(_result) => {
+            let message = t_with_vars(
+                Some(language.as_str()),
+                MessageKey::SuccessEmailQueued,
+                &[("email", &payload.email)],
+            );
+            let email_result = EmailResult::success();
+            let response = ApiResponse::success_with_message(email_result, &message);
             info!("[{}] 验证码邮件已加入队列: {}", request_id.0, payload.email);
             Ok(Json(response))
         }
         Err(e) => {
             info!("[{}] 发送验证码邮件失败: {}", request_id.0, e.to_string());
+            // 直接传递 Service 返回的具体错误消息（已包含详细信息）
             Err(crate::error::ErrorResponse::new(e.to_string()))
         }
     }
@@ -83,12 +88,12 @@ pub async fn get_latest_email_log_handler(
                 created_at: log.created_at,
                 updated_at: log.updated_at,
             };
-            let message = "获取邮件日志成功".to_string();
+            let message = t(Some(language.as_str()), MessageKey::SuccessGetEmailLog);
             let response = ApiResponse::success_with_message(Some(vo), &message);
             Ok(Json(response))
         }
         Ok(None) => {
-            let message = "未找到邮件日志".to_string();
+            let message = t(Some(language.as_str()), MessageKey::ErrorEmailLogNotFound);
             let response = ApiResponse::success_with_message(None::<EmailStatusVO>, &message);
             Ok(Json(response))
         }
@@ -125,12 +130,11 @@ pub async fn get_queue_status_handler(
         .unwrap_or(0);
 
     let status = EmailQueueStatusVO {
-        queue_length: queue_len,
-        dead_letter_length: dead_letter_len,
-        enabled: state.config.email.enabled,
-    };
-
-    let message = "获取队列状态成功".to_string();
-    let response = ApiResponse::success_with_message(status, &message);
-    Ok(Json(response))
-}
+                    queue_length: queue_len,
+                    dead_letter_length: dead_letter_len,
+                    enabled: state.config.email.enabled,
+                };
+    
+                let message = t(Some(language.as_str()), MessageKey::SuccessGetQueueStatus);
+                let response = ApiResponse::success_with_message(status, &message);
+                Ok(Json(response))}

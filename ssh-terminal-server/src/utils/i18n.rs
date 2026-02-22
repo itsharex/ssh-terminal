@@ -83,6 +83,11 @@ pub enum MessageKey {
     ErrorCreateTableFailed,
     ErrorRedisInitFailed,
     ErrorTokenDecodeFailed,
+    ErrorMissingAuthHeader,
+    ErrorInvalidAuthFormat,
+    ErrorInvalidToken,
+    ErrorVerifyUserFailed,
+    ErrorUserIdNotFound,
 
     // ==================== Conflict Messages ====================
     ConflictVersionConflict,
@@ -94,14 +99,16 @@ pub enum MessageKey {
     // ==================== Email Messages ====================
     EmailVerifyCodeSubject,
     SuccessEmailQueued,
+    SuccessGetEmailLog,
     ErrorEmailDisabled,
     ErrorEmailRateLimit,
     ErrorEmailDailyLimit,
+    ErrorEmailLogNotFound,
     ErrorVerifyCodeRequired,
     ErrorVerifyCodeExpired,
     ErrorVerifyCodeInvalid,
     ErrorEmailInvalidTemplate,
-    ErrorEmailFailed,
+    SuccessGetQueueStatus,
 }
 
 impl MessageKey {
@@ -181,6 +188,11 @@ impl MessageKey {
             MessageKey::ErrorCreateTableFailed => "api.error.create_table_failed",
             MessageKey::ErrorRedisInitFailed => "api.error.redis_init_failed",
             MessageKey::ErrorTokenDecodeFailed => "api.error.token_decode_failed",
+            MessageKey::ErrorMissingAuthHeader => "api.error.missing_auth_header",
+            MessageKey::ErrorInvalidAuthFormat => "api.error.invalid_auth_format",
+            MessageKey::ErrorInvalidToken => "api.error.invalid_token",
+            MessageKey::ErrorVerifyUserFailed => "api.error.verify_user_failed",
+            MessageKey::ErrorUserIdNotFound => "api.error.user_id_not_found",
 
             // Conflict
             MessageKey::ConflictVersionConflict => "api.conflict.version_conflict",
@@ -192,14 +204,16 @@ impl MessageKey {
             // Email
             MessageKey::EmailVerifyCodeSubject => "api.email.verify_code_subject",
             MessageKey::SuccessEmailQueued => "api.email.success_queued",
-            MessageKey::ErrorEmailDisabled => "api.error.email_disabled",
-            MessageKey::ErrorEmailRateLimit => "api.error.email_rate_limit",
-            MessageKey::ErrorEmailDailyLimit => "api.error.email_daily_limit",
-            MessageKey::ErrorVerifyCodeRequired => "api.error.verify_code_required",
-            MessageKey::ErrorVerifyCodeExpired => "api.error.verify_code_expired",
-            MessageKey::ErrorVerifyCodeInvalid => "api.error.verify_code_invalid",
-            MessageKey::ErrorEmailInvalidTemplate => "api.error.email_invalid_template",
-            MessageKey::ErrorEmailFailed => "api.error.email_failed",
+            MessageKey::SuccessGetEmailLog => "api.email.success_get_email_log",
+            MessageKey::ErrorEmailDisabled => "api.email.error_disabled",
+            MessageKey::ErrorEmailRateLimit => "api.email.error_rate_limit",
+            MessageKey::ErrorEmailDailyLimit => "api.email.error_daily_limit",
+            MessageKey::ErrorEmailLogNotFound => "api.email.error_log_not_found",
+            MessageKey::ErrorVerifyCodeRequired => "api.email.error_verify_code_required",
+            MessageKey::ErrorVerifyCodeExpired => "api.email.error_verify_code_expired",
+            MessageKey::ErrorVerifyCodeInvalid => "api.email.error_verify_code_invalid",
+            MessageKey::ErrorEmailInvalidTemplate => "api.email.error_invalid_template",
+            MessageKey::SuccessGetQueueStatus => "api.email.success_get_queue_status",
         }
     }
 }
@@ -222,11 +236,6 @@ pub fn t_with_vars(lang: Option<&str>, key: MessageKey, vars: &[(&str, &str)]) -
 /// 获取默认成功消息
 pub fn t_success_default(lang: Option<&str>) -> String {
     t(lang, MessageKey::SuccessDefault)
-}
-
-/// 获取默认错误消息
-pub fn t_error_default(lang: Option<&str>) -> String {
-    t(lang, MessageKey::ErrorDefault)
 }
 
 /// 获取指定语言的翻译
@@ -331,7 +340,12 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "sqlite_file_create_failed": "创建 SQLite 数据库文件失败",
                     "create_table_failed": "创建{table}失败",
                     "redis_init_failed": "Redis 初始化失败",
-                    "token_decode_failed": "Token 解码失败"
+                    "token_decode_failed": "Token 解码失败",
+                    "missing_auth_header": "缺少授权头",
+                    "invalid_auth_format": "无效的授权头格式",
+                    "invalid_token": "无效或已过期的令牌",
+                    "verify_user_failed": "验证用户失败",
+                    "user_id_not_found": "请求中未找到用户 ID"
                 },
                 "conflict": {
                     "version_conflict": "客户端版本 {client} < 服务器版本 {server}",
@@ -342,17 +356,17 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                 },
                 "email": {
                     "verify_code_subject": "验证码",
-                    "success_queued": "邮件已加入发送队列"
-                },
-                "error": {
-                    "email_disabled": "邮件功能未启用",
-                    "email_rate_limit": "发送过于频繁，请{ttl}秒后再试",
-                    "email_daily_limit": "今日发送次数已达上限",
-                    "verify_code_required": "请先获取验证码",
-                    "verify_code_expired": "验证码已过期",
-                    "verify_code_invalid": "验证码错误",
-                    "email_invalid_template": "无效的邮件模板",
-                    "email_failed": "邮件发送失败"
+                    "success_queued": "验证码已发送至 {email}",
+                    "success_get_email_log": "获取邮件日志成功",
+                    "error_disabled": "邮件功能未启用",
+                    "error_rate_limit": "发送过于频繁，请 {ttl} 秒后再试",
+                    "error_daily_limit": "今日发送次数已达上限 ({count}/10)",
+                    "error_log_not_found": "未找到邮件日志",
+                    "error_verify_code_required": "请先获取验证码",
+                    "error_verify_code_expired": "验证码已过期",
+                    "error_verify_code_invalid": "验证码错误",
+                    "error_invalid_template": "无效的邮件模板",
+                    "success_get_queue_status": "获取队列状态成功"
                 }
             }
         },
@@ -431,7 +445,12 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "sqlite_file_create_failed": "Failed to create SQLite database file",
                     "create_table_failed": "Failed to create {table}",
                     "redis_init_failed": "Redis initialization failed",
-                    "token_decode_failed": "Token decode failed"
+                    "token_decode_failed": "Token decode failed",
+                    "missing_auth_header": "Missing authorization header",
+                    "invalid_auth_format": "Invalid authorization header format",
+                    "invalid_token": "Invalid or expired token",
+                    "verify_user_failed": "Failed to verify user",
+                    "user_id_not_found": "User ID not found in request"
                 },
                 "conflict": {
                     "version_conflict": "Client version {client} < Server version {server}",
@@ -442,17 +461,17 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                 },
                 "email": {
                     "verify_code_subject": "Verification Code",
-                    "success_queued": "Email has been queued for sending"
-                },
-                "error": {
-                    "email_disabled": "Email feature is disabled",
-                    "email_rate_limit": "Please try again in {ttl} seconds",
-                    "email_daily_limit": "Daily limit reached",
-                    "verify_code_required": "Please get verification code first",
-                    "verify_code_expired": "Verification code expired",
-                    "verify_code_invalid": "Invalid verification code",
-                    "email_invalid_template": "Invalid email template",
-                    "email_failed": "Failed to send email"
+                    "success_queued": "Verification code sent to {email}",
+                    "success_get_email_log": "Get email log successful",
+                    "error_disabled": "Email feature is disabled",
+                    "error_rate_limit": "Please try again in {ttl} seconds",
+                    "error_daily_limit": "Daily limit reached ({count}/10)",
+                    "error_log_not_found": "Email log not found",
+                    "error_verify_code_required": "Please get verification code first",
+                    "error_verify_code_expired": "Verification code expired",
+                    "error_verify_code_invalid": "Invalid verification code",
+                    "error_invalid_template": "Invalid email template",
+                    "success_get_queue_status": "Get queue status successful"
                 }
             }
         }
