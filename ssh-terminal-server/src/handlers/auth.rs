@@ -26,7 +26,13 @@ pub async fn register(
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
     match service.register(payload).await {
         Ok((user_model, access_token, refresh_token)) => {
@@ -54,7 +60,13 @@ pub async fn login(
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
     match service.login(payload).await {
         Ok((user_model, access_token, refresh_token)) => {
@@ -86,7 +98,13 @@ pub async fn refresh(
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
     match service
         .refresh_access_token(&payload.refresh_token)
@@ -126,7 +144,13 @@ pub async fn delete_account(
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
     let delete_request = DeleteUserRequest {
         user_id: user_id.clone(),
@@ -158,7 +182,13 @@ pub async fn delete_refresh_token(
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
     match service.delete_refresh_token(&user_id).await {
         Ok(_) => {

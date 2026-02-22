@@ -90,6 +90,18 @@ pub enum MessageKey {
     ConflictProfileConflict,
     ConflictSshSessionKeepServer,
     ConflictUserProfileKeepServer,
+
+    // ==================== Email Messages ====================
+    EmailVerifyCodeSubject,
+    SuccessEmailQueued,
+    ErrorEmailDisabled,
+    ErrorEmailRateLimit,
+    ErrorEmailDailyLimit,
+    ErrorVerifyCodeRequired,
+    ErrorVerifyCodeExpired,
+    ErrorVerifyCodeInvalid,
+    ErrorEmailInvalidTemplate,
+    ErrorEmailFailed,
 }
 
 impl MessageKey {
@@ -176,6 +188,18 @@ impl MessageKey {
             MessageKey::ConflictProfileConflict => "api.conflict.profile_conflict",
             MessageKey::ConflictSshSessionKeepServer => "api.conflict.ssh_session_keep_server",
             MessageKey::ConflictUserProfileKeepServer => "api.conflict.user_profile_keep_server",
+
+            // Email
+            MessageKey::EmailVerifyCodeSubject => "api.email.verify_code_subject",
+            MessageKey::SuccessEmailQueued => "api.email.success_queued",
+            MessageKey::ErrorEmailDisabled => "api.error.email_disabled",
+            MessageKey::ErrorEmailRateLimit => "api.error.email_rate_limit",
+            MessageKey::ErrorEmailDailyLimit => "api.error.email_daily_limit",
+            MessageKey::ErrorVerifyCodeRequired => "api.error.verify_code_required",
+            MessageKey::ErrorVerifyCodeExpired => "api.error.verify_code_expired",
+            MessageKey::ErrorVerifyCodeInvalid => "api.error.verify_code_invalid",
+            MessageKey::ErrorEmailInvalidTemplate => "api.error.email_invalid_template",
+            MessageKey::ErrorEmailFailed => "api.error.email_failed",
         }
     }
 }
@@ -315,6 +339,20 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "profile_conflict": "用户资料有冲突",
                     "ssh_session_keep_server": "部分 SSH 会话已保留服务器版本",
                     "user_profile_keep_server": "用户资料已保留服务器版本"
+                },
+                "email": {
+                    "verify_code_subject": "验证码",
+                    "success_queued": "邮件已加入发送队列"
+                },
+                "error": {
+                    "email_disabled": "邮件功能未启用",
+                    "email_rate_limit": "发送过于频繁，请{ttl}秒后再试",
+                    "email_daily_limit": "今日发送次数已达上限",
+                    "verify_code_required": "请先获取验证码",
+                    "verify_code_expired": "验证码已过期",
+                    "verify_code_invalid": "验证码错误",
+                    "email_invalid_template": "无效的邮件模板",
+                    "email_failed": "邮件发送失败"
                 }
             }
         },
@@ -401,6 +439,20 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "profile_conflict": "User profile has conflict",
                     "ssh_session_keep_server": "Some SSH sessions kept server version",
                     "user_profile_keep_server": "User profile kept server version"
+                },
+                "email": {
+                    "verify_code_subject": "Verification Code",
+                    "success_queued": "Email has been queued for sending"
+                },
+                "error": {
+                    "email_disabled": "Email feature is disabled",
+                    "email_rate_limit": "Please try again in {ttl} seconds",
+                    "email_daily_limit": "Daily limit reached",
+                    "verify_code_required": "Please get verification code first",
+                    "verify_code_expired": "Verification code expired",
+                    "verify_code_invalid": "Invalid verification code",
+                    "email_invalid_template": "Invalid email template",
+                    "email_failed": "Failed to send email"
                 }
             }
         }

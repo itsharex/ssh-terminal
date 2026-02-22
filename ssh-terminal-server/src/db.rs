@@ -330,12 +330,13 @@ async fn create_tables(db: &DatabaseConnection) -> anyhow::Result<()> {
     let schema = Schema::new(builder);
 
     // 导入所有 entities
-    use crate::domain::entities::{users, user_profiles, ssh_sessions};
+    use crate::domain::entities::{users, user_profiles, ssh_sessions, email_logs};
 
     // 创建所有表（添加新表只需一行！）
     create_single_table(db, &schema, &builder, users::Entity, "用户表").await?;
     create_single_table(db, &schema, &builder, user_profiles::Entity, "用户资料表").await?;
     create_single_table(db, &schema, &builder, ssh_sessions::Entity, "SSH会话表").await?;
+    create_single_table(db, &schema, &builder, email_logs::Entity, "邮件日志表").await?;
 
     tracing::info!("✅ 数据库表结构检查完成");
 

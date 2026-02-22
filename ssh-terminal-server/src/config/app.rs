@@ -1,4 +1,4 @@
-use super::{auth::AuthConfig, database::DatabaseConfig, redis::RedisConfig, server::ServerConfig};
+use super::{auth::AuthConfig, database::DatabaseConfig, email::EmailConfig, redis::RedisConfig, server::ServerConfig};
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -12,6 +12,7 @@ pub struct AppConfig {
     pub database: DatabaseConfig,
     pub auth: AuthConfig,
     pub redis: RedisConfig,
+    pub email: EmailConfig,
 }
 
 impl AppConfig {
@@ -61,6 +62,17 @@ impl AppConfig {
             builder = builder.set_default("redis.host", default_redis_host())?;
             builder = builder.set_default("redis.port", 6379)?;
             builder = builder.set_default("redis.db", 0)?;
+
+            // 设置 email 默认值
+            builder = builder.set_default("email.enabled", false)?;
+            builder = builder.set_default("email.smtp_host", "smtp.gmail.com")?;
+            builder = builder.set_default("email.smtp_port", 587)?;
+            builder = builder.set_default("email.smtp_username", "")?;
+            builder = builder.set_default("email.smtp_password", "")?;
+            builder = builder.set_default("email.from_name", "SSH Terminal")?;
+            builder = builder.set_default("email.from_email", "")?;
+            builder = builder.set_default("email.worker_pool_size", 5)?;
+            builder = builder.set_default("email.worker_timeout_seconds", 10)?;
         }
 
         // 添加环境变量源（会覆盖配置文件的值）

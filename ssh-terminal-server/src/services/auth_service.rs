@@ -14,6 +14,7 @@ use crate::domain::dto::auth::{RegisterRequest, LoginRequest, DeleteUserRequest}
 use crate::domain::entities::users;
 use crate::domain::entities::user_profiles;
 use crate::config::auth::AuthConfig;
+use crate::config::email::EmailConfig;
 use crate::infra::redis::{redis_client::RedisClient, redis_key::{BusinessType, RedisKey}};
 use crate::repositories::user_repository::UserRepository;
 use crate::repositories::user_profile_repository::UserProfileRepository;
@@ -23,6 +24,7 @@ pub struct AuthService {
     user_profile_repo: UserProfileRepository,
     redis_client: RedisClient,
     auth_config: AuthConfig,
+    email_config: EmailConfig,
 }
 
 impl AuthService {
@@ -31,12 +33,14 @@ impl AuthService {
         user_profile_repo: UserProfileRepository,
         redis_client: RedisClient,
         auth_config: AuthConfig,
+        email_config: EmailConfig,
     ) -> Self {
         Self {
             user_repo,
             user_profile_repo,
             redis_client,
             auth_config,
+            email_config,
         }
     }
 
@@ -216,6 +220,32 @@ impl AuthService {
         &self,
         request: RegisterRequest,
     ) -> Result<(users::Model, String, String)> {
+        // 0. 如果启用了邮件验证，检查验证码
+        if self.email_config.enabled {
+            let verify_code = request.verify_code.as_ref()
+                .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorVerifyCodeRequired)))?;
+
+            // 从 Redis 获取存储的验证码
+            let key = RedisKey::new(BusinessType::Auth)
+                .add_identifier("verify_code")
+                .add_identifier(&request.email);
+
+            let stored_code = self.redis_client.get_key(&key).await
+                .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisQueryFailed), e))?;
+
+            let stored_code = stored_code
+                .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorVerifyCodeExpired)))?;
+
+            // 验证验证码
+            if verify_code.as_str() != stored_code {
+                return Err(anyhow::anyhow!("{}", t(None, MessageKey::ErrorVerifyCodeInvalid)));
+            }
+
+            // 验证成功后，删除验证码（一次性使用）
+            self.redis_client.del(&key.to_string()).await
+                .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisDeleteFailed), e))?;
+        }
+
         // 1. 检查邮箱是否已存在
         let existing = self.user_repo.count_by_email(&request.email).await?;
 

@@ -34,15 +34,15 @@ db = 0
 
 [email]
 # 是否启用邮件功能
-enabled = true
+enabled = false
 
 # SMTP 配置
 smtp_host = "smtp.163.com"
 smtp_port = 465
-smtp_username = "ssh_terminal@163.com"
-smtp_password = "CPM3U33MkTif5GpX"
+smtp_username = "your-email@gmail.com"
+smtp_password = "your-app-password"
 from_name = "SSH Terminal"
-from_email = "ssh_terminal@163.com"
+from_email = "your-email@gmail.com"
 
 # Worker 配置
 worker_pool_size = 5
