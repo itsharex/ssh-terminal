@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use std::ops::Deref;
 
 use crate::utils::i18n::{ZH_CN, EN};
+use crate::infra::middleware::logging::{RequestId, log_info};
 
 /// 语言提取器（用于 handler 参数）
 #[derive(Debug, Clone)]
@@ -53,6 +54,15 @@ pub async fn language_middleware(
         })
         .filter(|lang| *lang == ZH_CN || *lang == EN)
         .unwrap_or_else(|| ZH_CN.to_string());
+
+    // 使用 log_info 打印 language
+    let request_id = req
+        .extensions()
+        .get::<RequestId>()
+        .cloned()
+        .unwrap_or_else(|| RequestId("unknown".to_string()));
+
+    log_info(&request_id, "Language", &language);
 
     req.extensions_mut().insert(Language(language));
 

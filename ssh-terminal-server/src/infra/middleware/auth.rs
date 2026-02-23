@@ -1,8 +1,8 @@
 use crate::AppState;
 use crate::repositories::user_repository::UserRepository;
 use crate::error::ErrorResponse;
-use crate::infra::middleware::UserId;
-use crate::utils::i18n::{t, MessageKey};
+use crate::infra::middleware::{UserId, Language, logging::{RequestId, log_info}};
+use crate::utils::i18n::{t, MessageKey, ZH_CN};
 use axum::{
     extract::{Request, State},
     middleware::Next,
@@ -24,15 +24,22 @@ pub async fn auth_middleware(
     mut req: Request,
     next: Next,
 ) -> Result<Response, ErrorResponse> {
+    // 提取 language
+    let language = req
+        .extensions()
+        .get::<Language>()
+        .map(|lang| lang.0.as_str())
+        .unwrap_or(ZH_CN);
+
     // 1. 提取 Authorization header
     let headers = req.headers();
     let auth_header = headers
         .get("Authorization")
         .and_then(|h| h.to_str().ok())
-        .ok_or_else(|| ErrorResponse::unauthorized(t(None, MessageKey::ErrorMissingAuthHeader)))?;
+        .ok_or_else(|| ErrorResponse::unauthorized(t(Some(language), MessageKey::ErrorMissingAuthHeader)))?;
 
     if !auth_header.starts_with("Bearer ") {
-        return Err(ErrorResponse::unauthorized(t(None, MessageKey::ErrorInvalidAuthFormat)));
+        return Err(ErrorResponse::unauthorized(t(Some(language), MessageKey::ErrorInvalidAuthFormat)));
     }
 
     let token = &auth_header[7..];
@@ -45,7 +52,7 @@ pub async fn auth_middleware(
         &DecodingKey::from_secret(jwt_secret.as_ref()),
         &Validation::default(),
     )
-    .map_err(|_| ErrorResponse::unauthorized(t(None, MessageKey::ErrorInvalidToken)))?;
+    .map_err(|_| ErrorResponse::unauthorized(t(Some(language), MessageKey::ErrorInvalidToken)))?;
 
     let user_id = &token_data.claims.sub;
 
@@ -54,14 +61,23 @@ pub async fn auth_middleware(
     let user = user_repo
         .find_by_id_raw(user_id)
         .await
-        .map_err(|_| ErrorResponse::internal(t(None, MessageKey::ErrorVerifyUserFailed)))?;
+        .map_err(|_| ErrorResponse::internal(t(Some(language), MessageKey::ErrorVerifyUserFailed)))?;
 
     if user.map(|u| u.deleted_at.is_some()).unwrap_or(true) {
         // 用户不存在或已被删除
-        return Err(ErrorResponse::unauthorized(t(None, MessageKey::ErrorUserNotFoundOrDeleted)));
+        return Err(ErrorResponse::unauthorized(t(Some(language), MessageKey::ErrorUserNotFoundOrDeleted)));
     }
 
-    // 4. 将 user_id 添加到请求扩展
+    // 4. 使用 log_info 打印 user_id
+    let request_id = req
+        .extensions()
+        .get::<RequestId>()
+        .cloned()
+        .unwrap_or_else(|| RequestId("unknown".to_string()));
+
+    log_info(&request_id, "UserId", user_id);
+
+    // 5. 将 user_id 添加到请求扩展
     req.extensions_mut().insert(UserId(user_id.clone()));
 
     Ok(next.run(req).await)

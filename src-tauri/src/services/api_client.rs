@@ -11,6 +11,9 @@ use crate::models::sync::{
     ServerSyncResponse, ServerResolveConflictResponse,
 };
 use crate::types::response::ServerApiResponse;
+use crate::database::repositories::UserAuthRepository;
+use crate::services::CryptoService;
+use crate::database::DbPool;
 
 /// Token 更新回调类型：接收新token、新refresh_token和过期时间
 type TokenUpdateCallback = Arc<Mutex<Option<Box<dyn Fn(String, String, Option<i64>) + Send + Sync>>>>;
@@ -87,6 +90,58 @@ impl ApiClient {
         *guard = Some(Box::new(callback));
     }
 
+    /// 初始化 token 刷新回调（更新数据库和 ApiClient 的 refresh_token）
+    ///
+    /// # 参数
+    /// * `pool` - 数据库连接池
+    /// * `user_id` - 用户 ID
+    /// * `device_id` - 设备 ID（用于加密 access_token）
+    /// * `get_client` - 获取 ApiClient 的闭包（用于更新 refresh_token）
+    pub fn init_token_refresh_callback<F: Fn() -> Result<ApiClient> + Clone + Send + Sync + 'static>(
+        &self,
+        pool: DbPool,
+        user_id: String,
+        device_id: String,
+        get_client: F,
+    ) {
+        let pool_for_callback = pool;
+        let user_id_for_callback = user_id;
+        let device_id_for_callback = device_id;
+        let get_client_for_callback = get_client;
+
+        self.set_token_update_callback(move |access_token, refresh_token, expires_at| {
+            let pool = pool_for_callback.clone();
+            let user_id = user_id_for_callback.clone();
+            let device_id = device_id_for_callback.clone();
+            let get_client = get_client_for_callback.clone();
+
+            tokio::spawn(async move {
+                // 1. 更新数据库
+                let repo = UserAuthRepository::new(pool.clone());
+                let token_encrypted = match CryptoService::encrypt_token(&access_token, &device_id) {
+                    Ok(encrypted) => encrypted,
+                    Err(e) => {
+                        tracing::error!("Failed to encrypt access_token: {}", e);
+                        return;
+                    }
+                };
+
+                let now = chrono::Utc::now().timestamp();
+                let expires = expires_at.unwrap_or(now + 24 * 60 * 60);
+
+                if let Err(e) = repo.update_token(&user_id, &token_encrypted, Some(&refresh_token), expires) {
+                    tracing::error!("Failed to update tokens in db: {}", e);
+                } else {
+                    // 2. 更新 ApiClient 的 refresh_token
+                    if let Ok(client) = get_client() {
+                        client.set_refresh_token(refresh_token);
+                        tracing::info!("Refresh token updated in ApiClient");
+                    }
+                }
+            });
+        });
+    }
+
     /// 清除访问令牌
     pub fn clear_token(&self) {
         let mut guard = self.access_token.lock()
@@ -145,7 +200,7 @@ impl ApiClient {
     }
 
     /// 发送 GET 请求（带认证）
-    async fn get_auth<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
+    async fn get_auth<T: DeserializeOwned>(&self, path: &str) -> Result<(T, u16, String)> {
         let url = self.build_url(path);
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
@@ -211,7 +266,7 @@ impl ApiClient {
     }
 
     /// 发送 POST 请求（带认证）
-    async fn post_auth<T: Serialize, R: DeserializeOwned>(&self, path: &str, body: &T) -> Result<R> {
+    async fn post_auth<T: Serialize, R: DeserializeOwned>(&self, path: &str, body: &T) -> Result<(R, u16, String)> {
         let url = self.build_url(path);
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
@@ -279,7 +334,7 @@ impl ApiClient {
     }
 
     /// 发送 PUT 请求（带认证）
-    async fn put_auth<T: Serialize, R: DeserializeOwned>(&self, path: &str, body: &T) -> Result<R> {
+    async fn put_auth<T: Serialize, R: DeserializeOwned>(&self, path: &str, body: &T) -> Result<(R, u16, String)> {
         let url = self.build_url(path);
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
@@ -347,7 +402,7 @@ impl ApiClient {
     }
 
     /// 发送 DELETE 请求（带认证）
-    async fn delete_auth<R: DeserializeOwned>(&self, path: &str) -> Result<R> {
+    async fn delete_auth<R: DeserializeOwned>(&self, path: &str) -> Result<(R, u16, String)> {
         let url = self.build_url(path);
         let token = self.get_token()
             .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
@@ -413,7 +468,7 @@ impl ApiClient {
     }
 
     /// 发送 POST 请求（不带认证）
-    async fn post_public<T: Serialize, R: DeserializeOwned>(&self, path: &str, body: &T) -> Result<R> {
+    async fn post_public<T: Serialize, R: DeserializeOwned>(&self, path: &str, body: &T) -> Result<(R, u16, String)> {
         let url = self.build_url(path);
 
         match self.client
@@ -450,30 +505,53 @@ impl ApiClient {
     }
 
     /// 处理 HTTP 响应（带 token 自动刷新）
-    async fn handle_response<T: DeserializeOwned>(&self, response: reqwest::Response) -> Result<T> {
+    async fn handle_response<T: DeserializeOwned>(&self, response: reqwest::Response) -> Result<(T, u16, String)> {
         let status = response.status();
 
         if status.is_success() {
-            self.parse_success_response(response).await
+            // 尝试解析响应
+            match self.parse_success_response(response).await {
+                Ok(result) => Ok(result),
+                Err(e) => {
+                    // 检查是否需要刷新 token
+                    if e.to_string().starts_with("TOKEN_NEED_REFRESH") {
+                        tracing::warn!("Token expired (server returned 401), attempting to refresh");
+
+                        if let Err(refresh_err) = self.try_refresh_token().await {
+                            tracing::error!("Token refresh failed: {}", refresh_err);
+
+                            // 如果是 refresh_token 失效，清除 token 并返回服务器消息
+                            if Self::is_refresh_failure(&refresh_err) {
+                                self.clear_token();
+                                self.clear_refresh_token();
+                                return Err(refresh_err);
+                            }
+
+                            return Err(anyhow!("Authentication failed: Token refresh failed - {}", refresh_err));
+                        }
+
+                        // 刷新成功，返回重试信号
+                        Err(anyhow!("Token refreshed, please retry the request"))
+                    } else {
+                        Err(e)
+                    }
+                }
+            }
         } else if status.as_u16() == 401 {
-            // Token 过期，尝试自动刷新
-            tracing::warn!("Token expired, attempting to refresh");
+            // HTTP 401 错误，尝试自动刷新
+            tracing::warn!("HTTP 401 error, attempting to refresh");
 
             if let Err(e) = self.try_refresh_token().await {
                 tracing::error!("Token refresh failed: {}", e);
 
-                // 如果是 refresh_token 失效，返回特殊错误码
                 if Self::is_refresh_failure(&e) {
-                    // 清除本地状态
                     self.clear_token();
                     self.clear_refresh_token();
-                    return Err(anyhow!("{}: Token expired, please login again", TOKEN_REFRESH_FAILED));
+                    return Err(e);
                 }
 
                 Err(anyhow!("Authentication failed: Token refresh failed - {}", e))
             } else {
-                // 刷新成功，但需要重试请求
-                // 当前简单返回错误，由调用方决定是否重试
                 Err(anyhow!("Token refreshed, please retry the request"))
             }
         } else {
@@ -484,7 +562,7 @@ impl ApiClient {
     }
 
     /// 解析成功的 HTTP 响应
-    async fn parse_success_response<T: DeserializeOwned>(&self, mut response: reqwest::Response) -> Result<T> {
+    async fn parse_success_response<T: DeserializeOwned>(&self, response: reqwest::Response) -> Result<(T, u16, String)> {
         let text = response.text().await?;
         tracing::debug!("API response: {}", text);
 
@@ -493,8 +571,14 @@ impl ApiClient {
             .map_err(|e| anyhow!("Failed to parse JSON: {}", e))?;
 
         if server_response.is_success() {
+            let code = server_response.code;
+            let message = server_response.message.clone();
             server_response.data()
+                .map(|data| (data, code, message))
                 .ok_or_else(|| anyhow!("Server response missing data"))
+        } else if server_response.code == 401 {
+            // 服务器返回 401，需要刷新 token
+            Err(anyhow!("TOKEN_NEED_REFRESH: {}", server_response.message))
         } else {
             Err(anyhow!("Server returned error: {}", server_response.message))
         }
@@ -551,6 +635,10 @@ impl ApiClient {
                     Err(anyhow!("Server returned invalid data"))
                 }
             } else {
+                // 检查是否是刷新令牌失效
+                if server_response.code == 400 && server_response.message.contains("刷新令牌") {
+                    return Err(anyhow!("{}: {}", TOKEN_REFRESH_FAILED, server_response.message));
+                }
                 Err(anyhow!("Token refresh failed: {}", server_response.message))
             }
         } else {
@@ -563,19 +651,25 @@ impl ApiClient {
     // ==================== 认证 API ====================
 
     /// 用户登录（返回服务器格式）
-    pub async fn login(&self, req: &ServerLoginRequest) -> Result<ServerLoginResult> {
+    pub async fn login(&self, req: &ServerLoginRequest) -> Result<(ServerLoginResult, u16, String)> {
         tracing::info!("API: login for {}", req.email);
         self.post_public("auth/login", req).await
     }
 
     /// 用户注册（返回服务器格式）
-    pub async fn register(&self, req: &ServerRegisterRequest) -> Result<ServerRegisterResult> {
+    pub async fn register(&self, req: &ServerRegisterRequest) -> Result<(ServerRegisterResult, u16, String)> {
         tracing::info!("API: register for {}", req.email);
         self.post_public("auth/register", req).await
     }
 
+    /// 发送验证码（返回服务器格式）
+    pub async fn send_verify_code(&self, req: &SendVerifyCodeRequest) -> Result<(EmailResult, u16, String)> {
+        tracing::info!("API: send_verify_code for {}", req.email);
+        self.post_public("auth/send-verify-code", req).await
+    }
+
     /// 刷新访问令牌（返回服务器格式）
-    pub async fn refresh_token(&self, refresh_token: &str) -> Result<ServerRefreshResult> {
+    pub async fn refresh_token(&self, refresh_token: &str) -> Result<(ServerRefreshResult, u16, String)> {
         tracing::info!("API: refresh_token");
         self.post_public("auth/refresh", &serde_json::json!({
             "refresh_token": refresh_token
@@ -585,19 +679,19 @@ impl ApiClient {
     // ==================== 用户资料 API ====================
 
     /// 获取用户资料
-    pub async fn get_profile(&self) -> Result<ServerUserProfile> {
+    pub async fn get_profile(&self) -> Result<(ServerUserProfile, u16, String)> {
         tracing::info!("API: get_profile");
         self.get_auth("api/user/profile").await
     }
 
     /// 更新用户资料
-    pub async fn update_profile(&self, req: &ServerUpdateProfileRequest) -> Result<ServerUserProfile> {
+    pub async fn update_profile(&self, req: &ServerUpdateProfileRequest) -> Result<(ServerUserProfile, u16, String)> {
         tracing::info!("API: update_profile");
         self.put_auth("api/user/profile", req).await
     }
 
     /// 删除用户资料（软删除）
-    pub async fn delete_profile(&self) -> Result<()> {
+    pub async fn delete_profile(&self) -> Result<((), u16, String)> {
         tracing::info!("API: delete_profile");
         self.delete_auth("api/user/profile").await
     }
@@ -605,13 +699,13 @@ impl ApiClient {
     // ==================== 同步 API ====================
 
     /// 统一同步
-    pub async fn sync(&self, req: &SyncRequest) -> Result<ServerSyncResponse> {
+    pub async fn sync(&self, req: &SyncRequest) -> Result<(ServerSyncResponse, u16, String)> {
         tracing::info!("API: sync");
         self.post_auth("api/sync", req).await
     }
 
     /// 解决冲突
-    pub async fn resolve_conflict(&self, req: &ResolveConflictRequest) -> Result<ServerResolveConflictResponse> {
+    pub async fn resolve_conflict(&self, req: &ResolveConflictRequest) -> Result<(ServerResolveConflictResponse, u16, String)> {
         tracing::info!("API: resolve_conflict for {:?}", req);
         self.post_auth("api/sync/resolve-conflict", req).await
     }

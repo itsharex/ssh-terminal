@@ -34,10 +34,10 @@ export function SyncButton() {
 
   const handleSync = async () => {
     try {
-      await syncNow();
+      const report = await syncNow();
       playSound(SoundEffect.SUCCESS);
       toast.success(t('sync.success'), {
-        description: t('sync.successDescription'),
+        description: report.message || t('sync.successDescription'),
       });
 
       // 同步成功后重新加载会话和用户资料

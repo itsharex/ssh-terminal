@@ -1,6 +1,6 @@
 use anyhow::Result;
 use r2d2::PooledConnection;
-use r2d2_sqlite::{rusqlite, SqliteConnectionManager};
+use r2d2_sqlite::SqliteConnectionManager;
 
 use crate::database::DbPool;
 use crate::models::user_profile::{UserProfile, UpdateProfileRequest};

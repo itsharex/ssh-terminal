@@ -5,6 +5,7 @@ use tauri::State;
 use crate::database::DbPool;
 use crate::models::user_auth::*;
 use crate::services::{AuthService, ApiClient};
+use crate::types::response::ApiResponse;
 
 /// 全局 API Client 状态
 #[derive(Clone)]
@@ -59,12 +60,26 @@ pub async fn auth_login(
     req: LoginRequest,
     pool: State<'_, DbPool>,
     api_client_state: State<'_, ApiClientStateWrapper>,
-) -> Result<AuthResponse, String> {
+) -> Result<ApiResponse<AuthResponse>, String> {
     let service = AuthService::new(pool.inner().clone(), Some(api_client_state.inner().clone()));
-    service
-        .login(req)
-        .await
-        .map_err(|e| e.to_string())
+    match service.login(req).await {
+        Ok((auth_response, code, message)) => {
+            Ok(ApiResponse {
+                code,
+                message,
+                data: Some(auth_response),
+            })
+        }
+        Err(e) => {
+            let error_message = e.to_string();
+            let (code, message) = extract_server_error(&error_message);
+            Ok(ApiResponse {
+                code,
+                message,
+                data: None,
+            })
+        }
+    }
 }
 
 /// 用户注册
@@ -73,12 +88,26 @@ pub async fn auth_register(
     req: RegisterRequest,
     pool: State<'_, DbPool>,
     api_client_state: State<'_, ApiClientStateWrapper>,
-) -> Result<AuthResponse, String> {
+) -> Result<ApiResponse<AuthResponse>, String> {
     let service = AuthService::new(pool.inner().clone(), Some(api_client_state.inner().clone()));
-    service
-        .register(req)
-        .await
-        .map_err(|e| e.to_string())
+    match service.register(req).await {
+        Ok((auth_response, code, message)) => {
+            Ok(ApiResponse {
+                code,
+                message,
+                data: Some(auth_response),
+            })
+        }
+        Err(e) => {
+            let error_message = e.to_string();
+            let (code, message) = extract_server_error(&error_message);
+            Ok(ApiResponse {
+                code,
+                message,
+                data: None,
+            })
+        }
+    }
 }
 
 /// 用户登出
@@ -167,4 +196,54 @@ pub async fn auth_delete_account(
     service
         .delete_account(&user_id)
         .map_err(|e| e.to_string())
+}
+
+/// 发送验证码到邮箱
+/// 直接返回服务器的原始响应 {code, message, data}
+#[tauri::command]
+pub async fn auth_send_verify_code(
+    email: String,
+    pool: State<'_, DbPool>,
+) -> Result<crate::types::response::ApiResponse<EmailResult>, String> {
+    let service = AuthService::new(pool.inner().clone(), None);
+    match service.send_verify_code(email).await {
+        Ok((result, code, message)) => {
+            Ok(crate::types::response::ApiResponse {
+                code,
+                message,
+                data: Some(result),
+            })
+        }
+        Err(e) => {
+            // 尝试从错误中提取服务器返回的 message
+            let error_message = e.to_string();
+            let (code, message) = extract_server_error(&error_message);
+            Ok(crate::types::response::ApiResponse {
+                code,
+                message,
+                data: None,
+            })
+        }
+    }
+}
+
+/// 辅助函数：从错误消息中提取服务器返回的 code 和 message
+fn extract_server_error(error_str: &str) -> (u16, String) {
+    // 匹配格式: API error (400 Bad Request): {"code":400,"message":"邮箱已注册","data":null}
+    if let Some(json_str) = error_str.split_once(':').and_then(|(_, rest)| {
+        rest.trim().strip_prefix('{').and_then(|s| s.strip_suffix('}'))
+    }) {
+        let json_str = format!("{{{}}}", json_str);
+        if let Ok(server_response) = serde_json::from_str::<serde_json::Value>(&json_str) {
+            let code = server_response.get("code")
+                .and_then(|c| c.as_u64())
+                .unwrap_or(500) as u16;
+            let message = server_response.get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("Unknown error");
+            return (code, message.to_string());
+        }
+    }
+    // 如果无法提取，返回通用错误
+    (500, error_str.to_string())
 }

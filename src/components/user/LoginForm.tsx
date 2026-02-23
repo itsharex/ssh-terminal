@@ -22,10 +22,44 @@ interface LoginFormProps {
 
 export function LoginForm({ isOpen, onClose }: LoginFormProps) {
   const { t } = useTranslation();
-  const { login, register, isLoading, clearError } = useAuthStore();
+  const { login, register, sendVerifyCode, isLoading, clearError } = useAuthStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [verifyCode, setVerifyCode] = useState('');
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  const handleSendVerifyCode = async () => {
+    if (!email) {
+      toast.error(t('auth.error.emailRequired'));
+      return;
+    }
+
+    setIsSendingCode(true);
+    try {
+      const message = await sendVerifyCode(email);
+      toast.success(message || t('auth.verifyCode.sent'));
+      // 开始倒计时
+      setCountdown(60);
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : t('auth.error.unknownError');
+      toast.error(t('auth.verifyCode.sendFailed'), {
+        description: errorMessage,
+      });
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +73,7 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
           description: t('auth.login.successDescription'),
         });
       } else {
-        await register({ email, password });
+        await register({ email, password, verifyCode });
         playSound(SoundEffect.SUCCESS);
         toast.success(t('auth.register.success'), {
           description: t('auth.register.successDescription'),
@@ -49,6 +83,8 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
       // 清空表单
       setEmail('');
       setPassword('');
+      setVerifyCode('');
+      setCountdown(0);
       mode === 'register' && setMode('login');
     } catch (error) {
       // 错误已经在 store 中设置了，这里显示 toast
@@ -66,6 +102,8 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
     setMode('login');
     setEmail('');
     setPassword('');
+    setVerifyCode('');
+    setCountdown(0);
     onClose();
   };
 
@@ -73,6 +111,8 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
     clearError();
     setEmail('');
     setPassword('');
+    setVerifyCode('');
+    setCountdown(0);
     setMode(mode === 'login' ? 'register' : 'login');
   };
 
@@ -98,6 +138,37 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
               required
             />
           </div>
+
+          {mode === 'register' && (
+            <div className="space-y-2">
+              <Label htmlFor="verifyCode">{t('auth.register.fields.verifyCode')}</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="verifyCode"
+                  type="text"
+                  placeholder={t('auth.register.fields.verifyCodePlaceholder')}
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value)}
+                  required
+                  maxLength={6}
+                  pattern="\d{6}"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSendVerifyCode}
+                  disabled={isSendingCode || countdown > 0 || !email}
+                  className="whitespace-nowrap"
+                >
+                  {isSendingCode
+                    ? t('auth.verifyCode.sending')
+                    : countdown > 0
+                    ? `${countdown}s`
+                    : t('auth.verifyCode.send')}
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="password">{t(`auth.${mode}.fields.password`)}</Label>
@@ -125,7 +196,7 @@ export function LoginForm({ isOpen, onClose }: LoginFormProps) {
               <Button type="button" variant="outline" onClick={handleClose}>
                 {t('auth.actions.cancel')}
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading} className="min-w-[100px]">
                 {isLoading
                   ? t(`auth.${mode}.loading`)
                   : t(`auth.${mode}.button`)}

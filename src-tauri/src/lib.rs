@@ -79,9 +79,12 @@ pub fn run() {
             };
 
             // 2. 检查是否有当前用户登录
-            let user_auth_repo = UserAuthRepository::new(db_pool_for_init);
+            let user_auth_repo = UserAuthRepository::new(db_pool_for_init.clone());
             if let Some(current_user) = user_auth_repo.find_current().ok().flatten() {
                 tracing::info!("Found current user, initializing API client");
+                tracing::info!("  - user_id: {}", current_user.user_id);
+                tracing::info!("  - has_refresh_token: {}", current_user.refresh_token_encrypted.is_some());
+                tracing::info!("  - device_id: {}", current_user.device_id);
 
                 // 获取语言设置
                 let language = app_settings_repo.get_language().ok();
@@ -89,13 +92,36 @@ pub fn run() {
                 // 3. 创建并初始化 ApiClient
                 match ApiClient::new(server_url.clone(), language) {
                     Ok(client) => {
-                        // 4. 解密并设置 token
+                        // 4. 解密并设置 access_token
                         match CryptoService::decrypt_token(
                             &current_user.access_token_encrypted,
                             &current_user.device_id
                         ) {
                             Ok(token) => {
                                 client.set_token(token);
+
+                                // 5. 设置 refresh_token_encrypted（用于后续 token 刷新）
+                                if let Some(refresh_token) = &current_user.refresh_token_encrypted {
+                                    client.set_refresh_token(refresh_token.clone());
+                                    tracing::info!("Refresh token set from database");
+                                } else {
+                                    tracing::warn!("No refresh token found in database, auto-refresh will not work");
+                                }
+
+                                // 6. 设置 device_id（用于 token 加密解密）
+                                client.set_device_id(current_user.device_id.clone());
+
+                                // 7. 初始化 token 刷新回调
+                                client.init_token_refresh_callback(
+                                    db_pool_for_init.clone(),
+                                    current_user.user_id.clone(),
+                                    current_user.device_id.clone(),
+                                    {
+                                        let api_client_state_clone = api_client_state.clone();
+                                        move || api_client_state_clone.get_client()
+                                    }
+                                );
+
                                 api_client_state.set_client(client);
                                 tracing::info!("API client initialized successfully");
                             }
@@ -242,6 +268,7 @@ pub fn run() {
             commands::auth_auto_login,
             commands::auth_has_current_user,
             commands::auth_delete_account,
+            commands::auth_send_verify_code,
             // 同步命令
             commands::sync_now,
             commands::sync_get_status,

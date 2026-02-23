@@ -35,7 +35,7 @@ pub async fn register(
         state.config.email.clone(),
     );
 
-    match service.register(payload).await {
+    match service.register(payload, Some(language.as_str())).await {
         Ok((user_model, access_token, refresh_token)) => {
             let data = RegisterResult::from((user_model, access_token, refresh_token));
             let message = t(Some(language.as_str()), MessageKey::SuccessRegister);
@@ -69,7 +69,7 @@ pub async fn login(
         state.config.email.clone(),
     );
 
-    match service.login(payload).await {
+    match service.login(payload, Some(language.as_str())).await {
         Ok((user_model, access_token, refresh_token)) => {
             let data = LoginResult::from((user_model, access_token, refresh_token));
             let message = t(Some(language.as_str()), MessageKey::SuccessLogin);
@@ -108,7 +108,7 @@ pub async fn refresh(
     );
 
     match service
-        .refresh_access_token(&payload.refresh_token)
+        .refresh_access_token(&payload.refresh_token, Some(language.as_str()))
         .await
     {
         Ok((access_token, refresh_token)) => {
@@ -158,7 +158,7 @@ pub async fn delete_account(
         password: payload.password,
     };
 
-    match service.delete_user(delete_request).await {
+    match service.delete_user(delete_request, Some(language.as_str())).await {
         Ok(_) => {
             log_info(&request_id, "账号删除成功", &format!("user_id={}", user_id));
             let message = t(Some(language.as_str()), MessageKey::SuccessDeleteAccount);

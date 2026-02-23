@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-import { toast } from 'sonner';
 import type { SyncStatus, SyncReport, ConflictInfo, ConflictStrategy } from '@/types/sync';
+import type { ApiResponse } from '@/types/auth';
 
 interface SyncState {
   lastSyncAt: number | null;
@@ -13,7 +13,7 @@ interface SyncState {
   error: string | null;
 
   // Actions
-  syncNow: () => Promise<void>;
+  syncNow: () => Promise<SyncReport>;
   getStatus: () => Promise<void>;
   resolveConflict: (conflictId: string, strategy: ConflictStrategy) => Promise<void>;
   clearError: () => void;
@@ -31,7 +31,14 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   syncNow: async () => {
     set({ isSyncing: true, error: null });
     try {
-      const report = await invoke<SyncReport>('sync_now');
+      const response = await invoke<ApiResponse<SyncReport>>('sync_now');
+
+      // 检查响应状态码
+      if (response.code !== 200 || !response.data) {
+        throw new Error(response.message);
+      }
+
+      const report = response.data;
 
       set({
         lastSyncAt: report.lastSyncAt,
@@ -40,20 +47,14 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         error: report.error || null,
       });
 
-      // 根据是否有冲突显示不同的提示
-      if (report.conflictCount > 0 && report.message) {
-        // 有冲突：显示冲突消息
-        toast.warning('同步冲突', {
-          description: report.message,
-          duration: 5000,
-        });
+      // 只记录日志，不显示 toast，由调用者决定如何显示消息
+      if (report.conflictCount > 0) {
+        console.warn('同步冲突:', report.message);
       } else if (report.message) {
-        // 无冲突：显示成功消息
-        toast.success('同步成功', {
-          description: report.message,
-          duration: 3000,
-        });
+        console.log('同步成功:', report.message);
       }
+
+      return report;
     } catch (error) {
       const errorMessage = error as string;
       set({ error: errorMessage });
@@ -64,7 +65,14 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   },
   getStatus: async () => {
     try {
-      const status = await invoke<SyncStatus>('sync_get_status');
+      const response = await invoke<ApiResponse<SyncStatus>>('sync_get_status');
+
+      // 检查响应状态码
+      if (response.code !== 200 || !response.data) {
+        throw new Error(response.message);
+      }
+
+      const status = response.data;
       set(status);
     } catch (error) {
       console.error('Failed to get sync status:', error);
@@ -74,7 +82,14 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   resolveConflict: async (conflictId: string, strategy: ConflictStrategy) => {
     set({ isResolving: true, error: null });
     try {
-      const report = await invoke<SyncReport>('sync_resolve_conflict', { conflictId, strategy });
+      const response = await invoke<ApiResponse<SyncReport>>('sync_resolve_conflict', { conflictId, strategy });
+
+      // 检查响应状态码
+      if (response.code !== 200 || !response.data) {
+        throw new Error(response.message);
+      }
+
+      const report = response.data;
 
       set({
         lastSyncAt: report.lastSyncAt,

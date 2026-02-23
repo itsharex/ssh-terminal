@@ -47,8 +47,7 @@ export interface NetworkErrorInfo {
 /**
  * 从后端错误响应中提取 message
  *
- * 后端错误格式: API error (400 Bad Request): {"code":400,"message":"邮箱已注册","data":null}
- * 或者: API error (500): Internal Server Error
+ * 后端现在统一返回 {code, message, data} 格式，错误信息直接从 response.message 获取
  *
  * @param errorString 后端返回的错误字符串
  * @returns 提取的 message 和原始错误
@@ -57,28 +56,11 @@ export function extractMessageFromError(errorString: string): {
   message: string;
   originalError: string;
 } {
-  // 尝试匹配 API error (xxx): {...} 格式
-  const apiErrorMatch = errorString.match(/API error \((\d+ [^\)]+)\): (.+)$/);
+  // 尝试匹配 API error (xxx): {...} 格式（用于兼容旧格式）
+  const apiErrorMatch = errorString.match(/API error \((\d+ [^)]+)\): (.+)$/);
 
   if (apiErrorMatch) {
     const content = apiErrorMatch[2].trim();
-
-    // 尝试解析 JSON 格式的错误
-    if (content.startsWith('{') && content.endsWith('}')) {
-      try {
-        const errorJson = JSON.parse(content);
-        if (errorJson.message) {
-          return {
-            message: errorJson.message,
-            originalError: errorString,
-          };
-        }
-      } catch (e) {
-        // JSON 解析失败，使用原始内容
-      }
-    }
-
-    // 使用 content 作为 message
     return {
       message: content,
       originalError: errorString,
