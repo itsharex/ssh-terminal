@@ -59,7 +59,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       const response = await invoke<ApiResponse<AuthResponse>>('auth_login', { req });
-      
+
       // 检查响应状态码
       if (response.code !== 200 || !response.data) {
         throw new Error(response.message);
@@ -76,6 +76,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const syncStore = useSyncStore.getState();
         const sessionStore = useSessionStore.getState();
         const authStore = get();
+
+        // 迁移匿名用户的 SSH 会话到当前登录用户
+        try {
+          const migratedCount = await invoke<number>('db_ssh_session_migrate_to_user');
+          if (migratedCount > 0) {
+            console.log(`[authStore] Migrated ${migratedCount} sessions from anonymous to user ${user.id}`);
+          }
+        } catch (migrateError) {
+          console.error('[authStore] Failed to migrate sessions:', migrateError);
+          // 迁移失败不影响登录成功
+        }
 
         await syncStore.syncNow();
         await sessionStore.reloadSessions();
@@ -114,7 +125,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       const response = await invoke<ApiResponse<AuthResponse>>('auth_register', { req });
-      
+
       // 检查响应状态码
       if (response.code !== 200 || !response.data) {
         throw new Error(response.message);
@@ -124,11 +135,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user: User = await createUserWithServerUrl(res);
       set({ isAuthenticated: true, currentUser: user, isLoading: false });
 
-      // 注册成功后只加载本地用户资料，不同步服务器
+      // 注册成功后迁移匿名用户的 SSH 会话并加载本地用户资料
       try {
         const { useUserProfileStore } = await import('./userProfileStore');
         const userProfileStore = useUserProfileStore.getState();
         const authStore = get();
+
+        // 迁移匿名用户的 SSH 会话到当前注册用户
+        try {
+          const migratedCount = await invoke<number>('db_ssh_session_migrate_to_user');
+          if (migratedCount > 0) {
+            console.log(`[authStore] Migrated ${migratedCount} sessions from anonymous to user ${user.id}`);
+          }
+        } catch (migrateError) {
+          console.error('[authStore] Failed to migrate sessions:', migrateError);
+          // 迁移失败不影响注册成功
+        }
 
         await userProfileStore.loadProfile();
         await authStore.getCurrentUser();

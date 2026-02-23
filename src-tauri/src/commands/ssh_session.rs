@@ -389,3 +389,46 @@ pub async fn db_ssh_session_get_by_id(
 
     Ok(Some(result))
 }
+
+/// 将匿名用户的 SSH 会话迁移到当前登录用户
+/// 此命令应该在注册或登录成功后调用（非 auto-login）
+#[tauri::command]
+pub async fn db_ssh_session_migrate_to_user(
+    pool: State<'_, DbPool>,
+) -> Result<usize, String> {
+    let auth_repo = UserAuthRepository::new(pool.inner().clone());
+    let session_repo = SshSessionRepository::new(pool.inner().clone());
+
+    // 获取当前登录用户信息
+    let current_user = match auth_repo.find_current()
+        .map_err(|e| format!("Failed to get current user: {}", e))?
+    {
+        Some(user) => user,
+        None => return Err("No current user found".to_string()),
+    };
+
+    // 如果当前用户本身就是匿名用户，不需要迁移
+    if current_user.user_id == ANONYMOUS_USER_ID {
+        tracing::info!("Current user is anonymous, no migration needed");
+        return Ok(0);
+    }
+
+    // 执行迁移
+    let migrated_count = session_repo.batch_update_user_id(
+        ANONYMOUS_USER_ID,
+        &current_user.user_id,
+        ANONYMOUS_DEVICE_ID,
+        &current_user.device_id,
+    )
+        .map_err(|e| format!("Failed to migrate sessions: {}", e))?;
+
+    if migrated_count > 0 {
+        tracing::info!(
+            "Successfully migrated {} sessions from anonymous to user {}",
+            migrated_count,
+            current_user.user_id
+        );
+    }
+
+    Ok(migrated_count)
+}

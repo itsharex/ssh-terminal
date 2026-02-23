@@ -43,7 +43,7 @@
               v-model:value="formData.password"
               type="password"
               show-password-on="click"
-              placeholder="请输入密码"
+              :placeholder="isEdit ? '留空表示不修改密码' : '请输入密码'"
             />
           </n-form-item>
         </n-form>
@@ -117,7 +117,11 @@ const rules: FormRules = {
     { required: true, message: '请输入用户名', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' }
+    {
+      required: !isEdit.value,
+      message: '请输入密码',
+      trigger: 'blur'
+    }
   ]
 }
 
@@ -154,25 +158,8 @@ async function handleSubmit() {
     await formRef.value?.validate()
     loading.value = true
 
-    // 从 auth store 获取当前用户的 device_id
-    const deviceId = authStore.deviceId
-    if (!deviceId) {
-      throw new Error('Device ID not found')
-    }
-
-    // 构建 Tauri 格式的 Auth Method
-    const authMethod = {
-      Password: {
-        password: formData.password
-      }
-    }
-    const authJson = JSON.stringify(authMethod)
-
-    // 使用 device_id 加密 (匹配 Tauri 的 encrypt_password)
-    const { encrypted: authMethodEncrypted, nonce: authNonce } =
-      await cryptoUtils.encryptPassword(authJson, deviceId)
-
-    const data = {
+    // 构建基础数据
+    const data: any = {
       name: formData.name,
       host: formData.host,
       port: formData.port,
@@ -180,10 +167,32 @@ async function handleSubmit() {
       group_name: formData.group_name || undefined,
       terminal_type: formData.terminal_type,
       columns: formData.columns,
-      rows: formData.rows,
-      auth_method_encrypted: authMethodEncrypted,
-      auth_nonce: authNonce,
-      auth_key_salt: ''  // device_id 方式不需要 salt
+      rows: formData.rows
+    }
+
+    // 只有在密码有值时才加密和发送认证信息
+    if (formData.password) {
+      // 从 auth store 获取当前用户的 device_id
+      const deviceId = authStore.deviceId
+      if (!deviceId) {
+        throw new Error('Device ID not found')
+      }
+
+      // 构建 Tauri 格式的 Auth Method
+      const authMethod = {
+        Password: {
+          password: formData.password
+        }
+      }
+      const authJson = JSON.stringify(authMethod)
+
+      // 使用 device_id 加密 (匹配 Tauri 的 encrypt_password)
+      const { encrypted: authMethodEncrypted, nonce: authNonce } =
+        await cryptoUtils.encryptPassword(authJson, deviceId)
+
+      data.auth_method_encrypted = authMethodEncrypted
+      data.auth_nonce = authNonce
+      data.auth_key_salt = ''  // device_id 方式不需要 salt
     }
 
     if (isEdit.value) {

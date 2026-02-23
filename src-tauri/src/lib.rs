@@ -185,6 +185,7 @@ pub fn run() {
             commands::db_ssh_session_delete,
             commands::db_ssh_session_list,
             commands::db_ssh_session_get_by_id,
+            commands::db_ssh_session_migrate_to_user,
             // Terminal 终端命令
             commands::terminal_write,
             commands::terminal_resize,

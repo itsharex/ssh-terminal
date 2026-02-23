@@ -57,12 +57,12 @@ export function EditSessionDialog({
       // 确定认证方式
       let authMethodType: 'password' | 'publicKey' = 'password';
 
-      // 更健壮的类型检查
+      // 更健壮的类型检查（注意：Rust 端序列化为 PascalCase）
       if (sessionConfig.authMethod && typeof sessionConfig.authMethod === 'object') {
-        if ('password' in sessionConfig.authMethod) {
+        if ('Password' in sessionConfig.authMethod) {
           authMethodType = 'password';
           console.log('[EditSessionDialog] 检测到密码认证');
-        } else if ('publicKey' in sessionConfig.authMethod) {
+        } else if ('PublicKey' in sessionConfig.authMethod) {
           authMethodType = 'publicKey';
           console.log('[EditSessionDialog] 检测到公钥认证');
         } else {
@@ -72,7 +72,8 @@ export function EditSessionDialog({
 
       console.log('[EditSessionDialog] 设置认证方式为:', authMethodType);
 
-      setFormData({
+      // 初始化表单数据
+      const initialFormData = {
         name: sessionConfig.name,
         host: sessionConfig.host,
         port: sessionConfig.port.toString(),
@@ -82,9 +83,17 @@ export function EditSessionDialog({
         password: '',
         privateKeyPath: '',
         passphrase: '',
-      });
+      };
+
+      // 如果是公钥认证，预填充私钥路径和密码短语
+      if (authMethodType === 'publicKey' && 'PublicKey' in sessionConfig.authMethod) {
+        initialFormData.privateKeyPath = sessionConfig.authMethod.PublicKey.privateKeyPath;
+        initialFormData.passphrase = sessionConfig.authMethod.PublicKey.passphrase || '';
+      }
+
+      setFormData(initialFormData);
     } else if (session && open) {
-      // 如果没有完整配置，使用 SessionInfo 的基本信息
+      // 如果没有完整配置，使用 SessionInfo 的基本信息，默认密码认证
       console.log('[EditSessionDialog] 没有完整配置，使用基本信息，默认密码认证');
       setFormData({
         name: session.name,
@@ -109,10 +118,6 @@ export function EditSessionDialog({
     }
 
     // 验证认证方式的必填字段
-    if (formData.authMethod === 'password' && !formData.password) {
-      toast.error(t('validation.passwordRequired'));
-      return;
-    }
     if (formData.authMethod === 'publicKey' && !formData.privateKeyPath) {
       toast.error(t('validation.keyPathRequired'));
       return;
@@ -131,12 +136,13 @@ export function EditSessionDialog({
 
       // 根据选择的认证方式更新认证信息
       if (formData.authMethod === 'password') {
+        // 只有在输入了新密码时才更新认证信息
         if (formData.password) {
           updates.authMethod = {
             Password: { password: formData.password }
           };
         }
-        // 如果没有输入新密码，保持原有的认证方式
+        // 如果没有输入新密码，保持原有的认证方式（不发送 authMethod）
       } else if (formData.authMethod === 'publicKey') {
         updates.authMethod = {
           PublicKey: {
@@ -265,7 +271,7 @@ export function EditSessionDialog({
             {formData.authMethod === 'password' && (
               <div className="space-y-2">
                 <Label htmlFor="edit-password">
-                  {t('session.field.password')} <span className="text-destructive">*</span>
+                  {t('session.field.password')}
                 </Label>
                 <Input
                   id="edit-password"
@@ -273,10 +279,9 @@ export function EditSessionDialog({
                   placeholder={t('session.field.passwordPlaceholder')}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
                 />
                 <p className="text-xs text-muted-foreground">
-                  {t('session.field.passwordHint')}
+                  留空表示不修改密码
                 </p>
               </div>
             )}

@@ -340,6 +340,94 @@ impl SshSessionRepository {
         Ok(())
     }
 
+    /// 批量更新会话的 user_id（用于从匿名用户迁移到登录用户）
+    /// 这个方法会：
+    /// 1. 查找所有属于 old_user_id 的会话
+    /// 2. 使用新的 device_id 重新加密认证信息
+    /// 3. 更新 user_id、认证信息和时间戳
+    /// 4. 标记为需要同步
+    pub fn batch_update_user_id(
+        &self,
+        old_user_id: &str,
+        new_user_id: &str,
+        old_device_id: &str,
+        new_device_id: &str,
+    ) -> Result<usize> {
+        let conn = self.get_conn()?;
+        let now = chrono::Utc::now().timestamp();
+
+        // 获取所有需要迁移的会话
+        let sessions = self.find_by_user(old_user_id)?;
+
+        if sessions.is_empty() {
+            tracing::info!("No sessions found for user_id: {}", old_user_id);
+            return Ok(0);
+        }
+
+        tracing::info!("Migrating {} sessions from {} to {}", sessions.len(), old_user_id, new_user_id);
+
+        let mut updated_count = 0;
+
+        // 逐个迁移会话
+        for session in sessions {
+            // 解密认证信息（使用旧的 device_id）
+            let auth_method_json = crate::services::CryptoService::decrypt_password(
+                &session.auth_method_encrypted,
+                &session.auth_nonce,
+                old_device_id,
+            )
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to decrypt auth method for session {}: {}",
+                    session.id,
+                    e
+                )
+            })?;
+
+            // 重新加密认证信息（使用新的 device_id）
+            let (auth_method_encrypted, auth_nonce) =
+                crate::services::CryptoService::encrypt_password(&auth_method_json, new_device_id)
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to encrypt auth method for session {}: {}",
+                            session.id,
+                            e
+                        )
+                    })?;
+
+            // 更新数据库
+            conn.execute(
+                "UPDATE ssh_sessions SET
+                    user_id = ?1,
+                    auth_method_encrypted = ?2,
+                    auth_nonce = ?3,
+                    updated_at = ?4,
+                    client_ver = client_ver + 1,
+                    is_dirty = 1
+                WHERE id = ?5",
+                (
+                    new_user_id,
+                    &auth_method_encrypted,
+                    &auth_nonce,
+                    now,
+                    &session.id,
+                ),
+            )
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to update session {} in database: {}",
+                    session.id,
+                    e
+                )
+            })?;
+
+            updated_count += 1;
+        }
+
+        tracing::info!("Successfully migrated {} sessions", updated_count);
+        Ok(updated_count)
+    }
+
     /// 将数据库行转换为 SshSession
     fn row_to_session(&self, row: &rusqlite::Row) -> Result<SshSession> {
         Ok(SshSession {
