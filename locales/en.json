@@ -244,7 +244,8 @@
       "connect": "Connect",
       "saveChanges": "Save Changes",
       "connectNow": "Connect Now",
-      "save": "Save Session"
+      "save": "Save Session",
+      "delete": "Delete"
     },
     "status": {
       "connected": "Connected",

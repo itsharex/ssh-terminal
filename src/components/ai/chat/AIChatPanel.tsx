@@ -354,6 +354,7 @@ export function AIChatPanel() {
                         }
                       }
                     }}
+                    autoComplete="off"
                     placeholder={t('ai.chat.inputPlaceholderOnline')}
                     style={{
                       height: textareaHeight,

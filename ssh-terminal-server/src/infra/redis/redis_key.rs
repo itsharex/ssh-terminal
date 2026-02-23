@@ -49,7 +49,7 @@ impl RedisKey {
     }
 
     pub fn build(&self) -> String {
-        format!("{}:{}", self.business.prefix(), self.identifiers.join(":"))
+        format!("ssh_terminal:{}:{}", self.business.prefix(), self.identifiers.join(":"))
     }
 }
 

@@ -227,6 +227,7 @@ export function RecordingControls({
             <h3 className="text-lg font-semibold mb-4">{t('recording.nameDialog.title')}</h3>
             <input
               type="text"
+              autoComplete="off"
               className="w-full px-3 py-2 border rounded-md mb-4"
               placeholder={t('recording.nameDialog.placeholder')}
               value={sessionInputName}

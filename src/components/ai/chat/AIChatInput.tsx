@@ -126,6 +126,7 @@ export function AIChatInput({ serverId }: AIChatInputProps) {
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            autoComplete="off"
             placeholder={
               isOnline
                 ? t('ai.chat.inputPlaceholderOnline')

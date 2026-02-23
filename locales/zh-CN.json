@@ -338,7 +338,8 @@
       "connect": "连接",
       "saveChanges": "保存更改",
       "connectNow": "立即连接",
-      "save": "保存会话"
+      "save": "保存会话",
+      "delete": "删除"
     },
     "status": {
       "connected": "已连接",

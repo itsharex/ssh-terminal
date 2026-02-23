@@ -121,7 +121,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
 
   const handleDelete = async () => {
     setShowDeleteConfirm(false);
-    
+
     // 检查是否有活跃连接
     const hasActiveConnection = sessions.some(
       s => s.connectionSessionId === session.id && s.status === 'connected'
@@ -151,6 +151,11 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
     }
   };
 
+  // 检查是否有活跃连接
+  const hasActiveConnection = sessions.some(
+    s => s.connectionSessionId === session.id && s.status === 'connected'
+  );
+
   const handleEdit = () => {
     playSound(SoundEffect.BUTTON_CLICK);
     onEdit?.(session);
@@ -179,21 +184,21 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
         )}
       </CardContent>
 
-      <CardFooter className="gap-2 pt-3">
+      <CardFooter className="gap-2 pt-3 flex-wrap">
         {displayStatus === 'connected' ? (
           <>
             <Button
               size="sm"
               variant="outline"
               onClick={handleDisconnect}
-              className="flex-1"
+              className="flex-1 min-w-[80px]"
             >
               {t('session.action.disconnect')}
             </Button>
             <Button
               size="sm"
               onClick={handleConnect}
-              className="flex-1"
+              className="flex-1 min-w-[80px]"
             >
               <Terminal className="h-4 w-4 mr-1" />
               {t('session.action.openTerminal')}
@@ -205,6 +210,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
               size="sm"
               variant="outline"
               onClick={handleEdit}
+              className="min-w-[80px]"
             >
               <Edit className="h-4 w-4 mr-1" />
               {t('session.action.edit')}
@@ -213,7 +219,7 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
               size="sm"
               onClick={handleConnect}
               disabled={connecting}
-              className="flex-1"
+              className="flex-1 min-w-[80px]"
             >
               {connecting ? (
                 <>
@@ -231,8 +237,20 @@ export function SessionCard({ sessionId, onEdit }: SessionCardProps) {
         )}
         <Button
           size="sm"
-          variant="destructive"
-          onClick={() => setShowDeleteConfirm(true)}
+          variant={hasActiveConnection ? "outline" : "destructive"}
+          onClick={() => {
+            if (hasActiveConnection) {
+              playSound(SoundEffect.ERROR);
+              toast.error(t('session.error.cannotDelete'), {
+                description: t('session.error.hasActiveConnections'),
+              });
+            } else {
+              setShowDeleteConfirm(true);
+            }
+          }}
+          disabled={hasActiveConnection}
+          title={hasActiveConnection ? t('session.error.hasActiveConnections') : t('session.action.delete')}
+          className={hasActiveConnection ? "opacity-50 cursor-not-allowed min-w-[40px]" : "min-w-[40px]"}
         >
           <Trash2 className="h-4 w-4" />
         </Button>

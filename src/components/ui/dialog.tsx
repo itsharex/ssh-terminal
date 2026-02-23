@@ -17,7 +17,17 @@ const Dialog = ({ open, onOpenChange, children, closeOnClickOutside = true }: Di
         className="fixed inset-0 bg-black/50"
         onClick={() => closeOnClickOutside && onOpenChange?.(false)}
       />
-      <div className="relative z-50">{children}</div>
+      <div className="relative z-50">
+        {React.Children.map(children, (child) => {
+          if (React.isValidElement(child) && child.type === DialogContent) {
+            // 自动将 onOpenChange 传递给 DialogContent
+            return React.cloneElement(child as React.ReactElement<any>, {
+              onOpenChange,
+            })
+          }
+          return child
+        })}
+      </div>
     </div>
   )
 }
