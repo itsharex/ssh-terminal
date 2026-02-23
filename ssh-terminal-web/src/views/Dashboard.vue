@@ -19,11 +19,28 @@
         </n-statistic>
       </n-gi>
       <n-gi :span="gridItemSpan('update')">
-        <n-statistic label="最近更新" :value="lastUpdateTime" :value-style="{ fontSize: valueFontSize + 'px', lineHeight: 1.3, wordBreak: 'break-all' }">
+        <n-statistic
+          label="最近更新"
+          :value="lastUpdateStore.lastUpdatedTime"
+          :loading="lastUpdateStore.loading"
+          :value-style="{ fontSize: valueFontSize + 'px', lineHeight: 1.3, wordBreak: 'break-all' }"
+        >
           <template #prefix>
             <n-icon color="#2080f0">
               <Icon icon="mdi:clock" />
             </n-icon>
+          </template>
+          <template #suffix>
+            <n-button
+              text
+              size="tiny"
+              @click="lastUpdateStore.fetchLastUpdate()"
+              :loading="lastUpdateStore.loading"
+            >
+              <n-icon>
+                <Icon icon="mdi:refresh" />
+              </n-icon>
+            </n-button>
           </template>
         </n-statistic>
       </n-gi>
@@ -88,16 +105,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore, useSshStore } from '@/stores'
+import { useAuthStore, useSshStore, useLastUpdateStore } from '@/stores'
 import { useMessage } from 'naive-ui'
 import { Icon } from '@iconify/vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const sshStore = useSshStore()
+const lastUpdateStore = useLastUpdateStore()
 const message = useMessage()
-
-const lastUpdateTime = ref(new Date().toLocaleString())
 
 const isMobile = computed(() => window.innerWidth < 768)
 
@@ -140,6 +156,9 @@ onMounted(async () => {
     const errorMsg = error.response?.data?.message || error.message || '获取会话列表失败'
     message.error(errorMsg)
   }
+
+  // 获取最近更新时间
+  lastUpdateStore.fetchLastUpdate()
 })
 </script>
 

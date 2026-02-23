@@ -72,6 +72,11 @@ export const useAuthStore = defineStore('auth', () => {
       // 存储 device_id
       storage.setDeviceId(profile.user_id, data.device_id)
 
+      // 登录成功后获取最近更新时间
+      const { useLastUpdateStore } = await import('@/stores')
+      const lastUpdateStore = useLastUpdateStore()
+      lastUpdateStore.fetchLastUpdate()
+
       return response
     } finally {
       loading.value = false

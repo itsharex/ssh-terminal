@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useLastUpdateStore } from '@/stores'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -77,6 +77,11 @@ router.beforeEach((to, from, next) => {
     next({ name: 'Dashboard' })
   }
   else {
+    // 如果已认证，获取最近更新时间（不阻塞路由跳转）
+    if (isAuthenticated) {
+      const lastUpdateStore = useLastUpdateStore()
+      lastUpdateStore.fetchLastUpdate()
+    }
     next()
   }
 })

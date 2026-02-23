@@ -205,6 +205,10 @@ async fn main() -> anyhow::Result<()> {
             "/api/user/profile",
             delete(handlers::user_profile::delete_profile_handler),
         )
+        .route(
+            "/api/user/last-update",
+            get(handlers::last_update::get_last_update),
+        )
         // SSH 会话 CRUD API
         .route(
             "/api/ssh/sessions",

@@ -210,12 +210,24 @@ impl SshSessionRepository {
     #[allow(dead_code)]
     pub async fn batch_create(&self, sessions: Vec<ssh_sessions::Model>) -> Result<Vec<ssh_sessions::Model>> {
         let mut results = Vec::new();
-        
+
         for session in sessions {
             let result = self.create(session).await?;
             results.push(result);
         }
-        
+
         Ok(results)
+    }
+
+    /// 获取用户下最新的 updated_at 时间
+    pub async fn find_last_updated_at(&self, user_id: &str) -> Result<Option<i64>> {
+        let result = SshSession::find()
+            .filter(ssh_sessions::Column::UserId.eq(user_id))
+            .filter(ssh_sessions::Column::DeletedAt.is_null())
+            .order_by_desc(ssh_sessions::Column::UpdatedAt)
+            .one(&self.db)
+            .await?;
+
+        Ok(result.map(|s| s.updated_at))
     }
 }

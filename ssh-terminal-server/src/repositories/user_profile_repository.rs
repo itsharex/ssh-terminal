@@ -130,4 +130,10 @@ impl UserProfileRepository {
         active_model.update(&self.db).await?;
         Ok(())
     }
+
+    /// 获取用户资料的 updated_at 时间
+    pub async fn get_updated_at(&self, user_id: &str) -> Result<Option<i64>> {
+        let profile = self.find_by_user_id(user_id).await?;
+        Ok(profile.map(|p| p.updated_at))
+    }
 }

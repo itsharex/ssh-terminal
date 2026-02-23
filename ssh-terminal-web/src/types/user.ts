@@ -24,3 +24,8 @@ export interface UpdateProfileRequest {
   avatar_data?: string
   avatar_mime_type?: string
 }
+
+export interface LastUpdateResponse {
+  last_updated_at: number
+  has_data: boolean
+}

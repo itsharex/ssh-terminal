@@ -4,6 +4,7 @@ pub mod ssh;
 pub mod sync;
 pub mod health;
 pub mod mail;
+pub mod last_update;
 
 /// 统一的 API 响应结构
 use serde::Serialize;
