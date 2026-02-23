@@ -87,16 +87,49 @@ async fn main() -> anyhow::Result<()> {
     let app_state = AppState {
         pool: pool.clone(),
         config: config.clone(),
-        redis_client,
+        redis_client: redis_client.clone(),
     };
 
+    // 启动邮件 Worker（如果启用）
+    if config.email.enabled {
+        infra::mail::worker::start_mail_workers(
+            redis_client,
+            config.email.clone(),
+            pool.clone(),
+        ).await;
+        tracing::info!("📧 Mail Workers started successfully (pool size: {})", config.email.worker_pool_size);
+    } else {
+        tracing::info!("📧 Mail feature is disabled");
+    }
+
     // ========== 公开路由 ==========
-    let public_routes = Router::new()
-        .route("/health", get(handlers::health::health_check))
-        .route("/info", get(handlers::health::server_info))
-        .route("/auth/register", post(handlers::auth::register))
-        .route("/auth/login", post(handlers::auth::login))
-        .route("/auth/refresh", post(handlers::auth::refresh));
+    let public_routes = if config.email.enabled {
+        Router::new()
+            .route("/health", get(handlers::health::health_check))
+            .route("/info", get(handlers::health::server_info))
+            .route("/auth/register", post(handlers::auth::register))
+            .route("/auth/login", post(handlers::auth::login))
+            .route("/auth/refresh", post(handlers::auth::refresh))
+            // 邮件 API（公开，无需认证）
+            // 同步版本（推荐）：立即返回真实的发送结果
+            .route(
+                "/api/email/send-verify-code-sync",
+                post(handlers::email::send_verify_code_sync_handler),
+            )
+            // 异步版本（已弃用）：使用队列模式，不会立即返回发送结果
+            // ⚠️ 不建议使用，如果邮箱无效仍会返回成功
+            .route(
+                "/api/email/send-verify-code-async",
+                post(handlers::email::send_verify_code_async_handler),
+            )
+    } else {
+        Router::new()
+            .route("/health", get(handlers::health::health_check))
+            .route("/info", get(handlers::health::server_info))
+            .route("/auth/register", post(handlers::auth::register))
+            .route("/auth/login", post(handlers::auth::login))
+            .route("/auth/refresh", post(handlers::auth::refresh))
+    };
 
     // ========== 受保护路由 ==========
     let protected_routes = Router::new()
@@ -144,6 +177,15 @@ async fn main() -> anyhow::Result<()> {
         .route(
             "/api/sync/resolve-conflict",
             post(handlers::sync::resolve_conflict_handler),
+        )
+        // 邮件状态路由（需要认证）
+        .route(
+            "/api/email/latest-log",
+            post(handlers::email::get_latest_email_log_handler),
+        )
+        .route(
+            "/api/email/queue-status",
+            get(handlers::email::get_queue_status_handler),
         )
         // JWT 认证中间件（仅应用于受保护路由）
         .route_layer(axum::middleware::from_fn_with_state(

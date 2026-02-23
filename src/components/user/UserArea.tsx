@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { User as UserIcon, Loader2 } from 'lucide-react';
+import { User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/authStore';
 import { LoginForm } from './LoginForm';
@@ -8,7 +8,7 @@ import { UserAvatarDropdown } from './UserAvatarDropdown';
 
 export function UserArea() {
   const { t } = useTranslation();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [showLogin, setShowLogin] = useState(false);
 
   const handleLoginClick = () => {
@@ -18,15 +18,6 @@ export function UserArea() {
   const handleLoginClose = () => {
     setShowLogin(false);
   };
-
-  // 加载中显示
-  if (isLoading) {
-    return (
-      <div className="h-8 w-8 flex items-center justify-center">
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   // 已登录显示用户头像下拉菜单
   if (isAuthenticated) {

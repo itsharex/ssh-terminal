@@ -38,6 +38,8 @@ pub struct RegisterRequest {
     pub email: String,
     pub password: String,
     #[serde(default)]
+    pub verify_code: Option<String>,
+    #[serde(default)]
     pub server_url: Option<String>,
 }
 
@@ -94,6 +96,21 @@ pub struct ServerLoginRequest {
 pub struct ServerRegisterRequest {
     pub email: String,
     pub password: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verify_code: Option<String>,
+}
+
+/// 发送验证码请求
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SendVerifyCodeRequest {
+    pub email: String,
+}
+
+/// 邮箱验证结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmailResult {
+    pub queued: bool,
 }
 
 /// 账号信息（包含用户资料）

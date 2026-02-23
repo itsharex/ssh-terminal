@@ -1,3 +1,4 @@
+import React from 'react';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User, Mail, Loader2, Upload, Phone, MessageCircle, Save, RefreshCw, ArrowLeft } from 'lucide-react';
@@ -14,7 +15,6 @@ import { useUserProfileStore } from '@/store/userProfileStore';
 import { useAuthStore } from '@/store/authStore';
 import { playSound } from '@/lib/sounds';
 import { SoundEffect } from '@/lib/sounds';
-import { extractMessageFromError } from '@/utils/network';
 
 // 最大头像大小：5MB
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
@@ -41,7 +41,7 @@ function fileToBase64(file: File): Promise<string> {
 /**
  * 验证图片文件
  */
-function validateImageFile(file: File): { valid: boolean; errorKey?: string; errorParams?: Record<string, any> } {
+function validateImageFile(file: File): { valid: boolean; errorKey?: string; errorParams?: Record<string, unknown> } {
   // 检查文件类型
   if (!SUPPORTED_FORMATS.includes(file.type)) {
     return {
@@ -159,15 +159,15 @@ export function UserProfile() {
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      await syncProfile();
+      const { message } = await syncProfile();
       playSound(SoundEffect.SUCCESS);
       toast.success(t('user.profile.toast.syncSuccess'), {
-        description: t('user.profile.toast.syncSuccessDescription'),
+        description: message || t('user.profile.toast.syncSuccessDescription'),
       });
     } catch (error) {
       playSound(SoundEffect.ERROR);
-      const errorMessage = typeof error === 'string' 
-        ? extractMessageFromError(error).message 
+      const errorMessage = typeof error === 'string'
+        ? error
         : (error instanceof Error ? error.message : t('common.unknownError'));
       toast.error(t('user.profile.toast.syncFailed'), {
         description: errorMessage,

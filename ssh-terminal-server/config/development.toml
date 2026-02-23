@@ -31,3 +31,19 @@ host = "localhost"
 port = 6379
 password = ""  # 可选
 db = 0
+
+[email]
+# 是否启用邮件功能
+enabled = true
+
+# SMTP 配置
+smtp_host = "smtp.163.com"
+smtp_port = 465
+smtp_username = "ssh_terminal@163.com"
+smtp_password = "CPM3U33MkTif5GpX"
+from_name = "SSH Terminal"
+from_email = "ssh_terminal@163.com"
+
+# Worker 配置
+worker_pool_size = 5
+worker_timeout_seconds = 10

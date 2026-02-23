@@ -3,6 +3,7 @@ pub mod user;
 pub mod ssh;
 pub mod sync;
 pub mod health;
+pub mod mail;
 
 /// 统一的 API 响应结构
 use serde::Serialize;

@@ -1,6 +1,5 @@
 use anyhow::Result;
 use anyhow::anyhow;
-use uuid::Uuid;
 
 use crate::database::repositories::{UserAuthRepository, UserProfileRepository, AppSettingsRepository};
 use crate::database::DbPool;
@@ -72,7 +71,7 @@ impl AuthService {
     }
 
     /// 登录
-    pub async fn login(&self, req: LoginRequest) -> Result<AuthResponse> {
+    pub async fn login(&self, req: LoginRequest) -> Result<(AuthResponse, u16, String)> {
         tracing::info!("Login request for: {}", req.email);
 
         // 从 app_settings 获取服务器地址和语言设置
@@ -88,7 +87,6 @@ impl AuthService {
             state.set_client(api_client.clone());
         }
 
-
         // 构建服务器 API 所需的请求（不需要 server_url）
         let api_req = crate::models::user_auth::ServerLoginRequest {
             email: req.email.clone(),
@@ -96,14 +94,14 @@ impl AuthService {
         };
 
         // 调用服务器登录 API
-        let server_result = api_client.login(&api_req).await?;
+        let (server_result, code, message) = api_client.login(&api_req).await?;
 
         // 设置 token 到 API 客户端（必须在调用 get_profile 之前）
         self.update_client_token(server_result.access_token.clone());
 
         // 获取用户资料以获取 user_id
         // 注意：必须使用服务器返回的 user_id，不能用邮箱
-        let profile = api_client.get_profile().await
+        let (profile, _, _) = api_client.get_profile().await
             .map_err(|e| anyhow!("Failed to get user profile after login: {}", e))?;
         let user_id = profile.user_id;
 
@@ -150,7 +148,7 @@ impl AuthService {
         match api_client.get_profile().await {
             Ok(server_profile) => {
                 // 转换为 UserProfile 并保存到本地数据库
-                let profile: UserProfile = server_profile.into();
+                let profile: UserProfile = server_profile.0.into();
                 let _ = profile_repo.save(&profile);
                 tracing::info!("User profile synced from server");
             }
@@ -170,11 +168,11 @@ impl AuthService {
             expires_at,
         };
 
-        Ok(auth_response)
+        Ok((auth_response, code, message))
     }
 
     /// 注册
-    pub async fn register(&self, req: RegisterRequest) -> Result<AuthResponse> {
+    pub async fn register(&self, req: RegisterRequest) -> Result<(AuthResponse, u16, String)> {
         tracing::info!("Register request for: {}", req.email);
 
         // 从 app_settings 获取服务器地址和语言设置
@@ -190,15 +188,15 @@ impl AuthService {
             state.set_client(api_client.clone());
         }
 
-
         // 构建服务器 API 所需的请求（不需要 server_url）
         let api_req = crate::models::user_auth::ServerRegisterRequest {
             email: req.email.clone(),
             password: req.password.clone(),
+            verify_code: req.verify_code.clone(),
         };
 
         // 调用服务器注册 API（返回 ServerRegisterResult）
-        let server_result = api_client.register(&api_req).await?;
+        let (server_result, code, message) = api_client.register(&api_req).await?;
 
         // 设置 token 到 API 客户端（server_result.access_token 是服务端返回的字段名）
         self.update_client_token(server_result.access_token.clone());
@@ -246,7 +244,7 @@ impl AuthService {
         match api_client.get_profile().await {
             Ok(server_profile) => {
                 // 转换为 UserProfile 并保存到本地数据库
-                let profile: UserProfile = server_profile.into();
+                let profile: UserProfile = server_profile.0.into();
                 let _ = profile_repo.save(&profile);
                 tracing::info!("User profile synced from server");
             }
@@ -266,7 +264,30 @@ impl AuthService {
             expires_at,
         };
 
-        Ok(auth_response)
+        Ok((auth_response, code, message))
+    }
+
+    /// 发送验证码到邮箱
+    pub async fn send_verify_code(&self, email: String) -> Result<(EmailResult, u16, String)> {
+        tracing::info!("Send verify code request for: {}", email);
+
+        // 从 app_settings 获取服务器地址和语言设置
+        let settings_repo = AppSettingsRepository::new(self.pool.clone());
+        let server_url = settings_repo.get_server_url()?;
+        let language = settings_repo.get_language().ok();
+
+        // 创建 API 客户端
+        let api_client = ApiClient::new(server_url.clone(), language)?;
+
+        // 构建服务器请求
+        let api_req = crate::models::user_auth::SendVerifyCodeRequest {
+            email: email.clone(),
+        };
+
+        // 调用服务器发送验证码 API，获取原始响应
+        let (result, code, message) = api_client.send_verify_code(&api_req).await?;
+
+        Ok((result, code, message))
     }
 
     /// 自动登录（启动时调用，不再调用 /auth/login，直接使用本地 token）
@@ -492,7 +513,7 @@ impl AuthService {
         let api_client = self.get_api_client()?;
 
         // 调用服务器刷新 token API（返回 ServerRefreshResult: access_token, refresh_token）
-        let server_result = api_client.refresh_token(&refresh_token).await?;
+        let (server_result, _, _) = api_client.refresh_token(&refresh_token).await?;
 
         // 更新全局和本地 API 客户端的 token
         self.update_client_token(server_result.access_token.clone());

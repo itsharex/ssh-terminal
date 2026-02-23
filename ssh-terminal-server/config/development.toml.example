@@ -1,0 +1,67 @@
+# 开发环境配置 - SQLite 数据库
+[server]
+host = "0.0.0.0"
+port = 3000
+
+[database]
+# 数据库类型: mysql, sqlite, postgresql
+database_type = "sqlite"
+
+# MySQL/PostgreSQL 配置
+# host = "localhost"
+# port = 3306
+# user = "root"
+# password = "root"
+# database = "ssh_terminal_server"
+
+# SQLite 配置（当 database_type = "sqlite" 时使用）
+path = "data/app.db"
+
+# 连接池配置
+max_connections = 10
+
+[auth]
+jwt_secret = "9f7d3c7a564dfkopp26smb2644nqzfvbsao9f7d3c7a1a8f28544b5e6d7a"
+# 分开配置两个 token 的过期时间
+access_token_expiration_minutes = 15   # access_token 15 分钟
+refresh_token_expiration_days = 7      # refresh_token 7 天
+
+[redis]
+host = "localhost"
+port = 6379
+password = ""  # 可选
+db = 0
+
+[email]
+# ==================== 邮件配置 ====================
+# 邮件功能用于发送验证码、通知等
+
+# 是否启用邮件功能
+# - false: 不启用邮件验证，用户注册时无需验证码
+# - true: 启用邮件验证，用户注册时必须输入验证码
+enabled = false
+
+# SMTP 服务器配置
+# 常用 SMTP 服务器：
+# - 163邮箱: smtp.163.com, 端口 465 (SSL) 或 994 (SSL)
+# - QQ邮箱: smtp.qq.com, 端口 465 (SSL) 或 587 (STARTTLS)
+# - Gmail: smtp.gmail.com, 端口 587 (STARTTLS) 或 465 (SSL)
+# - Outlook: smtp-mail.outlook.com, 端口 587 (STARTTLS)
+smtp_host = "smtp.163.com"
+smtp_port = 465
+
+# SMTP 认证信息
+# ⚠️ 注意：对于 QQ/163 等邮箱，需要使用"授权码"而不是登录密码
+# 获取方式：邮箱设置 -> 账户 -> POP3/SMTP 服务 -> 生成授权码
+smtp_username = "your-email@gmail.com"
+smtp_password = "your-app-password"
+
+# 发件人信息
+from_name = "SSH Terminal"
+from_email = "your-email@gmail.com"
+
+# Worker 配置（仅异步模式使用）
+# worker_pool_size: 并发发送邮件的最大数量
+# worker_timeout_seconds: 单个邮件发送超时时间
+worker_pool_size = 5
+worker_timeout_seconds = 10

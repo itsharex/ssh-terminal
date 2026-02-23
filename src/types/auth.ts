@@ -15,6 +15,24 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
+  verifyCode?: string;
+}
+
+// 发送验证码请求
+export interface SendVerifyCodeRequest {
+  email: string;
+}
+
+// 邮箱验证结果
+export interface EmailResult {
+  queued: boolean;
+}
+
+// Tauri 后端返回的统一响应格式（与服务器一致）
+export interface ApiResponse<T> {
+  code: number;
+  message: string;
+  data: T | null;
 }
 
 // 服务器返回类型（用于 Tauri 后端与服务器通信）

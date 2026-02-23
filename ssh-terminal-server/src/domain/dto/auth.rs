@@ -6,12 +6,15 @@ use std::fmt;
 pub struct RegisterRequest {
     pub email: String,
     pub password: String,
+    /// 邮箱验证码（当启用邮件验证时必填）
+    pub verify_code: Option<String>,
 }
 
 // 实现 Debug trait，对密码进行脱敏
 impl fmt::Debug for RegisterRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "RegisterRequest {{ email: {}, password: *** }}", self.email)
+        write!(f, "RegisterRequest {{ email: {}, password: ***, verify_code: {:?} }}", 
+               self.email, self.verify_code.as_ref().map(|_| "***"))
     }
 }
 

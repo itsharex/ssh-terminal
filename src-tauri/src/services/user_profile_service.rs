@@ -62,13 +62,14 @@ impl UserProfileService {
 
     /// 获取用户资料
     /// 优先从本地数据库获取，然后从服务器同步
-    pub async fn get_profile(&self) -> Result<UserProfile> {
+    pub async fn get_profile(&self) -> Result<(UserProfile, u16, String)> {
         let current_user = self.get_current_user()?;
         let profile_repo = UserProfileRepository::new(self.pool.clone());
 
         // 先尝试从本地数据库获取
         if let Some(local_profile) = profile_repo.find_by_user_id(&current_user.user_id)? {
-            return Ok(local_profile);
+            // 本地存在，返回成功消息
+            return Ok((local_profile, 200, "Profile loaded from local database".to_string()));
         }
 
         // 本地不存在，从服务器获取
@@ -77,13 +78,13 @@ impl UserProfileService {
             Err(_) => self.create_temp_client(&current_user)?,
         };
 
-        let server_profile = api_client.get_profile().await?;
+        let (server_profile, code, message) = api_client.get_profile().await?;
 
         // 转换为 UserProfile 并保存到本地数据库
         let profile: UserProfile = server_profile.into();
         profile_repo.save(&profile)?;
 
-        Ok(profile)
+        Ok((profile, code, message))
     }
 
     /// 更新用户资料

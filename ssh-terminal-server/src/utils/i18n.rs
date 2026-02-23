@@ -83,6 +83,11 @@ pub enum MessageKey {
     ErrorCreateTableFailed,
     ErrorRedisInitFailed,
     ErrorTokenDecodeFailed,
+    ErrorMissingAuthHeader,
+    ErrorInvalidAuthFormat,
+    ErrorInvalidToken,
+    ErrorVerifyUserFailed,
+    ErrorUserIdNotFound,
 
     // ==================== Conflict Messages ====================
     ConflictVersionConflict,
@@ -90,6 +95,24 @@ pub enum MessageKey {
     ConflictProfileConflict,
     ConflictSshSessionKeepServer,
     ConflictUserProfileKeepServer,
+
+    // ==================== Email Messages ====================
+    EmailVerifyCodeSubject,
+    SuccessEmailQueued,
+    SuccessGetEmailLog,
+    ErrorEmailDisabled,
+    ErrorEmailRateLimit,
+    ErrorEmailDailyLimit,
+    ErrorEmailLogNotFound,
+    ErrorVerifyCodeRequired,
+    ErrorVerifyCodeExpired,
+    ErrorVerifyCodeInvalid,
+    ErrorEmailInvalidTemplate,
+    SuccessGetQueueStatus,
+    ErrorEmailSendFailed,
+    ErrorEmailInvalidAddress,
+    ErrorEmailConnectionFailed,
+    ErrorEmailTimeout,
 }
 
 impl MessageKey {
@@ -169,6 +192,11 @@ impl MessageKey {
             MessageKey::ErrorCreateTableFailed => "api.error.create_table_failed",
             MessageKey::ErrorRedisInitFailed => "api.error.redis_init_failed",
             MessageKey::ErrorTokenDecodeFailed => "api.error.token_decode_failed",
+            MessageKey::ErrorMissingAuthHeader => "api.error.missing_auth_header",
+            MessageKey::ErrorInvalidAuthFormat => "api.error.invalid_auth_format",
+            MessageKey::ErrorInvalidToken => "api.error.invalid_token",
+            MessageKey::ErrorVerifyUserFailed => "api.error.verify_user_failed",
+            MessageKey::ErrorUserIdNotFound => "api.error.user_id_not_found",
 
             // Conflict
             MessageKey::ConflictVersionConflict => "api.conflict.version_conflict",
@@ -176,6 +204,24 @@ impl MessageKey {
             MessageKey::ConflictProfileConflict => "api.conflict.profile_conflict",
             MessageKey::ConflictSshSessionKeepServer => "api.conflict.ssh_session_keep_server",
             MessageKey::ConflictUserProfileKeepServer => "api.conflict.user_profile_keep_server",
+
+            // Email
+            MessageKey::EmailVerifyCodeSubject => "api.email.verify_code_subject",
+            MessageKey::SuccessEmailQueued => "api.email.success_queued",
+            MessageKey::SuccessGetEmailLog => "api.email.success_get_email_log",
+            MessageKey::ErrorEmailDisabled => "api.email.error_disabled",
+            MessageKey::ErrorEmailRateLimit => "api.email.error_rate_limit",
+            MessageKey::ErrorEmailDailyLimit => "api.email.error_daily_limit",
+            MessageKey::ErrorEmailLogNotFound => "api.email.error_log_not_found",
+            MessageKey::ErrorVerifyCodeRequired => "api.email.error_verify_code_required",
+            MessageKey::ErrorVerifyCodeExpired => "api.email.error_verify_code_expired",
+            MessageKey::ErrorVerifyCodeInvalid => "api.email.error_verify_code_invalid",
+            MessageKey::ErrorEmailInvalidTemplate => "api.email.error_invalid_template",
+            MessageKey::SuccessGetQueueStatus => "api.email.success_get_queue_status",
+            MessageKey::ErrorEmailSendFailed => "api.email.error_send_failed",
+            MessageKey::ErrorEmailInvalidAddress => "api.email.error_invalid_address",
+            MessageKey::ErrorEmailConnectionFailed => "api.email.error_connection_failed",
+            MessageKey::ErrorEmailTimeout => "api.email.error_timeout",
         }
     }
 }
@@ -198,11 +244,6 @@ pub fn t_with_vars(lang: Option<&str>, key: MessageKey, vars: &[(&str, &str)]) -
 /// 获取默认成功消息
 pub fn t_success_default(lang: Option<&str>) -> String {
     t(lang, MessageKey::SuccessDefault)
-}
-
-/// 获取默认错误消息
-pub fn t_error_default(lang: Option<&str>) -> String {
-    t(lang, MessageKey::ErrorDefault)
 }
 
 /// 获取指定语言的翻译
@@ -272,7 +313,7 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "email_already_registered": "邮箱已注册",
                     "email_or_password_incorrect": "邮箱或密码错误",
                     "parse_password_hash_failed": "解析密码哈希失败",
-                    "refresh_token_invalid": "刷新令牌无效或已过期",
+                    "refresh_token_invalid": "刷新令牌已失效，请重新登录",
                     "user_not_found": "用户不存在",
                     "password_incorrect": "密码错误",
                     "user_deleted": "用户已被删除，无法同步",
@@ -307,7 +348,12 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "sqlite_file_create_failed": "创建 SQLite 数据库文件失败",
                     "create_table_failed": "创建{table}失败",
                     "redis_init_failed": "Redis 初始化失败",
-                    "token_decode_failed": "Token 解码失败"
+                    "token_decode_failed": "Token 解码失败",
+                    "missing_auth_header": "缺少授权头",
+                    "invalid_auth_format": "无效的授权头格式",
+                    "invalid_token": "无效或已过期的令牌",
+                    "verify_user_failed": "验证用户失败",
+                    "user_id_not_found": "请求中未找到用户 ID"
                 },
                 "conflict": {
                     "version_conflict": "客户端版本 {client} < 服务器版本 {server}",
@@ -315,6 +361,24 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "profile_conflict": "用户资料有冲突",
                     "ssh_session_keep_server": "部分 SSH 会话已保留服务器版本",
                     "user_profile_keep_server": "用户资料已保留服务器版本"
+                },
+                "email": {
+                    "verify_code_subject": "验证码",
+                    "success_queued": "验证码已发送至 {email}",
+                    "success_get_email_log": "获取邮件日志成功",
+                    "error_disabled": "邮件功能未启用",
+                    "error_rate_limit": "发送过于频繁，请 {ttl} 秒后再试",
+                    "error_daily_limit": "今日发送次数已达上限 ({count}/10)",
+                    "error_log_not_found": "未找到邮件日志",
+                    "error_verify_code_required": "请先获取验证码",
+                    "error_verify_code_expired": "验证码已过期",
+                    "error_verify_code_invalid": "验证码错误",
+                    "error_invalid_template": "无效的邮件模板",
+                    "success_get_queue_status": "获取队列状态成功",
+                    "error_send_failed": "邮件发送失败，请检查邮箱地址是否正确",
+                    "error_invalid_address": "邮箱地址无效",
+                    "error_connection_failed": "无法连接到邮件服务器",
+                    "error_timeout": "邮件发送超时，请稍后重试"
                 }
             }
         },
@@ -358,7 +422,7 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "email_already_registered": "Email already registered",
                     "email_or_password_incorrect": "Email or password incorrect",
                     "parse_password_hash_failed": "Failed to parse password hash",
-                    "refresh_token_invalid": "Refresh token is invalid or expired",
+                    "refresh_token_invalid": "Refresh token has expired, please login again",
                     "user_not_found": "User not found",
                     "password_incorrect": "Password incorrect",
                     "user_deleted": "User has been deleted, cannot sync",
@@ -393,7 +457,12 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "sqlite_file_create_failed": "Failed to create SQLite database file",
                     "create_table_failed": "Failed to create {table}",
                     "redis_init_failed": "Redis initialization failed",
-                    "token_decode_failed": "Token decode failed"
+                    "token_decode_failed": "Token decode failed",
+                    "missing_auth_header": "Missing authorization header",
+                    "invalid_auth_format": "Invalid authorization header format",
+                    "invalid_token": "Invalid or expired token",
+                    "verify_user_failed": "Failed to verify user",
+                    "user_id_not_found": "User ID not found in request"
                 },
                 "conflict": {
                     "version_conflict": "Client version {client} < Server version {server}",
@@ -401,6 +470,24 @@ static MESSAGES: Lazy<serde_json::Value> = Lazy::new(|| {
                     "profile_conflict": "User profile has conflict",
                     "ssh_session_keep_server": "Some SSH sessions kept server version",
                     "user_profile_keep_server": "User profile kept server version"
+                },
+                "email": {
+                    "verify_code_subject": "Verification Code",
+                    "success_queued": "Verification code sent to {email}",
+                    "success_get_email_log": "Get email log successful",
+                    "error_disabled": "Email feature is disabled",
+                    "error_rate_limit": "Please try again in {ttl} seconds",
+                    "error_daily_limit": "Daily limit reached ({count}/10)",
+                    "error_log_not_found": "Email log not found",
+                    "error_verify_code_required": "Please get verification code first",
+                    "error_verify_code_expired": "Verification code expired",
+                    "error_verify_code_invalid": "Invalid verification code",
+                    "error_invalid_template": "Invalid email template",
+                    "success_get_queue_status": "Get queue status successful",
+                    "error_send_failed": "Failed to send email, please check if the email address is correct",
+                    "error_invalid_address": "Invalid email address",
+                    "error_connection_failed": "Cannot connect to email server",
+                    "error_timeout": "Email sending timeout, please try again later"
                 }
             }
         }

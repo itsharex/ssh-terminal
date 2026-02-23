@@ -50,7 +50,7 @@ impl SyncService {
     }
 
     /// 通用同步方法（根据选项同步不同内容）
-    pub async fn full_sync(&self, options: SyncOptions) -> Result<SyncReport> {
+    pub async fn full_sync(&self, options: SyncOptions) -> Result<(SyncReport, u16, String)> {
         tracing::info!("Starting sync with options: {:?}", options);
 
         // 1. 检查是否有用户登录
@@ -119,14 +119,14 @@ impl SyncService {
         )?;
 
         // 5. 调用统一同步 API
-        let response = self.get_api_client()?.sync(&request).await?;
+        let (sync_response, code, message) = self.get_api_client()?.sync(&request).await?;
 
         // 6. 应用 Pull 结果
-        let ssh_sessions_len = response.ssh_sessions.len();
-        self.apply_pull_data(&response, &current_user.user_id)?;
+        let ssh_sessions_len = sync_response.ssh_sessions.len();
+        self.apply_pull_data(&sync_response, &current_user.user_id)?;
 
         // 7. 处理 Push 结果
-        self.apply_push_result(&response, &current_user.user_id)?;
+        self.apply_push_result(&sync_response, &current_user.user_id)?;
 
         // 8. 清理脏标记
         if matches!(options, SyncOptions::SyncSessions | SyncOptions::SyncAll) {
@@ -135,56 +135,58 @@ impl SyncService {
             // 清理更新会话的脏标记
             let dirty_sessions = session_repo.get_dirty_sessions(&current_user.user_id)?;
             for session in &dirty_sessions {
-                session_repo.clear_dirty_marker(&session.id, response.last_sync_at)?;
+                session_repo.clear_dirty_marker(&session.id, sync_response.last_sync_at)?;
             }
 
             // 清理已删除会话的脏标记
             let deleted_sessions = session_repo.get_deleted_sessions(&current_user.user_id)?;
             for session_id in &deleted_sessions {
-                session_repo.clear_dirty_marker(session_id, response.last_sync_at)?;
+                session_repo.clear_dirty_marker(session_id, sync_response.last_sync_at)?;
             }
 
             // 更新用户的最后同步时间
             let auth_repo = UserAuthRepository::new(self.pool.clone());
-            auth_repo.update_last_sync(&current_user.user_id, response.last_sync_at)?;
+            auth_repo.update_last_sync(&current_user.user_id, sync_response.last_sync_at)?;
         }
 
         // 9. 更新同步状态（使用用户级别）
-        state_repo.update_last_sync(&current_user.user_id, response.last_sync_at)?;
-        state_repo.update_conflict_count(&current_user.user_id, response.conflicts.len() as i32)?;
+        state_repo.update_last_sync(&current_user.user_id, sync_response.last_sync_at)?;
+        state_repo.update_conflict_count(&current_user.user_id, sync_response.conflicts.len() as i32)?;
         state_repo.update_last_error(&current_user.user_id, None)?;
 
         tracing::info!("Sync completed successfully");
 
-        Ok(SyncReport {
+        let report = SyncReport {
             success: true,
-            last_sync_at: response.last_sync_at,
-            pushed_sessions: response.updated_session_ids.len(),
+            last_sync_at: sync_response.last_sync_at,
+            pushed_sessions: sync_response.updated_session_ids.len(),
             pulled_sessions: ssh_sessions_len,
-            conflict_count: response.conflicts.len(),
+            conflict_count: sync_response.conflicts.len(),
             error: None,
-            updated_session_ids: Some(response.updated_session_ids),
-            message: response.message,
-        })
+            updated_session_ids: Some(sync_response.updated_session_ids),
+            message: sync_response.message,
+        };
+
+        Ok((report, code, message))
     }
 
     /// 只同步会话
-    pub async fn sync_sessions(&self) -> Result<SyncReport> {
+    pub async fn sync_sessions(&self) -> Result<(SyncReport, u16, String)> {
         self.full_sync(SyncOptions::SyncSessions).await
     }
 
     /// 只同步用户资料
-    pub async fn sync_profile(&self) -> Result<SyncReport> {
+    pub async fn sync_profile(&self) -> Result<(SyncReport, u16, String)> {
         self.full_sync(SyncOptions::SyncProfile).await
     }
 
     /// 同步所有内容
-    pub async fn sync_all(&self) -> Result<SyncReport> {
+    pub async fn sync_all(&self) -> Result<(SyncReport, u16, String)> {
         self.full_sync(SyncOptions::SyncAll).await
     }
 
     /// 只拉取，不推送
-    pub async fn pull_only(&self) -> Result<SyncReport> {
+    pub async fn pull_only(&self) -> Result<(SyncReport, u16, String)> {
         self.full_sync(SyncOptions::PullOnly).await
     }
 
@@ -202,7 +204,7 @@ impl SyncService {
     /// 构建统一同步请求（带用户资料选项）
     fn build_sync_request_with_options(
         &self,
-        user_id: &str,
+        _user_id: &str,
         last_sync_at: Option<i64>,
         device_id: String,
         dirty_sessions: Vec<SshSession>,
@@ -241,7 +243,7 @@ impl SyncService {
     }
 
     /// 应用 Pull 数据
-    fn apply_pull_data(&self, response: &ServerSyncResponse, user_id: &str) -> Result<()> {
+    fn apply_pull_data(&self, response: &ServerSyncResponse, _user_id: &str) -> Result<()> {
         let session_repo = SshSessionRepository::new(self.pool.clone());
 
         // 1. 应用 SSH 会话数据
@@ -302,7 +304,7 @@ impl SyncService {
     }
 
     /// 解决冲突（内部实现）
-    fn resolve_conflict(&self, conflict: &ConflictInfo, user_id: &str) -> Result<()> {
+    fn resolve_conflict(&self, conflict: &ConflictInfo, _user_id: &str) -> Result<()> {
         tracing::warn!(
             "Conflict detected for {}: {} (local: v{}, server: v{})",
             conflict.entity_type, conflict.id, conflict.local_version, conflict.server_version
@@ -315,7 +317,7 @@ impl SyncService {
     }
 
     /// 解决冲突（API 调用）
-    pub async fn resolve_conflict_api(&self, conflict_id: String, strategy: ConflictStrategy) -> Result<SyncReport> {
+    pub async fn resolve_conflict_api(&self, conflict_id: String, strategy: ConflictStrategy) -> Result<(SyncReport, u16, String)> {
         tracing::info!("Resolving conflict {} with strategy {:?}", conflict_id, strategy);
 
         // 获取 API 客户端
@@ -328,7 +330,7 @@ impl SyncService {
             client_data: None,
         };
 
-        let resolve_response = api_client.resolve_conflict(&request).await?;
+        let (resolve_response, code, message) = api_client.resolve_conflict(&request).await?;
 
         // 如果有新创建的 ID 或者需要获取更新后的数据，需要重新拉取
         let mut report = SyncReport {
@@ -367,7 +369,7 @@ impl SyncService {
                 deleted_session_ids,
             )?;
 
-            let sync_response = api_client.sync(&request).await?;
+            let (sync_response, _, sync_message) = api_client.sync(&request).await?;
 
             // 应用拉取的数据
             let ssh_sessions_len = sync_response.ssh_sessions.len();
@@ -392,9 +394,12 @@ impl SyncService {
                 updated_session_ids: resolve_response.new_id.map(|id| vec![id]),
                 message: sync_response.message,
             };
-        }
 
-        Ok(report)
+            // 使用 sync 消息作为返回消息
+            Ok((report, code, sync_message))
+        } else {
+            Ok((report, code, message))
+        }
     }
 
     /// 获取同步状态

@@ -3,26 +3,31 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use rand::Rng;
 use chrono::Utc;
 use jsonwebtoken::{decode, DecodingKey, Validation};
+use rand::Rng;
 
-use crate::utils::jwt::TokenService;
-use crate::utils::jwt::Claims;
-use crate::utils::i18n::{t, MessageKey};
-use crate::domain::dto::auth::{RegisterRequest, LoginRequest, DeleteUserRequest};
-use crate::domain::entities::users;
-use crate::domain::entities::user_profiles;
 use crate::config::auth::AuthConfig;
-use crate::infra::redis::{redis_client::RedisClient, redis_key::{BusinessType, RedisKey}};
-use crate::repositories::user_repository::UserRepository;
+use crate::config::email::EmailConfig;
+use crate::domain::dto::auth::{DeleteUserRequest, LoginRequest, RegisterRequest};
+use crate::domain::entities::user_profiles;
+use crate::domain::entities::users;
+use crate::infra::redis::{
+    redis_client::RedisClient,
+    redis_key::{BusinessType, RedisKey},
+};
 use crate::repositories::user_profile_repository::UserProfileRepository;
+use crate::repositories::user_repository::UserRepository;
+use crate::utils::i18n::{t, MessageKey};
+use crate::utils::jwt::Claims;
+use crate::utils::jwt::TokenService;
 
 pub struct AuthService {
     user_repo: UserRepository,
     user_profile_repo: UserProfileRepository,
     redis_client: RedisClient,
     auth_config: AuthConfig,
+    email_config: EmailConfig,
 }
 
 impl AuthService {
@@ -31,12 +36,14 @@ impl AuthService {
         user_profile_repo: UserProfileRepository,
         redis_client: RedisClient,
         auth_config: AuthConfig,
+        email_config: EmailConfig,
     ) -> Self {
         Self {
             user_repo,
             user_profile_repo,
             redis_client,
             auth_config,
+            email_config,
         }
     }
 
@@ -46,7 +53,9 @@ impl AuthService {
         let argon2 = Argon2::default();
         let password_hash = argon2
             .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorPasswordHashFailed), e))?
+            .map_err(|e| {
+                anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorPasswordHashFailed), e)
+            })?
             .to_string();
         Ok(password_hash)
     }
@@ -73,7 +82,10 @@ impl AuthService {
 
             attempts += 1;
             if attempts >= MAX_ATTEMPTS {
-                return Err(anyhow::anyhow!("{}", t(None, MessageKey::ErrorGenerateUniqueUserIdFailed)));
+                return Err(anyhow::anyhow!(
+                    "{}",
+                    t(None, MessageKey::ErrorGenerateUniqueUserIdFailed)
+                ));
             }
         }
     }
@@ -84,7 +96,12 @@ impl AuthService {
     }
 
     /// 保存 refresh_token 到 Redis Set
-    async fn save_refresh_token(&self, user_id: &str, refresh_token: &str, expiration_days: i64) -> Result<()> {
+    async fn save_refresh_token(
+        &self,
+        user_id: &str,
+        refresh_token: &str,
+        expiration_days: i64,
+    ) -> Result<()> {
         let key = RedisKey::new(BusinessType::Auth)
             .add_identifier("refresh_token")
             .add_identifier(user_id);
@@ -101,7 +118,9 @@ impl AuthService {
         self.redis_client
             .expire_key(&key, expiration_seconds as u64)
             .await
-            .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisExpireFailed), e))?;
+            .map_err(|e| {
+                anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisExpireFailed), e)
+            })?;
 
         Ok(())
     }
@@ -112,45 +131,30 @@ impl AuthService {
             .add_identifier("refresh_token")
             .add_identifier(user_id);
 
-        let exists = self.redis_client
+        let exists = self
+            .redis_client
             .sismember_key(&key, refresh_token)
             .await
-            .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisQueryFailed), e))?;
+            .map_err(|e| {
+                anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisQueryFailed), e)
+            })?;
 
         Ok(exists)
     }
 
     /// 删除用户的 refresh_token（删除整个 Set）
 
-        pub async fn delete_refresh_token(&self, user_id: &str) -> Result<()> {
+    pub async fn delete_refresh_token(&self, user_id: &str) -> Result<()> {
+        let key = RedisKey::new(BusinessType::Auth)
+            .add_identifier("refresh_token")
+            .add_identifier(user_id);
 
-            let key = RedisKey::new(BusinessType::Auth)
+        self.redis_client.del(&key.to_string()).await.map_err(|e| {
+            anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisDeleteFailed), e)
+        })?;
 
-                .add_identifier("refresh_token")
-
-                .add_identifier(user_id);
-
-    
-
-            self.redis_client
-
-    
-
-                        .del(&key.to_string())
-
-    
-
-                        .await
-
-    
-
-                        .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisDeleteFailed), e))?;
-
-    
-
-            Ok(())
-
-        }
+        Ok(())
+    }
 
     /// 清理过期的 refresh_token（可选的后台任务）
     #[allow(dead_code)]
@@ -160,17 +164,19 @@ impl AuthService {
             .add_identifier(user_id);
 
         // 获取 Set 中所有的 token
-        let tokens: Vec<String> = self.redis_client
-            .smembers_key(&key)
-            .await
-            .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisQueryFailed), e))?;
+        let tokens: Vec<String> = self.redis_client.smembers_key(&key).await.map_err(|e| {
+            anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisQueryFailed), e)
+        })?;
 
         let now = Utc::now().timestamp() as usize;
         let mut tokens_to_remove = Vec::new();
 
         // 验证每个 token 的过期时间
         for token in tokens {
-            match crate::utils::jwt::TokenService::decode_user_id(&token, &self.auth_config.jwt_secret) {
+            match crate::utils::jwt::TokenService::decode_user_id(
+                &token,
+                &self.auth_config.jwt_secret,
+            ) {
                 Ok(_) => {
                     // 解码 token 获取过期时间
                     match decode::<Claims>(
@@ -200,12 +206,15 @@ impl AuthService {
         // 从 Set 中删除过期的 token
         if !tokens_to_remove.is_empty() {
             for token in &tokens_to_remove {
-                self.redis_client
-                    .srem_key(&key, token)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisDeleteFailed), e))?;
+                self.redis_client.srem_key(&key, token).await.map_err(|e| {
+                    anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorRedisDeleteFailed), e)
+                })?;
             }
-            tracing::info!("Cleaned up {} expired tokens for user {}", tokens_to_remove.len(), user_id);
+            tracing::info!(
+                "Cleaned up {} expired tokens for user {}",
+                tokens_to_remove.len(),
+                user_id
+            );
         }
 
         Ok(())
@@ -215,12 +224,49 @@ impl AuthService {
     pub async fn register(
         &self,
         request: RegisterRequest,
+        language: Option<&str>,
     ) -> Result<(users::Model, String, String)> {
+        // 0. 如果启用了邮件验证，检查验证码
+        if self.email_config.enabled {
+            let verify_code = request.verify_code.as_ref().ok_or_else(|| {
+                anyhow::anyhow!("{}", t(language, MessageKey::ErrorVerifyCodeRequired))
+            })?;
+
+            // 从 Redis 获取存储的验证码
+            let key = RedisKey::new(BusinessType::Auth)
+                .add_identifier("verify_code")
+                .add_identifier(&request.email);
+
+            let stored_code = self.redis_client.get_key(&key).await.map_err(|e| {
+                anyhow::anyhow!("{}: {}", t(language, MessageKey::ErrorRedisQueryFailed), e)
+            })?;
+
+            let stored_code = stored_code.ok_or_else(|| {
+                anyhow::anyhow!("{}", t(language, MessageKey::ErrorVerifyCodeExpired))
+            })?;
+
+            // 验证验证码
+            if verify_code.as_str() != stored_code {
+                return Err(anyhow::anyhow!(
+                    "{}",
+                    t(language, MessageKey::ErrorVerifyCodeInvalid)
+                ));
+            }
+
+            // 验证成功后，删除验证码（一次性使用）
+            self.redis_client.del(&key.to_string()).await.map_err(|e| {
+                anyhow::anyhow!("{}: {}", t(language, MessageKey::ErrorRedisDeleteFailed), e)
+            })?;
+        }
+
         // 1. 检查邮箱是否已存在
         let existing = self.user_repo.count_by_email(&request.email).await?;
 
         if existing > 0 {
-            return Err(anyhow::anyhow!("{}", t(None, MessageKey::ErrorEmailAlreadyRegistered)));
+            return Err(anyhow::anyhow!(
+                "{}",
+                t(language, MessageKey::ErrorEmailAlreadyRegistered)
+            ));
         }
 
         // 2. 哈希密码
@@ -233,7 +279,10 @@ impl AuthService {
         let device_id = self.generate_device_id();
 
         // 5. 插入数据库并获取包含真实 created_at 的用户对象
-        let user = self.user_repo.insert(user_id.clone(), request.email, password_hash, device_id).await?;
+        let user = self
+            .user_repo
+            .insert(user_id.clone(), request.email, password_hash, device_id)
+            .await?;
 
         // 6. 生成 token
         let (access_token, refresh_token) = TokenService::generate_token_pair(
@@ -244,7 +293,12 @@ impl AuthService {
         )?;
 
         // 7. 保存 refresh_token
-        self.save_refresh_token(&user_id, &refresh_token, self.auth_config.refresh_token_expiration_days as i64).await?;
+        self.save_refresh_token(
+            &user_id,
+            &refresh_token,
+            self.auth_config.refresh_token_expiration_days as i64,
+        )
+        .await?;
 
         // 8. 创建初始用户资料
         // 确保使用正数 ID（避免 i64 溢出）
@@ -271,22 +325,31 @@ impl AuthService {
     }
 
     /// 登录
-    pub async fn login(
-        &self,
-        request: LoginRequest,
-    ) -> Result<(users::Model, String, String)> {
+    pub async fn login(&self, request: LoginRequest, language: Option<&str>) -> Result<(users::Model, String, String)> {
         // 1. 查询用户
-        let user = self.user_repo.find_by_email(&request.email).await?
-            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorEmailOrPasswordIncorrect)))?;
+        let user = self
+            .user_repo
+            .find_by_email(&request.email)
+            .await?
+            .ok_or_else(|| {
+                anyhow::anyhow!("{}", t(language, MessageKey::ErrorEmailOrPasswordIncorrect))
+            })?;
 
         // 2. 验证密码
-        let parsed_hash = PasswordHash::new(&user.password_hash)
-            .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorParsePasswordHashFailed), e))?;
+        let parsed_hash = PasswordHash::new(&user.password_hash).map_err(|e| {
+            anyhow::anyhow!(
+                "{}: {}",
+                t(language, MessageKey::ErrorParsePasswordHashFailed),
+                e
+            )
+        })?;
         let argon2 = Argon2::default();
 
         argon2
             .verify_password(request.password.as_bytes(), &parsed_hash)
-            .map_err(|_| anyhow::anyhow!("{}", t(None, MessageKey::ErrorEmailOrPasswordIncorrect)))?;
+            .map_err(|_| {
+                anyhow::anyhow!("{}", t(language, MessageKey::ErrorEmailOrPasswordIncorrect))
+            })?;
 
         // 3. 生成 token
         let (access_token, refresh_token) = TokenService::generate_token_pair(
@@ -297,23 +360,28 @@ impl AuthService {
         )?;
 
         // 4. 保存 refresh_token
-        self.save_refresh_token(&user.id, &refresh_token, self.auth_config.refresh_token_expiration_days as i64).await?;
+        self.save_refresh_token(
+            &user.id,
+            &refresh_token,
+            self.auth_config.refresh_token_expiration_days as i64,
+        )
+        .await?;
 
         Ok((user, access_token, refresh_token))
     }
 
     /// 使用 refresh_token 刷新 access_token
-    pub async fn refresh_access_token(
-        &self,
-        refresh_token: &str,
-    ) -> Result<(String, String)> {
+    pub async fn refresh_access_token(&self, refresh_token: &str, language: Option<&str>) -> Result<(String, String)> {
         // 1. 从 refresh_token 中解码出 user_id
         let user_id = TokenService::decode_user_id(refresh_token, &self.auth_config.jwt_secret)?;
 
         // 2. 验证旧 token 是否在 Set 中
         let is_valid = self.verify_refresh_token(&user_id, refresh_token).await?;
         if !is_valid {
-            return Err(anyhow::anyhow!("{}", t(None, MessageKey::ErrorRefreshTokenInvalid)));
+            return Err(anyhow::anyhow!(
+                "{}",
+                t(language, MessageKey::ErrorRefreshTokenInvalid)
+            ));
         }
 
         // 3. 生成新的 token 对
@@ -325,7 +393,12 @@ impl AuthService {
         )?;
 
         // 4. 将新 token 添加到 Set 中
-        self.save_refresh_token(&user_id, &new_refresh_token, self.auth_config.refresh_token_expiration_days as i64).await?;
+        self.save_refresh_token(
+            &user_id,
+            &new_refresh_token,
+            self.auth_config.refresh_token_expiration_days as i64,
+        )
+        .await?;
 
         tracing::info!("Token refreshed successfully, new token added to set");
 
@@ -333,17 +406,25 @@ impl AuthService {
     }
 
     /// 删除用户（软删除）
-    pub async fn delete_user(&self, request: DeleteUserRequest) -> Result<()> {
-        let password_hash = self.user_repo.get_password_hash_by_id(&request.user_id).await?
-            .ok_or_else(|| anyhow::anyhow!("{}", t(None, MessageKey::ErrorUserNotFound)))?;
+    pub async fn delete_user(&self, request: DeleteUserRequest, language: Option<&str>) -> Result<()> {
+        let password_hash = self
+            .user_repo
+            .get_password_hash_by_id(&request.user_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("{}", t(language, MessageKey::ErrorUserNotFound)))?;
 
-        let parsed_hash = PasswordHash::new(&password_hash)
-            .map_err(|e| anyhow::anyhow!("{}: {}", t(None, MessageKey::ErrorParsePasswordHashFailed), e))?;
+        let parsed_hash = PasswordHash::new(&password_hash).map_err(|e| {
+            anyhow::anyhow!(
+                "{}: {}",
+                t(language, MessageKey::ErrorParsePasswordHashFailed),
+                e
+            )
+        })?;
         let argon2 = Argon2::default();
 
         argon2
             .verify_password(request.password.as_bytes(), &parsed_hash)
-            .map_err(|_| anyhow::anyhow!("{}", t(None, MessageKey::ErrorPasswordIncorrect)))?;
+            .map_err(|_| anyhow::anyhow!("{}", t(language, MessageKey::ErrorPasswordIncorrect)))?;
 
         // 软删除用户
         self.user_repo.soft_delete_by_id(&request.user_id).await?;
@@ -352,8 +433,13 @@ impl AuthService {
         self.user_profile_repo.soft_delete(&request.user_id).await?;
 
         // 软删除用户的所有 SSH 会话
-        let ssh_session_repo = crate::repositories::ssh_session_repository::SshSessionRepository::new(self.user_repo.get_db());
-        ssh_session_repo.soft_delete_by_user_id(&request.user_id).await?;
+        let ssh_session_repo =
+            crate::repositories::ssh_session_repository::SshSessionRepository::new(
+                self.user_repo.get_db(),
+            );
+        ssh_session_repo
+            .soft_delete_by_user_id(&request.user_id)
+            .await?;
 
         // 删除 Redis 中的 refresh_token
         self.delete_refresh_token(&request.user_id).await?;

@@ -32,6 +32,9 @@ sha2 = "0.10"
 base64 = "0.22"
 aes-gcm = "0.10"
 
+# ===== 邮件发送 =====
+lettre = { version = "0.11", default-features = false, features = ["tokio1", "tokio1-rustls", "builder", "smtp-transport", "webpki-roots", "ring"] }
+
 # ===== Redis =====
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
 
@@ -50,6 +53,17 @@ clap = { version = "4", features = ["derive", "env"] }
 validator = { version = "0.16", features = ["derive"] }
 log = "0.4.29"
 once_cell = "1.19"
+
+# 1. 开发版配置 (cargo run / cargo build)
+[profile.dev]
+# 保持你自己的代码可调试
+debug = true
+
+# 2. 关键修复：强制所有第三方依赖库不生成调试信息
+# 这会大幅减小 .pdb 文件体积，避免 Linker 崩溃
+[profile.dev.package."*"]
+debug = false
+opt-level = 1  # 稍微优化依赖库，提升运行速度
 
 # 优化发布版本
 [profile.release]

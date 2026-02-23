@@ -109,7 +109,7 @@ pub async fn get_session_handler(
             let message = t(Some(language.as_str()), MessageKey::SuccessGetSession);
             Ok(Json(ApiResponse::success_with_message(vo, &message)))
         }
-        Ok(None) => Err(ErrorResponse::not_found(t(None, MessageKey::ErrorSshSessionNotFound))),
+        Ok(None) => Err(ErrorResponse::not_found(t(Some(language.as_str()), MessageKey::ErrorSshSessionNotFound))),
         Err(e) => {
             tracing::error!("Failed to get SSH session: {}", e);
             Err(ErrorResponse::internal(e.to_string()))

@@ -30,6 +30,7 @@ import { useTerminalConfigStore } from '@/store/terminalConfigStore';
 import { useAIStore } from '@/store/aiStore';
 import { useAppSettingsStore } from '@/store/appSettingsStore';
 import { useLanguageStore } from '@/store/languageStore';
+import type { Language } from '@/store/languageStore';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { invoke } from '@tauri-apps/api/core';
 import type { TerminalConfig } from '@/types/terminal';
@@ -98,7 +99,7 @@ export function Settings() {
     try {
       await updateServerUrl(serverUrlInput.trim());
       playSound(SoundEffect.SUCCESS);
-    } catch (error) {
+    } catch {
       playSound(SoundEffect.ERROR);
     } finally {
       setIsSavingServerUrl(false);
@@ -110,7 +111,7 @@ export function Settings() {
     try {
       await updateAutoSync(enabled);
       playSound(SoundEffect.SUCCESS);
-    } catch (error) {
+    } catch {
       playSound(SoundEffect.ERROR);
     }
   };
@@ -120,7 +121,7 @@ export function Settings() {
     try {
       await updateSyncInterval(interval);
       playSound(SoundEffect.SUCCESS);
-    } catch (error) {
+    } catch {
       playSound(SoundEffect.ERROR);
     }
   };
@@ -128,9 +129,12 @@ export function Settings() {
   const handleLanguageChange = async (language: string) => {
     playSound(SoundEffect.BUTTON_CLICK);
     try {
-      setLanguage(language as any);
+      // 更新本地 Zustand store
+      setLanguage(language as Language);
+      // 更新数据库中的语言设置
+      await invoke('app_settings_set_language', { language });
       playSound(SoundEffect.SUCCESS);
-    } catch (error) {
+    } catch {
       playSound(SoundEffect.ERROR);
     }
   };
@@ -254,7 +258,7 @@ export function Settings() {
               <div className="flex flex-wrap gap-2">
                 {[
                   { value: 'zh-CN', label: '简体中文' },
-                  { value: 'en-US', label: 'English' },
+                  { value: 'en', label: 'English' },
                 ].map((lang) => (
                   <Button
                     key={lang.value}

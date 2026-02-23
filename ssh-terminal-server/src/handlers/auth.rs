@@ -1,6 +1,7 @@
 use crate::error::ErrorResponse;
 use crate::infra::middleware::logging::{log_info, RequestId};
 use crate::infra::middleware::Language;
+use crate::infra::middleware::UserId;
 use crate::domain::dto::auth::{RegisterRequest, LoginRequest, RefreshRequest, DeleteUserRequest};
 use crate::domain::vo::auth::{RegisterResult, LoginResult, RefreshResult};
 use crate::domain::vo::ApiResponse;
@@ -26,9 +27,15 @@ pub async fn register(
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
-    match service.register(payload).await {
+    match service.register(payload, Some(language.as_str())).await {
         Ok((user_model, access_token, refresh_token)) => {
             let data = RegisterResult::from((user_model, access_token, refresh_token));
             let message = t(Some(language.as_str()), MessageKey::SuccessRegister);
@@ -54,9 +61,15 @@ pub async fn login(
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
-    match service.login(payload).await {
+    match service.login(payload, Some(language.as_str())).await {
         Ok((user_model, access_token, refresh_token)) => {
             let data = LoginResult::from((user_model, access_token, refresh_token));
             let message = t(Some(language.as_str()), MessageKey::SuccessLogin);
@@ -86,10 +99,16 @@ pub async fn refresh(
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
     match service
-        .refresh_access_token(&payload.refresh_token)
+        .refresh_access_token(&payload.refresh_token, Some(language.as_str()))
         .await
     {
         Ok((access_token, refresh_token)) => {
@@ -119,21 +138,27 @@ pub async fn delete_account(
     Extension(request_id): Extension<RequestId>,
     Language(language): Language,
     State(state): State<AppState>,
-    Extension(user_id): Extension<String>,
+    UserId(user_id): UserId,
     Json(payload): Json<DeleteUserRequest>,
 ) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
     log_info(&request_id, "删除账号请求", &format!("user_id={}", user_id));
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
     let delete_request = DeleteUserRequest {
         user_id: user_id.clone(),
         password: payload.password,
     };
 
-    match service.delete_user(delete_request).await {
+    match service.delete_user(delete_request, Some(language.as_str())).await {
         Ok(_) => {
             log_info(&request_id, "账号删除成功", &format!("user_id={}", user_id));
             let message = t(Some(language.as_str()), MessageKey::SuccessDeleteAccount);
@@ -152,13 +177,19 @@ pub async fn delete_refresh_token(
     Extension(request_id): Extension<RequestId>,
     Language(language): Language,
     State(state): State<AppState>,
-    Extension(user_id): Extension<String>,
+    UserId(user_id): UserId,
 ) -> Result<Json<ApiResponse<()>>, ErrorResponse> {
     log_info(&request_id, "删除刷新令牌请求", &format!("user_id={}", user_id));
 
     let user_repo = UserRepository::new(state.pool.clone());
     let user_profile_repo = UserProfileRepository::new(state.pool.clone());
-    let service = AuthService::new(user_repo, user_profile_repo, state.redis_client.clone(), state.config.auth.clone());
+    let service = AuthService::new(
+        user_repo,
+        user_profile_repo,
+        state.redis_client.clone(),
+        state.config.auth.clone(),
+        state.config.email.clone(),
+    );
 
     match service.delete_refresh_token(&user_id).await {
         Ok(_) => {

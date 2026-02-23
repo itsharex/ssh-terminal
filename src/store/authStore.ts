@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-import type { User, LoginRequest, RegisterRequest, AuthResponse } from '@/types/auth';
+import type { User, LoginRequest, RegisterRequest, AuthResponse, ApiResponse } from '@/types/auth';
 import i18n from '@/i18n/config';
 
 interface AuthState {
@@ -12,6 +12,7 @@ interface AuthState {
   // Actions
   login: (req: LoginRequest) => Promise<void>;
   register: (req: RegisterRequest) => Promise<void>;
+  sendVerifyCode: (email: string) => Promise<string>;
   logout: () => Promise<void>;
   hasCurrentUser: () => Promise<boolean>;
   autoLogin: () => Promise<void>;
@@ -57,7 +58,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(i18n.t('auth.error.serverUrlNotSet'));
       }
 
-      const res = await invoke<AuthResponse>('auth_login', { req });
+      const response = await invoke<ApiResponse<AuthResponse>>('auth_login', { req });
+      
+      // 检查响应状态码
+      if (response.code !== 200 || !response.data) {
+        throw new Error(response.message);
+      }
+
+      const res = response.data;
       const user: User = await createUserWithServerUrl(res);
       set({ isAuthenticated: true, currentUser: user, isLoading: false });
 
@@ -78,24 +86,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // 同步失败不影响登录成功
       }
     } catch (error) {
-      const errorString = error as string;
-      // 尝试从 API 错误响应中提取 message 字段
-      let errorMessage = errorString;
-      try {
-        // 匹配 API error (400 Bad Request): {"code":400,"message":"邮箱已注册","data":null} 格式
-        const match = errorString.match(/API error \(\d+ [^\)]+\): (\{.+\})/);
-        if (match && match[1]) {
-          const errorJson = JSON.parse(match[1]);
-          if (errorJson.message) {
-            errorMessage = errorJson.message;
-          }
-        }
-      } catch (parseError) {
-        // 如果解析失败，使用原始错误消息
-        console.error('[authStore] Failed to parse error message:', parseError);
-      }
+      const errorMessage = error as string;
       set({ error: errorMessage, isLoading: false });
       throw new Error(errorMessage);
+    }
+  },
+
+  sendVerifyCode: async (email: string) => {
+    try {
+      const response = await invoke<ApiResponse<{ queued: boolean }>>('auth_send_verify_code', { email });
+      // 返回响应的 message，用于 toast 提示
+      return response.message;
+    } catch (error) {
+      const errorString = error as string;
+      set({ error: errorString });
+      throw error;
     }
   },
 
@@ -108,7 +113,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(i18n.t('auth.error.serverUrlNotSet'));
       }
 
-      const res = await invoke<AuthResponse>('auth_register', { req });
+      const response = await invoke<ApiResponse<AuthResponse>>('auth_register', { req });
+      
+      // 检查响应状态码
+      if (response.code !== 200 || !response.data) {
+        throw new Error(response.message);
+      }
+
+      const res = response.data;
       const user: User = await createUserWithServerUrl(res);
       set({ isAuthenticated: true, currentUser: user, isLoading: false });
 
@@ -126,22 +138,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // 加载用户资料失败不影响注册成功
       }
     } catch (error) {
-      const errorString = error as string;
-      // 尝试从 API 错误响应中提取 message 字段
-      let errorMessage = errorString;
-      try {
-        // 匹配 API error (400 Bad Request): {"code":400,"message":"邮箱已注册","data":null} 格式
-        const match = errorString.match(/API error \(\d+ [^\)]+\): (\{.+\})/);
-        if (match && match[1]) {
-          const errorJson = JSON.parse(match[1]);
-          if (errorJson.message) {
-            errorMessage = errorJson.message;
-          }
-        }
-      } catch (parseError) {
-        // 如果解析失败，使用原始错误消息
-        console.error('[authStore] Failed to parse error message:', parseError);
-      }
+      const errorMessage = error as string;
       set({ error: errorMessage, isLoading: false });
       throw new Error(errorMessage);
     }
