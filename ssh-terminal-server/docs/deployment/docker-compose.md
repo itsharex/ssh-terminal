@@ -64,22 +64,22 @@ services:
       - "3000:3000"
     environment:
       - RUST_LOG=info
-      - SERVER_HOST=0.0.0.0
-      - SERVER_PORT=3000
-      - DATABASE_TYPE=postgresql
-      - DATABASE_HOST=db
-      - DATABASE_PORT=5432
-      - DATABASE_USER=ssh_terminal
-      - DATABASE_PASSWORD=${DB_PASSWORD}
-      - DATABASE_DATABASE=ssh_terminal_server
-      - DATABASE_MAX_CONNECTIONS=20
-      - AUTH_JWT_SECRET=${JWT_SECRET}
-      - AUTH_ACCESS_TOKEN_EXPIRATION_MINUTES=15
-      - AUTH_REFRESH_TOKEN_EXPIRATION_DAYS=7
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_DB=0
+      - SERVER__HOST=0.0.0.0
+      - SERVER__PORT=3000
+      - DATABASE__TYPE=postgresql
+      - DATABASE__HOST=db
+      - DATABASE__PORT=5432
+      - DATABASE__USER=ssh_terminal
+      - DATABASE__PASSWORD=${DB_PASSWORD}
+      - DATABASE__DATABASE=ssh_terminal_server
+      - DATABASE__MAX_CONNECTIONS=20
+      - AUTH__JWT_SECRET=${JWT_SECRET}
+      - AUTH__ACCESS_TOKEN_EXPIRATION_MINUTES=15
+      - AUTH__REFRESH_TOKEN_EXPIRATION_DAYS=7
+      - REDIS__HOST=redis
+      - REDIS__PORT=6379
+      - REDIS__PASSWORD=${REDIS_PASSWORD}
+      - REDIS__DB=0
     depends_on:
       db:
         condition: service_healthy
@@ -286,7 +286,7 @@ curl -X POST http://localhost:3000/auth/register \
 
 | 变量名 | 说明 | 示例 |
 |--------|------|------|
-| `DATABASE_TYPE` | 数据库类型 | `postgresql` |
+| `DATABASE__TYPE` | 数据库类型 | `postgresql` |
 | `DATABASE_HOST` | 数据库主机 | `db` |
 | `DATABASE_PORT` | 数据库端口 | `5432` |
 | `DATABASE_USER` | 数据库用户 | `ssh_terminal` |
@@ -315,7 +315,7 @@ curl -X POST http://localhost:3000/auth/register \
 
 | 变量名 | 说明 | 示例 |
 |--------|------|------|
-| `SERVER_HOST` | 服务器监听地址 | `0.0.0.0` |
+| `SERVER__HOST` | 服务器监听地址 | `0.0.0.0` |
 | `SERVER_PORT` | 服务器监听端口 | `3000` |
 | `RUST_LOG` | 日志级别 | `info` / `debug` / `trace` |
 
@@ -497,7 +497,7 @@ REDIS_PASSWORD=F4tL6mN3vB5xC8zD1sE9aH2jK7
 
 # ===== 服务器配置（可选）=====
 RUST_LOG=info
-SERVER_HOST=0.0.0.0
+SERVER__HOST=0.0.0.0
 SERVER_PORT=3000
 ```
 

@@ -86,10 +86,10 @@ cargo run
 **方式一：使用环境变量（推荐）**
 ```bash
 # 使用 MySQL
-DATABASE_TYPE=mysql DATABASE_HOST=localhost DATABASE_PORT=3306 DATABASE_USER=root DATABASE_PASSWORD=your-password DATABASE_DATABASE=ssh_terminal_server_dev cargo run
+DATABASE__TYPE=mysql DATABASE__HOST=localhost DATABASE__PORT=3306 DATABASE__USER=root DATABASE__PASSWORD=your-password DATABASE__DATABASE=ssh_terminal_server_dev cargo run
 
 # 或使用 PostgreSQL
-DATABASE_TYPE=postgresql DATABASE_HOST=localhost DATABASE_PORT=5432 DATABASE_USER=postgres DATABASE_PASSWORD=your-password DATABASE_DATABASE=ssh_terminal_server_dev cargo run
+DATABASE__TYPE=postgresql DATABASE__HOST=localhost DATABASE__PORT=5432 DATABASE__USER=postgres DATABASE__PASSWORD=your-password DATABASE__DATABASE=ssh_terminal_server_dev cargo run
 ```
 
 **方式二：创建本地配置文件**
@@ -108,21 +108,21 @@ cargo run -- -c config/local.toml
 
 ```bash
 # 启用邮件功能
-EMAIL_ENABLED=true
+EMAIL__ENABLED=true
 
 # SMTP 服务器配置
-EMAIL_SMTP_HOST=smtp.163.com
-EMAIL_SMTP_PORT=465
-EMAIL_SMTP_USERNAME=your-email@163.com
-EMAIL_SMTP_PASSWORD=your-app-password
+EMAIL__SMTP_HOST=smtp.163.com
+EMAIL__SMTP_PORT=465
+EMAIL__SMTP_USERNAME=your-email@163.com
+EMAIL__SMTP_PASSWORD=your-app-password
 
 # 发件人信息
-EMAIL_FROM_NAME="SSH Terminal"
-EMAIL_FROM_EMAIL=your-email@163.com
+EMAIL__FROM_NAME="SSH Terminal"
+EMAIL__FROM_EMAIL=your-email@163.com
 
 # Worker 配置（仅异步模式使用）
-EMAIL_WORKER_POOL_SIZE=10
-EMAIL_WORKER_TIMEOUT_SECONDS=10
+EMAIL__WORKER_POOL_SIZE=10
+EMAIL__WORKER_TIMEOUT_SECONDS=10
 ```
 
 > ⚠️ **重要提示**：对于 QQ/163 等邮箱，需要使用"授权码"而不是登录密码。获取方式：邮箱设置 → 账户 → POP3/SMTP 服务 → 生成授权码
@@ -191,7 +191,7 @@ cargo run
 
 ```bash
 # 使用环境变量
-DATABASE_TYPE=postgresql DATABASE_HOST=localhost cargo run -- -e production
+DATABASE__TYPE=postgresql DATABASE__HOST=localhost cargo run -- -e production
 
 # 或使用配置文件
 cargo run -- -e production -c config/production.toml

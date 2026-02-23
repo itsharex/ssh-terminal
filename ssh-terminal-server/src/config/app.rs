@@ -76,7 +76,13 @@ impl AppConfig {
         }
 
         // 添加环境变量源（会覆盖配置文件的值）
-        builder = builder.add_source(Environment::default().separator("_"));
+        // 使用双下划线作为路径分隔符
+        // 环境变量格式：SECTION__FIELD_NAME (双下划线)
+        // 例如：EMAIL__SMTP_HOST -> email.smtp_host
+        //       EMAIL__ENABLED -> email.enabled
+        //       SERVER__HOST -> server.host
+        //       DATABASE__TYPE -> database.database_type
+        builder = builder.add_source(Environment::default().separator("__"));
 
         // 应用 CLI 覆盖（仅 Web 服务器参数）
         if let Some(host) = overrides.host {

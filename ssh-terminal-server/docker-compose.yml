@@ -10,16 +10,16 @@ services:
       - "3000:3000"
     environment:
       - RUST_LOG=info
-      - DATABASE_TYPE=postgresql
-      - DATABASE_HOST=db
-      - DATABASE_PORT=5432
-      - DATABASE_USER=postgres
-      - DATABASE_PASSWORD=postgres
-      - DATABASE_DATABASE=ssh_terminal_server
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - AUTH_JWT_SECRET=9f7d3c7a564dfkopp26smb2644nqzfvbsao9f7d3c7a1a8f28544b5e6d7a
-      - EMAIL_ENABLED=false
+      - DATABASE__TYPE=postgresql
+      - DATABASE__HOST=db
+      - DATABASE__PORT=5432
+      - DATABASE__USER=postgres
+      - DATABASE__PASSWORD=postgres
+      - DATABASE__DATABASE=ssh_terminal_server
+      - REDIS__HOST=redis
+      - REDIS__PORT=6379
+      - AUTH__JWT_SECRET=9f7d3c7a564dfkopp26smb2644nqzfvbsao9f7d3c7a1a8f28544b5e6d7a
+      - EMAIL__ENABLED=false
     depends_on:
       db:
         condition: service_healthy

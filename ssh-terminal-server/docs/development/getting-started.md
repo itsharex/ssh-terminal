@@ -127,12 +127,12 @@ cargo run
 
 ```bash
 # 使用环境变量
-DATABASE_TYPE=postgresql \
-DATABASE_HOST=localhost \
-DATABASE_PORT=5432 \
-DATABASE_USER=postgres \
-DATABASE_PASSWORD=password \
-DATABASE_DATABASE=ssh_terminal_server_dev \
+DATABASE__TYPE=postgresql \
+DATABASE__HOST=localhost \
+DATABASE__PORT=5432 \
+DATABASE__USER=postgres \
+DATABASE__PASSWORD=password \
+DATABASE__DATABASE=ssh_terminal_server_dev \
 cargo run
 ```
 
@@ -261,7 +261,7 @@ cargo run
 
 **使用环境变量**：
 ```bash
-DATABASE_TYPE=mysql DATABASE_HOST=localhost cargo run
+DATABASE__TYPE=mysql DATABASE__HOST=localhost cargo run
 ```
 
 ### 指定环境

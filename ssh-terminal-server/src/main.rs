@@ -29,6 +29,16 @@ pub struct AppState {
     pub redis_client: infra::redis::redis_client::RedisClient,
 }
 
+/// 对敏感信息进行半脱敏处理
+/// 只脱敏前半部分，保留后半部分以便确认配置值
+fn mask_half(s: &str) -> String {
+    if s.len() <= 2 {
+        return "*".repeat(s.len());
+    }
+    let half = s.len() / 2;
+    "*".repeat(half) + &s[half..]
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // 解析命令行参数
@@ -72,6 +82,50 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Configuration loaded successfully");
     tracing::info!("Environment: {}", args.env.as_str());
     tracing::info!("Debug mode: {}", args.is_debug_enabled());
+
+    // 打印所有配置（敏感信息半脱敏）
+    tracing::info!("=== Loaded Configuration ===");
+    tracing::info!("Server: {}:{}", config.server.host, config.server.port);
+    tracing::info!("Database Type: {:?}", config.database.database_type);
+    tracing::info!("Database Max Connections: {}", config.database.max_connections);
+    if let Some(ref host) = config.database.host {
+        tracing::info!("Database Host: {}", host);
+    }
+    if let Some(ref port) = config.database.port {
+        tracing::info!("Database Port: {}", port);
+    }
+    if let Some(ref user) = config.database.user {
+        tracing::info!("Database User: {}", user);
+    }
+    if let Some(ref password) = config.database.password {
+        let masked = mask_half(password);
+        tracing::info!("Database Password: {}", masked);
+    }
+    if let Some(ref db_name) = config.database.database {
+        tracing::info!("Database Name: {}", db_name);
+    }
+    if let Some(ref path) = config.database.path {
+        tracing::info!("Database Path: {}", path.display());
+    }
+    tracing::info!("Auth Access Token Expiration: {} minutes", config.auth.access_token_expiration_minutes);
+    tracing::info!("Auth Refresh Token Expiration: {} days", config.auth.refresh_token_expiration_days);
+    let jwt_secret_masked = mask_half(&config.auth.jwt_secret);
+    tracing::info!("Auth JWT Secret: {}", jwt_secret_masked);
+    tracing::info!("Redis: {}:{}/{}", config.redis.host, config.redis.port, config.redis.db);
+    if let Some(ref password) = config.redis.password {
+        let masked = mask_half(password);
+        tracing::info!("Redis Password: {}", masked);
+    }
+    tracing::info!("Email Enabled: {}", config.email.enabled);
+    if config.email.enabled {
+        tracing::info!("Email SMTP: {}:{}", config.email.smtp_host, config.email.smtp_port);
+        let smtp_password_masked = mask_half(&config.email.smtp_password);
+        tracing::info!("Email SMTP Username: {}", config.email.smtp_username);
+        tracing::info!("Email SMTP Password: {}", smtp_password_masked);
+        tracing::info!("Email From: {} <{}>", config.email.from_name, config.email.from_email);
+        tracing::info!("Email Worker Pool: {}", config.email.worker_pool_size);
+    }
+    tracing::info!("===============================");
 
     // 初始化数据库（自动创建数据库和表）
     let pool = db::init_database(&config.database).await?;
