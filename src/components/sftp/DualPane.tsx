@@ -6,12 +6,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { FilePane } from './FilePane';
 import { useSftpStore } from '@/store/sftpStore';
-import { ChevronRight, X, Upload, File, Folder } from 'lucide-react';
+import { ChevronRight, X, Upload, File, Folder, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
@@ -33,10 +34,19 @@ interface DualPaneProps {
   connectionId: string;
   remoteRefreshKey?: number;
   localRefreshKey?: number;
+  onRemoteRefresh?: () => void;
+  onLocalRefresh?: () => void;
 }
 
-export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey = 0 }: DualPaneProps) {
+export function DualPane({ 
+  connectionId, 
+  remoteRefreshKey = 0, 
+  localRefreshKey = 0,
+  onRemoteRefresh,
+  onLocalRefresh,
+}: DualPaneProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     localPath,
     remotePath,
@@ -50,12 +60,9 @@ export function DualPane({ connectionId, remoteRefreshKey = 0, localRefreshKey =
 
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [localRefreshTimestamp, setLocalRefreshTimestamp] = useState(Date.now());
-  const [remoteRefreshTimestamp, setRemoteRefreshTimestamp] = useState(Date.now());
   const [uploadProgressMap, setUploadProgressMap] = useState<Map<string, UploadProgressEvent>>(new Map());
   // 优化：使用 CSS transition 来平滑隐藏/显示，而不是完全卸载组件
   const [showUploadPanel, setShowUploadPanel] = useState(false);
-  const [panelPosition, setPanelPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   
   // 使用 ref 直接操作 DOM，避免 React 状态更新
@@ -269,8 +276,8 @@ const handleMouseDown = (e: React.MouseEvent) => {
       toast.success(`上传成功：${totalFiles} 个文件, ${totalDirs} 个目录`);
       setSelectedLocalFiles([]);
 
-      // 只刷新远程面板
-      setRemoteRefreshTimestamp(Date.now());
+      // 刷新远程面板
+      onRemoteRefresh?.();
     } catch (error) {
       console.error('Upload failed:', error);
       toast.error(t('sftp.error.uploadFailed', { error }));
@@ -285,28 +292,34 @@ const handleMouseDown = (e: React.MouseEvent) => {
     setDownloading(true);
     try {
       for (const file of selectedRemoteFiles) {
-        // 跳过目录
-        if (file.isDir) {
-          toast.warning(t('sftp.error.skipDirectory', { name: file.name }));
-          continue;
-        }
-
         const localFilePath = localPath.endsWith('/')
           ? `${localPath}${file.name}`
           : `${localPath}/${file.name}`;
 
-        await invoke('sftp_download_file', {
-          connectionId,
-          remotePath: file.path,
-          localPath: localFilePath,
-        });
+        if (file.isDir) {
+          // 目录下载
+          const taskId = `download-dir-${connectionId}-${Date.now()}`;
+          await invoke('sftp_download_directory', {
+            connectionId,
+            remoteDirPath: file.path,
+            localDirPath: localFilePath,
+            taskId,
+          });
+        } else {
+          // 单文件下载
+          await invoke('sftp_download_file', {
+            connectionId,
+            remotePath: file.path,
+            localPath: localFilePath,
+          });
+        }
       }
 
       toast.success(t('sftp.success.downloadSuccess', { count: selectedRemoteFiles.length }));
       setSelectedRemoteFiles([]);
 
-      // 只刷新本地面板
-      setLocalRefreshTimestamp(Date.now());
+      // 刷新本地面板
+      onLocalRefresh?.();
     } catch (error) {
       console.error('Download failed:', error);
       toast.error(t('sftp.error.downloadFailed', { error }));
@@ -326,7 +339,7 @@ const handleMouseDown = (e: React.MouseEvent) => {
           style={{
             top: `${64}px`,
             left: `calc(100% - 400px)`,
-            transform: `translate(${panelPosition.x}px, ${panelPosition.y}px)`
+            transform: `translate(${panelPositionRef.current.x}px, ${panelPositionRef.current.y}px)`
           }}
           onMouseDown={handleMouseDown}
         >
@@ -428,7 +441,6 @@ const handleMouseDown = (e: React.MouseEvent) => {
           onSelectedFilesChange={setSelectedLocalFiles}
           isLoading={false}
           refreshKey={localRefreshKey}
-          extraRefreshKey={localRefreshTimestamp}
         />
       </div>
 
@@ -437,6 +449,7 @@ const handleMouseDown = (e: React.MouseEvent) => {
         {/* 上传进度按钮 */}
         <button
           onClick={() => setShowUploadPanel(!showUploadPanel)}
+          onDoubleClick={() => navigate('upload-records')}
           className={`
             p-2 rounded transition-all duration-200 relative
             ${showUploadPanel
@@ -444,7 +457,7 @@ const handleMouseDown = (e: React.MouseEvent) => {
               : 'bg-background text-foreground hover:bg-muted'
             }
           `}
-          title="查看上传进度"
+          title="查看上传进度（双击查看记录）"
         >
           <Upload className={`h-4 w-4 ${uploading ? 'animate-pulse' : ''}`} />
           {uploadProgressMap.size > 0 && (
@@ -452,6 +465,23 @@ const handleMouseDown = (e: React.MouseEvent) => {
               {uploadProgressMap.size}
             </span>
           )}
+        </button>
+
+        <div className="h-px w-6 bg-border my-1"></div>
+
+        {/* 下载进度按钮 */}
+        <button
+          onClick={() => navigate('download-records')}
+                          onDoubleClick={() => navigate('download-records')}          className={`
+            p-2 rounded transition-all duration-200 relative
+            ${downloading
+              ? 'bg-foreground text-background hover:bg-foreground/90 shadow-md'
+              : 'bg-background text-foreground hover:bg-muted'
+            }
+          `}
+          title="查看下载记录"
+        >
+          <Download className={`h-4 w-4 ${downloading ? 'animate-pulse' : ''}`} />
         </button>
 
         <div className="h-px w-6 bg-border my-1"></div>
@@ -498,7 +528,6 @@ const handleMouseDown = (e: React.MouseEvent) => {
           onSelectedFilesChange={setSelectedRemoteFiles}
           isLoading={false}
           refreshKey={remoteRefreshKey}
-          extraRefreshKey={remoteRefreshTimestamp}
         />
       </div>
     </div>

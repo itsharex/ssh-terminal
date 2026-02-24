@@ -15,22 +15,23 @@ import { playSound, SoundEffect } from '@/lib/sounds';
 
 interface DownloadRecord {
   id: number;
-  task_id: string;
-  connection_id: string;
-  remote_path: string;
-  local_path: string;
-  total_files: number;
-  total_dirs: number;
-  total_size: number;
+  taskId: string;
+  connectionId: string;
+  userId: string;
+  remotePath: string;
+  localPath: string;
+  totalFiles: number;
+  totalDirs: number;
+  totalSize: number;
   status: string;
-  bytes_transferred: number;
-  files_completed: number;
-  started_at: number;
-  completed_at: number | null;
-  elapsed_ms: number | null;
-  error_message: string | null;
-  created_at: number;
-  updated_at: number;
+  bytesTransferred: number;
+  filesCompleted: number;
+  startedAt: number;
+  completedAt: number | null;
+  elapsedMs: number | null;
+  errorMessage: string | null;
+  createdAt: number;
+  updatedAt: number;
 }
 
 interface PaginatedDownloadRecords {
@@ -51,10 +52,23 @@ export function DownloadRecords() {
 
   const totalPages = Math.ceil(total / pageSize);
 
+  // 获取当前用户 ID
+  const getCurrentUserId = async (): Promise<string> => {
+    try {
+      const result = await invoke<{ id: string; userId: string; email: string } | null>('auth_get_current_user');
+      return result?.userId || 'anonymous_local';
+    } catch (error) {
+      console.error('Failed to get current user:', error);
+      return 'anonymous_local';
+    }
+  };
+
   const loadRecords = async () => {
     setLoading(true);
     try {
+      const userId = await getCurrentUserId();
       const result = await invoke<PaginatedDownloadRecords>('list_download_records', {
+        userId,
         page,
         pageSize,
       });
@@ -273,26 +287,26 @@ export function DownloadRecords() {
                       className="rounded"
                     />
                   </div>
-                  <div className="col-span-2 truncate" title={record.task_id}>
-                    {record.task_id}
+                  <div className="col-span-2 truncate" title={record.taskId}>
+                    {record.taskId}
                   </div>
-                  <div className="col-span-2 truncate" title={record.remote_path}>
-                    {record.remote_path}
+                  <div className="col-span-2 truncate" title={record.remotePath}>
+                    {record.remotePath}
                   </div>
-                  <div className="col-span-2 truncate" title={record.local_path}>
-                    {record.local_path}
+                  <div className="col-span-2 truncate" title={record.localPath}>
+                    {record.localPath}
                   </div>
                   <div className="col-span-1">
                     {getStatusBadge(record.status)}
                   </div>
                   <div className="col-span-1 text-right">
-                    {record.files_completed}/{record.total_files}
+                    {record.filesCompleted}/{record.totalFiles}
                   </div>
                   <div className="col-span-1 text-right">
-                    {formatFileSize(record.total_size)}
+                    {formatFileSize(record.totalSize)}
                   </div>
                   <div className="col-span-1 text-right text-muted-foreground">
-                    {formatDate(record.started_at)}
+                    {formatDate(record.startedAt)}
                   </div>
                   <div className="col-span-1 text-right">
                     <Button

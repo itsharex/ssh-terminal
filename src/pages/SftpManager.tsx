@@ -4,9 +4,9 @@
  * 提供双面板文件管理界面
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Upload, Download, HardDrive, X, File, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -51,6 +51,7 @@ interface DownloadProgressEvent {
 export function SftpManager() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { sessions } = useSessionStore();
   const {
     initializeLocalPath,
@@ -72,6 +73,14 @@ export function SftpManager() {
   const [uploadCancellable, setUploadCancellable] = useState(false);
   const [downloadCancellable, setDownloadCancellable] = useState(false);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _downloadProgressMap = downloadProgressMap;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _downloadCancellable = downloadCancellable;
+
+  // 使用 ref 跟踪是否已经初始化过，避免重复初始化
+  const isInitialized = useRef(false);
+
   // 获取可用的 SSH 连接，根据 id 去重
   const availableConnections = (sessions || [])
     .filter((conn) => conn.status === 'connected')
@@ -79,9 +88,12 @@ export function SftpManager() {
       index === self.findIndex((c) => c.id === conn.id)
     );
 
-  // 初始化本地路径
+  // 初始化本地路径（只执行一次）
   useEffect(() => {
-    initializeLocalPath();
+    if (!isInitialized.current) {
+      initializeLocalPath();
+      isInitialized.current = true;
+    }
   }, []);
 
   useEffect(() => {
@@ -184,6 +196,14 @@ export function SftpManager() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRemoteRefresh = () => {
+    setRemoteRefreshKey(prev => prev + 1);
+  };
+
+  const handleLocalRefresh = () => {
+    setLocalRefreshKey(prev => prev + 1);
   };
 
   const handleUpload = async () => {
@@ -429,6 +449,9 @@ export function SftpManager() {
     }
   };
 
+  // 检查是否有子路由（上传记录或下载记录页面）
+  const hasChildRoute = location.pathname.includes('/upload-records') || location.pathname.includes('/download-records');
+
   if (availableConnections.length === 0) {
     return (
       <div className="flex-1 flex items-start justify-center pt-32 bg-background">
@@ -453,9 +476,16 @@ export function SftpManager() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* 顶部工具栏 */}
-      <div className="border-b bg-muted/40 px-4 py-3">
+    <>
+      {/* 子路由内容（上传记录或下载记录页面） */}
+      <div className={hasChildRoute ? 'block' : 'hidden'}>
+        <Outlet />
+      </div>
+
+      {/* SFTP 主界面 */}
+      <div className={hasChildRoute ? 'hidden' : 'block h-screen flex flex-col bg-background'}>
+        {/* 顶部工具栏 */}
+        <div className="border-b bg-muted/40 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
@@ -607,6 +637,8 @@ export function SftpManager() {
             connectionId={selectedConnectionId}
             remoteRefreshKey={remoteRefreshKey}
             localRefreshKey={localRefreshKey}
+            onRemoteRefresh={handleRemoteRefresh}
+            onLocalRefresh={handleLocalRefresh}
           />
         </div>
       ) : (
@@ -614,6 +646,7 @@ export function SftpManager() {
           <p className="text-muted-foreground">{t('sftp.error.selectConnectionFirst')}</p>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

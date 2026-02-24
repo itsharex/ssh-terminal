@@ -128,6 +128,7 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             task_id TEXT NOT NULL UNIQUE,
             connection_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
 
             -- 上传信息
             local_path TEXT NOT NULL,
@@ -156,6 +157,7 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_upload_records_connection_id ON upload_records(connection_id);
+        CREATE INDEX IF NOT EXISTS idx_upload_records_user_id ON upload_records(user_id);
         CREATE INDEX IF NOT EXISTS idx_upload_records_status ON upload_records(status);
         CREATE INDEX IF NOT EXISTS idx_upload_records_created_at ON upload_records(created_at DESC);
 
@@ -166,6 +168,7 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             task_id TEXT NOT NULL UNIQUE,
             connection_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
 
             -- 下载信息
             remote_path TEXT NOT NULL,
@@ -194,6 +197,7 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_download_records_connection_id ON download_records(connection_id);
+        CREATE INDEX IF NOT EXISTS idx_download_records_user_id ON download_records(user_id);
         CREATE INDEX IF NOT EXISTS idx_download_records_status ON download_records(status);
         CREATE INDEX IF NOT EXISTS idx_download_records_created_at ON download_records(created_at DESC);
         ",

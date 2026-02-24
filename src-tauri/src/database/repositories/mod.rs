@@ -16,5 +16,5 @@ pub use ssh_session_repository::SshSessionRepository;
 pub use app_settings_repository::AppSettingsRepository;
 pub use user_profile_repository::UserProfileRepository;
 pub use sync_state_repository::SyncStateRepository;
-pub use upload_records::{UploadRecordsRepository, PaginatedUploadRecords};
-pub use download_records::{DownloadRecordsRepository, PaginatedDownloadRecords};
+pub use upload_records::{UploadRecordsRepository, PaginatedUploadRecords, UploadRecord, UploadStatus};
+pub use download_records::{DownloadRecordsRepository, PaginatedDownloadRecords, DownloadRecord, DownloadStatus};

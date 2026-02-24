@@ -2,6 +2,8 @@
 //!
 //! 前端调用的 SFTP 操作命令
 
+use crate::database::repositories::UserAuthRepository;
+use crate::database::DbPool;
 use crate::error::Result;
 use crate::sftp::{SftpFileInfo, SftpManager, UploadDirectoryResult};
 use std::sync::Arc;
@@ -10,6 +12,19 @@ use tauri::{State, Emitter};
 
 /// SFTP Manager 状态
 pub type SftpManagerState = Arc<SftpManager>;
+
+/// 匿名用户的固定用户ID
+const ANONYMOUS_USER_ID: &str = "anonymous_local";
+
+/// 获取当前用户的 user_id
+/// 如果没有登录用户，返回匿名用户ID
+fn get_current_user_id(pool: &DbPool) -> String {
+    let auth_repo = UserAuthRepository::new(pool.clone());
+    match auth_repo.find_current() {
+        Ok(Some(user)) => user.user_id,
+        _ => ANONYMOUS_USER_ID.to_string(),
+    }
+}
 
 /// 列出目录内容
 ///
@@ -297,6 +312,7 @@ pub async fn local_drive_root(drive: String) -> Result<String> {
 ///
 /// # 参数
 /// - `manager`: SFTP Manager
+/// - `pool`: 数据库连接池
 /// - `connection_id`: SSH 连接 ID
 /// - `local_path`: 本地文件路径
 /// - `remote_path`: 远程保存路径
@@ -307,6 +323,7 @@ pub async fn local_drive_root(drive: String) -> Result<String> {
 #[tauri::command]
 pub async fn sftp_upload_file(
     manager: State<'_, SftpManagerState>,
+    pool: State<'_, DbPool>,
     connection_id: String,
     local_path: String,
     remote_path: String,
@@ -326,8 +343,53 @@ pub async fn sftp_upload_file(
         return Err(crate::error::SSHError::NotFound(format!("本地文件不存在: {}", local_path)));
     }
 
+    // 获取当前用户 ID
+    let user_id = get_current_user_id(&pool);
+
     // 生成任务 ID
     let task_id = format!("upload-file-{}-{}", connection_id, uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or(""));
+
+    // 获取文件大小
+    let file_size = local_path_obj.metadata()
+        .map_err(|e| crate::error::SSHError::Io(format!("无法获取文件元数据: {}", e)))?
+        .len();
+
+    // 创建上传记录
+    let now = chrono::Utc::now().timestamp();
+    let upload_record = crate::database::repositories::UploadRecord {
+        id: 0, // 数据库会自动生成
+        task_id: task_id.clone(),
+        connection_id: connection_id.clone(),
+        user_id: user_id.clone(),
+        local_path: local_path.clone(),
+        remote_path: remote_path.clone(),
+        total_files: 1,
+        total_dirs: 0,
+        total_size: file_size as i64,
+        status: "pending".to_string(),
+        bytes_transferred: 0,
+        files_completed: 0,
+        started_at: now,
+        completed_at: None,
+        elapsed_ms: None,
+        error_message: None,
+        created_at: now,
+        updated_at: now,
+    };
+
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::UploadRecordsRepository::create(&conn, &upload_record);
+    }
+
+    // 更新状态为 uploading
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::UploadRecordsRepository::update_status(
+            &conn,
+            &task_id,
+            crate::database::repositories::UploadStatus::Uploading,
+            None,
+        );
+    }
 
     // 获取取消令牌
     let cancellation_token = manager.get_cancellation_token(&task_id).await;
@@ -359,29 +421,34 @@ pub async fn sftp_upload_file(
     let _ = window.emit("sftp-upload-progress", &start_event);
 
     // 流式上传文件
+    let task_id_for_callback = task_id.clone();
+    let connection_id_for_callback = connection_id.clone();
+    let local_path_for_callback = local_path.clone();
+    let local_dir = local_path_obj.parent()
+        .and_then(|p| p.to_str())
+        .unwrap_or("")
+        .to_string();
+
     let result = client_guard.upload_file_stream(
         &local_path,
         &remote_path,
         &cancellation_token,
-        |transferred, total| {
-            // 发送进度事件
+        move |transferred, total| {
+            // 发送进度事件（前端显示用）
             let progress_event = crate::sftp::UploadProgressEvent {
-                task_id: task_id.clone(),
-                connection_id: connection_id.clone(),
-                current_file: local_path.clone(),
-                current_dir: local_path_obj.parent()
-                    .and_then(|p| p.to_str())
-                    .unwrap_or("")
-                    .to_string(),
+                task_id: task_id_for_callback.clone(),
+                connection_id: connection_id_for_callback.clone(),
+                current_file: local_path_for_callback.clone(),
+                current_dir: local_dir.clone(),
                 files_completed: if transferred >= total { 1 } else { 0 },
                 total_files: 1,
                 bytes_transferred: transferred,
                 total_bytes: total,
-                speed_bytes_per_sec: 0, // 简化处理，不计算速度
+                speed_bytes_per_sec: 0,
             };
             let _ = window.emit("sftp-upload-progress", &progress_event);
         },
-        false, // skip_dir_check: false（单文件上传需要检查目录）
+        false,
     ).await;
 
     // 🔥 清理任务 SFTP Client 和取消令牌（无论成功或失败）
@@ -389,16 +456,47 @@ pub async fn sftp_upload_file(
     manager.cleanup_cancellation_token(&task_id).await;
 
     // 返回上传结果
-    if let Ok(transferred) = result {
-        tracing::info!("Upload completed: {} bytes", transferred);
+    match result {
+        Ok(transferred) => {
+            tracing::info!("Upload completed: {} bytes", transferred);
+
+            // 标记上传完成
+            let elapsed = chrono::Utc::now().timestamp() - now;
+            if let Ok(conn) = pool.get() {
+                let _ = crate::database::repositories::UploadRecordsRepository::mark_completed(
+                    &conn,
+                    &task_id,
+                    elapsed * 1000, // 转换为毫秒
+                    transferred as i64,
+                    1, // 单文件上传，files_completed = 1
+                );
+            }
+
+            Ok(transferred)
+        }
+        Err(e) => {
+            tracing::error!("Upload failed: {}", e);
+
+            // 标记上传失败
+            if let Ok(conn) = pool.get() {
+                let _ = crate::database::repositories::UploadRecordsRepository::update_status(
+                    &conn,
+                    &task_id,
+                    crate::database::repositories::UploadStatus::Failed,
+                    Some(e.to_string()),
+                );
+            }
+
+            Err(e)
+        }
     }
-    result
 }
 
 /// 下载文件（完整实现）
 ///
 /// # 参数
 /// - `manager`: SFTP Manager
+/// - `pool`: 数据库连接池
 /// - `connection_id`: SSH 连接 ID
 /// - `remote_path`: 远程文件路径
 /// - `local_path`: 本地保存路径
@@ -409,6 +507,7 @@ pub async fn sftp_upload_file(
 #[tauri::command]
 pub async fn sftp_download_file(
     manager: State<'_, SftpManagerState>,
+    pool: State<'_, DbPool>,
     connection_id: String,
     remote_path: String,
     local_path: String,
@@ -429,8 +528,48 @@ pub async fn sftp_download_file(
         }
     }
 
+    // 获取当前用户 ID
+    let user_id = get_current_user_id(&pool);
+
     // 生成任务 ID
     let task_id = format!("download-file-{}-{}", connection_id, uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or(""));
+
+    // 创建下载记录
+    let now = chrono::Utc::now().timestamp();
+    let download_record = crate::database::repositories::DownloadRecord {
+        id: 0, // 数据库会自动生成
+        task_id: task_id.clone(),
+        connection_id: connection_id.clone(),
+        user_id: user_id.clone(),
+        remote_path: remote_path.clone(),
+        local_path: local_path.clone(),
+        total_files: 1,
+        total_dirs: 0,
+        total_size: 0, // 下载前不知道大小
+        status: "pending".to_string(),
+        bytes_transferred: 0,
+        files_completed: 0,
+        started_at: now,
+        completed_at: None,
+        elapsed_ms: None,
+        error_message: None,
+        created_at: now,
+        updated_at: now,
+    };
+
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::DownloadRecordsRepository::create(&conn, &download_record);
+    }
+
+    // 更新状态为 downloading
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::DownloadRecordsRepository::update_status(
+            &conn,
+            &task_id,
+            crate::database::repositories::DownloadStatus::Downloading,
+            None,
+        );
+    }
 
     // 获取取消令牌
     let cancellation_token = manager.get_cancellation_token(&task_id).await;
@@ -462,17 +601,22 @@ pub async fn sftp_download_file(
     let _ = window.emit("sftp-download-progress", &start_event);
 
     // 流式下载文件
+    let task_id_for_callback = task_id.clone();
+    let connection_id_for_callback = connection_id.clone();
+    let file_name_for_callback = file_name.clone();
+    let current_dir_for_callback = current_dir.clone();
+
     let result = client_guard.download_file_stream(
         &remote_path,
         &local_path,
         &cancellation_token,
-        |transferred, total| {
-            // 发送进度事件
+        move |transferred, total| {
+            // 发送进度事件（前端显示用）
             let progress_event = crate::sftp::DownloadProgressEvent {
-                task_id: task_id.clone(),
-                connection_id: connection_id.clone(),
-                current_file: file_name.clone(),
-                current_dir: current_dir.clone(),
+                task_id: task_id_for_callback.clone(),
+                connection_id: connection_id_for_callback.clone(),
+                current_file: file_name_for_callback.clone(),
+                current_dir: current_dir_for_callback.clone(),
                 files_completed: if transferred >= total { 1 } else { 0 },
                 total_files: 1,
                 bytes_transferred: transferred,
@@ -488,16 +632,47 @@ pub async fn sftp_download_file(
     manager.cleanup_cancellation_token(&task_id).await;
 
     // 返回下载结果
-    if let Ok(transferred) = result {
-        tracing::info!("Download completed: {} bytes", transferred);
+    match result {
+        Ok(transferred) => {
+            tracing::info!("Download completed: {} bytes", transferred);
+
+            // 标记下载完成
+            let elapsed = chrono::Utc::now().timestamp() - now;
+            if let Ok(conn) = pool.get() {
+                let _ = crate::database::repositories::DownloadRecordsRepository::mark_completed(
+                    &conn,
+                    &task_id,
+                    elapsed * 1000, // 转换为毫秒
+                    transferred as i64,
+                    1, // 单文件下载，files_completed = 1
+                );
+            }
+
+            Ok(transferred)
+        }
+        Err(e) => {
+            tracing::error!("Download failed: {}", e);
+
+            // 标记下载失败
+            if let Ok(conn) = pool.get() {
+                let _ = crate::database::repositories::DownloadRecordsRepository::update_status(
+                    &conn,
+                    &task_id,
+                    crate::database::repositories::DownloadStatus::Failed,
+                    Some(e.to_string()),
+                );
+            }
+
+            Err(e)
+        }
     }
-    result
 }
 
 /// 上传目录及其所有子目录和文件
 ///
 /// # 参数
 /// - `manager`: SFTP Manager
+/// - `pool`: 数据库连接池
 /// - `connection_id`: SSH 连接 ID
 /// - `local_dir_path`: 本地目录路径
 /// - `remote_dir_path`: 远程目录路径
@@ -509,6 +684,7 @@ pub async fn sftp_download_file(
 #[tauri::command]
 pub async fn sftp_upload_directory(
     manager: State<'_, SftpManagerState>,
+    pool: State<'_, DbPool>,
     connection_id: String,
     local_dir_path: String,
     remote_dir_path: String,
@@ -535,6 +711,46 @@ pub async fn sftp_upload_directory(
         ));
     }
 
+    // 获取当前用户 ID
+    let user_id = get_current_user_id(&pool);
+
+    // 创建上传记录
+    let now = chrono::Utc::now().timestamp();
+    let upload_record = crate::database::repositories::UploadRecord {
+        id: 0,
+        task_id: task_id.clone(),
+        connection_id: connection_id.clone(),
+        user_id: user_id.clone(),
+        local_path: local_dir_path.clone(),
+        remote_path: remote_dir_path.clone(),
+        total_files: 0,
+        total_dirs: 0,
+        total_size: 0,
+        status: "pending".to_string(),
+        bytes_transferred: 0,
+        files_completed: 0,
+        started_at: now,
+        completed_at: None,
+        elapsed_ms: None,
+        error_message: None,
+        created_at: now,
+        updated_at: now,
+    };
+
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::UploadRecordsRepository::create(&conn, &upload_record);
+    }
+
+    // 更新状态为 uploading
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::UploadRecordsRepository::update_status(
+            &conn,
+            &task_id,
+            crate::database::repositories::UploadStatus::Uploading,
+            None,
+        );
+    }
+
     // 获取取消令牌（基于 task_id）
     let cancellation_token = manager.get_cancellation_token(&task_id).await;
 
@@ -556,7 +772,44 @@ pub async fn sftp_upload_directory(
     manager.cleanup_task_client(&task_id).await;
     manager.cleanup_cancellation_token(&task_id).await;
 
-    result
+    // 处理上传结果
+    match result {
+        Ok(upload_result) => {
+            tracing::info!("Upload directory completed: {:?}", upload_result);
+
+            // 标记上传完成（包含统计信息）
+            let elapsed = chrono::Utc::now().timestamp() - now;
+            if let Ok(conn) = pool.get() {
+                let _ = crate::database::repositories::UploadRecordsRepository::mark_completed_with_stats(
+                    &conn,
+                    &task_id,
+                    elapsed * 1000,
+                    upload_result.total_size as i64,
+                    upload_result.total_files as i64,
+                    upload_result.total_files as i64,
+                    upload_result.total_dirs as i64,
+                    upload_result.total_size as i64,
+                );
+            }
+
+            Ok(upload_result)
+        }
+        Err(e) => {
+            tracing::error!("Upload directory failed: {}", e);
+
+            // 标记上传失败
+            if let Ok(conn) = pool.get() {
+                let _ = crate::database::repositories::UploadRecordsRepository::update_status(
+                    &conn,
+                    &task_id,
+                    crate::database::repositories::UploadStatus::Failed,
+                    Some(e.to_string()),
+                );
+            }
+
+            Err(e)
+        }
+    }
 }
 
 /// 取消上传操作
@@ -576,6 +829,7 @@ pub async fn sftp_cancel_upload(
 ///
 /// # 参数
 /// - `manager`: SFTP Manager
+/// - `pool`: 数据库连接池
 /// - `connection_id`: SSH 连接 ID
 /// - `remote_dir_path`: 远程目录路径
 /// - `local_dir_path`: 本地保存路径
@@ -587,6 +841,7 @@ pub async fn sftp_cancel_upload(
 #[tauri::command]
 pub async fn sftp_download_directory(
     manager: State<'_, SftpManagerState>,
+    pool: State<'_, DbPool>,
     connection_id: String,
     remote_dir_path: String,
     local_dir_path: String,
@@ -606,6 +861,46 @@ pub async fn sftp_download_directory(
             tokio::fs::create_dir_all(parent).await
                 .map_err(|e| crate::error::SSHError::Io(format!("创建本地父目录失败: {}", e)))?;
         }
+    }
+
+    // 获取当前用户 ID
+    let user_id = get_current_user_id(&pool);
+
+    // 创建下载记录
+    let now = chrono::Utc::now().timestamp();
+    let download_record = crate::database::repositories::DownloadRecord {
+        id: 0,
+        task_id: task_id.clone(),
+        connection_id: connection_id.clone(),
+        user_id: user_id.clone(),
+        remote_path: remote_dir_path.clone(),
+        local_path: local_dir_path.clone(),
+        total_files: 0,
+        total_dirs: 0,
+        total_size: 0,
+        status: "pending".to_string(),
+        bytes_transferred: 0,
+        files_completed: 0,
+        started_at: now,
+        completed_at: None,
+        elapsed_ms: None,
+        error_message: None,
+        created_at: now,
+        updated_at: now,
+    };
+
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::DownloadRecordsRepository::create(&conn, &download_record);
+    }
+
+    // 更新状态为 downloading
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::DownloadRecordsRepository::update_status(
+            &conn,
+            &task_id,
+            crate::database::repositories::DownloadStatus::Downloading,
+            None,
+        );
     }
 
     // 获取取消令牌（基于 task_id）
@@ -632,7 +927,44 @@ pub async fn sftp_download_directory(
     manager.cleanup_task_client(&task_id).await;
     manager.cleanup_cancellation_token(&task_id).await;
 
-    result
+    // 处理下载结果
+    match result {
+        Ok(download_result) => {
+            tracing::info!("Download directory completed: {:?}", download_result);
+
+            // 标记下载完成（包含统计信息）
+            let elapsed = chrono::Utc::now().timestamp() - now;
+            if let Ok(conn) = pool.get() {
+                let _ = crate::database::repositories::DownloadRecordsRepository::mark_completed_with_stats(
+                    &conn,
+                    &task_id,
+                    elapsed * 1000,
+                    download_result.total_size as i64,
+                    download_result.total_files as i64,
+                    download_result.total_files as i64,
+                    download_result.total_dirs as i64,
+                    download_result.total_size as i64,
+                );
+            }
+
+            Ok(download_result)
+        }
+        Err(e) => {
+            tracing::error!("Download directory failed: {}", e);
+
+            // 标记下载失败
+            if let Ok(conn) = pool.get() {
+                let _ = crate::database::repositories::DownloadRecordsRepository::update_status(
+                    &conn,
+                    &task_id,
+                    crate::database::repositories::DownloadStatus::Failed,
+                    Some(e.to_string()),
+                );
+            }
+
+            Err(e)
+        }
+    }
 }
 
 /// 取消下载操作

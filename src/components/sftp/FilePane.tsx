@@ -28,7 +28,6 @@ interface FilePaneProps {
   onSelectedFilesChange: (files: SftpFileInfo[]) => void;
   isLoading?: boolean;
   refreshKey?: number;
-  extraRefreshKey?: number;
 }
 
 export function FilePane({
@@ -40,7 +39,6 @@ export function FilePane({
   onSelectedFilesChange,
   isLoading = false,
   refreshKey = 0,
-  extraRefreshKey = 0,
 }: FilePaneProps) {
   const { t } = useTranslation();
   const [inputPath, setInputPath] = useState(path);
@@ -57,14 +55,13 @@ export function FilePane({
     setInputPath(path);
   }, [path]);
 
-  // 监听外部的 refreshKey 和 extraRefreshKey 变化
+  // 监听外部的 refreshKey 变化
   useEffect(() => {
-    const key = refreshKey + extraRefreshKey;
-    if (key > 0) {
-      console.log('External refreshKey changed:', refreshKey, 'extraRefreshKey:', extraRefreshKey);
-      setInternalRefreshKey(key);
+    if (refreshKey > 0) {
+      console.log('External refreshKey changed:', refreshKey);
+      setInternalRefreshKey(refreshKey);
     }
-  }, [refreshKey, extraRefreshKey]);
+  }, [refreshKey]);
   const joinPath = (basePath: string, fileName: string): string => {
     if (type === 'local') {
       // Windows 本地路径使用反斜杠
@@ -133,7 +130,7 @@ export function FilePane({
       };
       loadDrives();
     }
-  }, [type, refreshKey]); // 添加 refreshKey 依赖，刷新时重新加载盘符
+  }, [type]); // 只依赖 type，不依赖 refreshKey（盘符在运行期间不会改变）
 
   const handleGoToParent = () => {
     playSound(SoundEffect.BUTTON_CLICK);

@@ -13,16 +13,17 @@ use tauri::State;
 ///
 /// # 参数
 /// - `pool`: 数据库连接池
+/// - `user_id`: 用户 ID
 /// - `page`: 页码（从 1 开始）
 /// - `page_size`: 每页数量
 ///
 /// # 返回
 /// 分页的上传记录
 #[tauri::command]
-pub async fn list_upload_records(pool: State<'_, DbPool>, page: u32, page_size: u32) -> Result<PaginatedUploadRecords> {
+pub async fn list_upload_records(pool: State<'_, DbPool>, user_id: String, page: u32, page_size: u32) -> Result<PaginatedUploadRecords> {
     let conn = pool.get()
         .map_err(|e| crate::error::SSHError::Io(format!("获取数据库连接失败: {}", e)))?;
-    UploadRecordsRepository::list_paginated(&conn, page, page_size)
+    UploadRecordsRepository::list_paginated(&conn, &user_id, page, page_size)
         .map_err(|e| crate::error::SSHError::Io(format!("查询上传记录失败: {}", e)))
 }
 
@@ -50,16 +51,17 @@ pub async fn clear_upload_records(pool: State<'_, DbPool>) -> Result<()> {
 ///
 /// # 参数
 /// - `pool`: 数据库连接池
+/// - `user_id`: 用户 ID
 /// - `page`: 页码（从 1 开始）
 /// - `page_size`: 每页数量
 ///
 /// # 返回
 /// 分页的下载记录
 #[tauri::command]
-pub async fn list_download_records(pool: State<'_, DbPool>, page: u32, page_size: u32) -> Result<PaginatedDownloadRecords> {
+pub async fn list_download_records(pool: State<'_, DbPool>, user_id: String, page: u32, page_size: u32) -> Result<PaginatedDownloadRecords> {
     let conn = pool.get()
         .map_err(|e| crate::error::SSHError::Io(format!("获取数据库连接失败: {}", e)))?;
-    DownloadRecordsRepository::list_paginated(&conn, page, page_size)
+    DownloadRecordsRepository::list_paginated(&conn, &user_id, page, page_size)
         .map_err(|e| crate::error::SSHError::Io(format!("查询下载记录失败: {}", e)))
 }
 

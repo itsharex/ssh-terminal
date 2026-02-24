@@ -49,6 +49,7 @@ pub struct UploadRecord {
     pub id: i64,
     pub task_id: String,
     pub connection_id: String,
+    pub user_id: String,
     pub local_path: String,
     pub remote_path: String,
     pub total_files: i64,
@@ -86,15 +87,16 @@ impl UploadRecordsRepository {
     pub fn create(conn: &Connection, record: &UploadRecord) -> Result<i64> {
         conn.execute(
             "INSERT INTO upload_records (
-                task_id, connection_id, local_path, remote_path,
+                task_id, connection_id, user_id, local_path, remote_path,
                 total_files, total_dirs, total_size, status,
                 bytes_transferred, files_completed, started_at,
                 completed_at, elapsed_ms, error_message,
                 created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
             [
                 &record.task_id,
                 &record.connection_id,
+                &record.user_id,
                 &record.local_path,
                 &record.remote_path,
                 &record.total_files.to_string(),
@@ -136,52 +138,80 @@ impl UploadRecordsRepository {
     }
 
     /// 标记完成
-    pub fn mark_completed(conn: &Connection, task_id: &str, elapsed_ms: i64) -> Result<()> {
+    pub fn mark_completed(conn: &Connection, task_id: &str, elapsed_ms: i64, bytes_transferred: i64, files_completed: i64) -> Result<()> {
         let now = chrono::Utc::now().timestamp();
         conn.execute(
-            "UPDATE upload_records SET status = 'completed', completed_at = ?1, elapsed_ms = ?2, updated_at = ?3 WHERE task_id = ?4",
-            [&now.to_string(), &elapsed_ms.to_string(), &now.to_string(), task_id],
+            "UPDATE upload_records SET status = 'completed', completed_at = ?1, elapsed_ms = ?2, bytes_transferred = ?3, files_completed = ?4, updated_at = ?5 WHERE task_id = ?6",
+            [&now.to_string(), &elapsed_ms.to_string(), &bytes_transferred.to_string(), &files_completed.to_string(), &now.to_string(), task_id],
+        )?;
+        Ok(())
+    }
+
+    /// 标记完成（带统计信息）
+    pub fn mark_completed_with_stats(conn: &Connection, task_id: &str, elapsed_ms: i64, bytes_transferred: i64, files_completed: i64, total_files: i64, total_dirs: i64, total_size: i64) -> Result<()> {
+        let now = chrono::Utc::now().timestamp();
+        conn.execute(
+            "UPDATE upload_records SET status = 'completed', completed_at = ?1, elapsed_ms = ?2, bytes_transferred = ?3, files_completed = ?4, total_files = ?5, total_dirs = ?6, total_size = ?7, updated_at = ?8 WHERE task_id = ?9",
+            [
+                &now.to_string(),
+                &elapsed_ms.to_string(),
+                &bytes_transferred.to_string(),
+                &files_completed.to_string(),
+                &total_files.to_string(),
+                &total_dirs.to_string(),
+                &total_size.to_string(),
+                &now.to_string(),
+                task_id,
+            ],
         )?;
         Ok(())
     }
 
     /// 分页查询
-    pub fn list_paginated(conn: &Connection, page: u32, page_size: u32) -> Result<PaginatedUploadRecords> {
+    pub fn list_paginated(conn: &Connection, user_id: &str, page: u32, page_size: u32) -> Result<PaginatedUploadRecords> {
         let offset = (page - 1) * page_size;
 
         // 查询总数
         let total: u64 = conn.query_row(
-            "SELECT COUNT(*) FROM upload_records",
-            [],
+            "SELECT COUNT(*) FROM upload_records WHERE user_id = ?1",
+            [user_id],
             |row| row.get::<_, i64>(0).map(|v| v as u64),
         )?;
 
         // 查询记录
         let mut stmt = conn.prepare(
             "SELECT * FROM upload_records
+             WHERE user_id = ?1
              ORDER BY created_at DESC
-             LIMIT ?1 OFFSET ?2"
+             LIMIT ?2 OFFSET ?3"
         )?;
 
-        let records: Result<Vec<UploadRecord>, _> = stmt.query_map([page_size, offset], |row| {
+        let records: Result<Vec<UploadRecord>, _> = stmt.query_map(
+        [
+            user_id,
+            &(page_size as i64).to_string(),
+            &(offset as i64).to_string(),
+        ],
+        |row| {
             Ok(UploadRecord {
                 id: row.get(0)?,
                 task_id: row.get(1)?,
                 connection_id: row.get(2)?,
-                local_path: row.get(3)?,
-                remote_path: row.get(4)?,
-                total_files: row.get(5)?,
-                total_dirs: row.get(6)?,
-                total_size: row.get(7)?,
-                status: row.get(8)?,
-                bytes_transferred: row.get(9)?,
-                files_completed: row.get(10)?,
-                started_at: row.get(11)?,
-                completed_at: row.get(12)?,
-                elapsed_ms: row.get(13)?,
-                error_message: row.get(14)?,
-                created_at: row.get(15)?,
-                updated_at: row.get(16)?,
+                user_id: row.get(3)?,
+                local_path: row.get(4)?,
+                remote_path: row.get(5)?,
+                total_files: row.get(6)?,
+                total_dirs: row.get(7)?,
+                total_size: row.get(8)?,
+                status: row.get(9)?,
+                bytes_transferred: row.get(10)?,
+                files_completed: row.get(11)?,
+                started_at: row.get(12)?,
+                completed_at: row.get(13)?,
+                elapsed_ms: row.get(14)?,
+                error_message: row.get(15)?,
+                created_at: row.get(16)?,
+                updated_at: row.get(17)?,
             })
         })?.collect();
 

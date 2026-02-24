@@ -1,5 +1,5 @@
 ﻿import { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Terminal } from "@/pages/Terminal";
 import { SessionManager } from "@/pages/SessionManager";
@@ -143,9 +143,10 @@ function AppContent() {
           <Route path="/terminal" element={<Terminal />} />
           <Route path="/sessions" element={<SessionManager />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/sftp" element={<SftpManager />} />
-          <Route path="/upload-records" element={<UploadRecords />} />
-          <Route path="/download-records" element={<DownloadRecords />} />
+          <Route path="/sftp" element={<SftpManager />}>
+            <Route path="upload-records" element={<UploadRecords />} />
+            <Route path="download-records" element={<DownloadRecords />} />
+          </Route>
           <Route path="/user-profile" element={<UserProfile />} />
           <Route path="/ai-chat" element={<AIChatPage />} />
           <Route path="/ai-chat/:conversationId" element={<AIChatPage />} />
