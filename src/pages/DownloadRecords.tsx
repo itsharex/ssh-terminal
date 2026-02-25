@@ -129,9 +129,6 @@ export function DownloadRecords() {
 
   const handleClearAll = async () => {
     playSound(SoundEffect.BUTTON_CLICK);
-    if (!confirm(t('sftp.records.downloadClearConfirm'))) {
-      return;
-    }
 
     try {
       await invoke('clear_download_records');
@@ -148,10 +145,6 @@ export function DownloadRecords() {
     playSound(SoundEffect.BUTTON_CLICK);
     if (selectedIds.length === 0) {
       toast.warning(t('sftp.records.selectToDelete'));
-      return;
-    }
-
-    if (!confirm(t('sftp.records.deleteSelectedSuccess', { count: selectedIds.length }))) {
       return;
     }
 

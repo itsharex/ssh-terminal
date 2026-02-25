@@ -269,21 +269,25 @@ export function SftpManager() {
   // 监听上传状态变更事件
   useEffect(() => {
     if (!selectedConnectionId) return;
-    
+
     console.log('[SftpManager] Setting up upload status change listener for connection:', selectedConnectionId);
-    
+
     let unlistenFn: (() => void) | null = null;
-    
+
     const setupListener = async () => {
       try {
-        unlistenFn = await listenUploadStatusChange(selectedConnectionId);
+        unlistenFn = await listenUploadStatusChange(selectedConnectionId, () => {
+          // 上传完成或取消时，刷新远程面板
+          console.log('[SftpManager] Upload completed/cancelled, refreshing remote panel');
+          setRemoteRefreshKey(prev => prev + 1);
+        });
       } catch (error) {
         console.error('[SftpManager] Failed to setup upload status change listener:', error);
       }
     };
-    
+
     setupListener();
-    
+
     return () => {
       console.log('[SftpManager] Cleaning up upload status change listener');
       if (unlistenFn) {
@@ -295,21 +299,25 @@ export function SftpManager() {
   // 监听下载状态变更事件
   useEffect(() => {
     if (!selectedConnectionId) return;
-    
+
     console.log('[SftpManager] Setting up download status change listener for connection:', selectedConnectionId);
-    
+
     let unlistenFn: (() => void) | null = null;
-    
+
     const setupListener = async () => {
       try {
-        unlistenFn = await listenDownloadStatusChange(selectedConnectionId);
+        unlistenFn = await listenDownloadStatusChange(selectedConnectionId, () => {
+          // 下载完成或取消时，刷新本地面板
+          console.log('[SftpManager] Download completed/cancelled, refreshing local panel');
+          setLocalRefreshKey(prev => prev + 1);
+        });
       } catch (error) {
         console.error('[SftpManager] Failed to setup download status change listener:', error);
       }
     };
-    
+
     setupListener();
-    
+
     return () => {
       console.log('[SftpManager] Cleaning up download status change listener');
       if (unlistenFn) {
