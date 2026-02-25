@@ -6,6 +6,7 @@ use crate::error::{Result, SSHError};
 use crate::sftp::{SftpFileInfo};
 use russh_sftp::client::SftpSession;
 use std::path::Path;
+use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, error, info, warn};
 
@@ -655,7 +656,20 @@ impl SftpClient {
             info!("=== Recursive Directory Upload Start ===");
             info!("Local: {}, Remote: {}", local_dir, remote_dir);
 
+            // 提取目录名作为 uploadName
+            let upload_name = Arc::new(Path::new(local_dir)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_else(|| {
+                    local_dir.rsplit('/')
+                        .next()
+                        .or_else(|| local_dir.rsplit('\\').next())
+                        .unwrap_or(local_dir)
+                })
+                .to_string());
+
             let start_time = Instant::now();
+            let start_time_timestamp = chrono::Utc::now().timestamp_millis() as u64; // Unix 时间戳（毫秒）
             let mut total_files: u64 = 0;
             let mut total_dirs: u64 = 0;
             let mut total_size: u64 = 0;
@@ -741,12 +755,65 @@ impl SftpClient {
                 }
 
                 // 流式上传文件（跳过目录检查，已在 Phase 1.5 创建）
+                // 使用节流机制控制事件发送频率（200ms）
+                let window_clone = window.clone();
+                let task_id_clone = task_id.to_string();
+                let connection_id_clone = connection_id.to_string();
+                let local_file_path_clone = local_file_path.clone();
+                let total_files_value = total_files;
+                let total_size_value = total_size;
+                let files_completed_before = files_completed;
+                let total_bytes_before = total_bytes_transferred;
+                let start_time_clone = start_time.clone();
+                let start_time_timestamp_clone = start_time_timestamp;
+                let last_emit_time = std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now()));
+                let upload_name_clone = Arc::clone(&upload_name);
+
                 let file_transferred = self.upload_file_stream(
                     &local_file_path,
                     &remote_file_path,
                     cancellation_token,
-                    |_transferred, _total| {
-                        // 文件内进度暂不发送，只发送文件级进度
+                    {
+                        let last_emit_time = last_emit_time.clone();
+                        move |transferred, _total| {
+                            let now = std::time::Instant::now();
+                            // 节流：每 200ms 最多发送一次事件
+                            {
+                                let mut last = last_emit_time.lock().unwrap();
+                                if now.duration_since(*last) >= std::time::Duration::from_millis(200) {
+                                    *last = now;
+
+                                    let total_bytes = total_bytes_before + transferred;
+                                    let elapsed_ms = start_time_clone.elapsed().as_millis() as u64;
+                                    let speed_bytes_per_sec = if elapsed_ms > 0 {
+                                        (total_bytes * 1000) / elapsed_ms
+                                    } else {
+                                        0
+                                    };
+
+                                    let progress_event = UploadProgressEvent {
+                                        task_id: task_id_clone.clone(),
+                                        connection_id: connection_id_clone.clone(),
+                                        current_file: local_file_path_clone.clone(),
+                                        current_dir: Path::new(&local_file_path_clone)
+                                            .parent()
+                                            .and_then(|p| p.to_str())
+                                            .unwrap_or("")
+                                            .to_string(),
+                                        files_completed: files_completed_before, // 文件未完成，不增加
+                                        total_files: total_files_value,
+                                        bytes_transferred: total_bytes,
+                                        total_bytes: total_size_value,
+                                        speed_bytes_per_sec,
+                                        start_time: start_time_timestamp_clone,
+                                        completed_time: chrono::Utc::now().timestamp_millis() as u64,
+                                        upload_name: upload_name_clone.to_string(),
+                                    };
+
+                                    let _ = window_clone.emit("sftp-upload-progress", &progress_event);
+                                }
+                            }
+                        }
                     },
                     true, // skip_dir_check: true
                 ).await?;
@@ -762,7 +829,7 @@ impl SftpClient {
                     0
                 };
 
-                // 发送进度事件
+                // 发送进度事件（文件完成事件，不受节流限制）
                 let progress_event = UploadProgressEvent {
                     task_id: task_id.to_string(),
                     connection_id: connection_id.to_string(),
@@ -777,6 +844,9 @@ impl SftpClient {
                     bytes_transferred: total_bytes_transferred, // 修复：使用累计字节数
                     total_bytes: total_size,
                     speed_bytes_per_sec,
+                    start_time: start_time_timestamp,
+                    completed_time: chrono::Utc::now().timestamp_millis() as u64,
+                    upload_name: Arc::clone(&upload_name).to_string(),
                 };
 
                 if let Err(e) = window.emit("sftp-upload-progress", &progress_event) {
@@ -836,6 +906,7 @@ impl SftpClient {
         F: Fn(u64, u64),
     {
         let start_time = std::time::Instant::now();
+        let start_time_timestamp = chrono::Utc::now().timestamp_millis() as u64; // Unix 时间戳（毫秒）
         info!("=== Directory Download Start ===");
         info!("Remote: {}, Local: {}", remote_dir_path, local_dir_path);
         info!("Task ID: {}, Connection: {}", task_id, connection_id);
@@ -897,12 +968,62 @@ impl SftpClient {
             }
 
             // 流式下载文件
+            // 使用节流机制控制事件发送频率（200ms）
+            let window_clone = window.clone();
+            let task_id_clone = task_id.to_string();
+            let connection_id_clone = connection_id.to_string();
+            let remote_file_path_clone = remote_file_path.clone();
+            let total_files_value = total_files;
+                            let total_size_value = total_size;
+                            let files_completed_before = files_completed;
+                            let total_bytes_before = total_bytes_transferred;
+                            let start_time_clone = start_time.clone();
+                            let start_time_timestamp_clone = start_time_timestamp;
+                            let last_emit_time = std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now()));
             let file_transferred = self.download_file_stream(
                 &remote_file_path,
                 &local_file_path,
                 cancellation_token,
-                |_transferred, _total| {
-                    // 文件内进度暂不发送，只发送文件级进度
+                {
+                    let last_emit_time = last_emit_time.clone();
+                    move |transferred, _total| {
+                        let now = std::time::Instant::now();
+                        // 节流：每 200ms 最多发送一次事件
+                        {
+                            let mut last = last_emit_time.lock().unwrap();
+                            if now.duration_since(*last) >= std::time::Duration::from_millis(200) {
+                                *last = now;
+
+                                let total_bytes = total_bytes_before + transferred;
+                                let elapsed_ms = start_time_clone.elapsed().as_millis() as u64;
+                                let speed_bytes_per_sec = if elapsed_ms > 0 {
+                                    (total_bytes * 1000) / elapsed_ms
+                                } else {
+                                    0
+                                };
+
+                                let progress_event = crate::sftp::DownloadProgressEvent {
+                                    task_id: task_id_clone.clone(),
+                                    connection_id: connection_id_clone.clone(),
+                                    current_file: remote_file_path_clone.clone(),
+                                    current_dir: Path::new(&remote_file_path_clone)
+                                        .parent()
+                                        .and_then(|p| p.to_str())
+                                        .unwrap_or("")
+                                        .to_string(),
+                                    files_completed: files_completed_before, // 文件未完成，不增加
+                                    total_files: total_files_value,
+                                    bytes_transferred: total_bytes,
+                                    total_bytes: total_size_value,
+                                    speed_bytes_per_sec,
+                                    start_time: start_time_timestamp_clone,
+                                    completed_time: chrono::Utc::now().timestamp_millis() as u64,
+                                };
+
+                                let _ = window_clone.emit("sftp-download-progress", &progress_event);
+                            }
+                        }
+                    }
                 }
             ).await?;
 
@@ -917,7 +1038,7 @@ impl SftpClient {
                 0
             };
 
-            // 发送进度事件
+            // 发送进度事件（文件完成事件，不受节流限制）
             let progress_event = crate::sftp::DownloadProgressEvent {
                 task_id: task_id.to_string(),
                 connection_id: connection_id.to_string(),
@@ -932,6 +1053,8 @@ impl SftpClient {
                 bytes_transferred: total_bytes_transferred,
                 total_bytes: total_size,
                 speed_bytes_per_sec,
+                start_time: start_time_timestamp,
+                completed_time: chrono::Utc::now().timestamp_millis() as u64,
             };
 
             if let Err(e) = window.emit("sftp-download-progress", &progress_event) {

@@ -1,5 +1,5 @@
 ﻿import { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Outlet } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Terminal } from "@/pages/Terminal";
 import { SessionManager } from "@/pages/SessionManager";
@@ -16,6 +16,7 @@ import { useAIStore } from "@/store/aiStore";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { useAuthStore } from "@/store/authStore";
 import { useSessionStore } from "@/store/sessionStore";
+import { useSftpStore } from "@/store/sftpStore";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { MobileSessionList } from "@/components/mobile/MobileSessionList";
 import { MobileTerminalPage } from "@/components/mobile/MobileTerminalPage";
@@ -30,6 +31,7 @@ function AppContent() {
   const loadSessionsFromStorage = useSessionStore(state => state.loadSessionsFromStorage);
   const toggleSidebar = useSidebarStore(state => state.toggleSidebar);
   const { autoLogin, getCurrentUser } = useAuthStore();
+  const clearActiveTasks = useSftpStore(state => state.clearActiveTasks);
 
   useEffect(() => {
     loadConfig();
@@ -119,6 +121,19 @@ function AppContent() {
       document.body.classList.remove('mobile', 'android', 'ios');
     }
   }, [isMobile, isAndroidDevice, isIOSDevice]);
+
+  // 应用退出时清理临时任务数据
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      clearActiveTasks();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [clearActiveTasks]);
 
   if (isMobile) {
     return (

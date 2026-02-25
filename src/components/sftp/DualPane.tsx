@@ -8,27 +8,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { FilePane } from './FilePane';
 import { useSftpStore } from '@/store/sftpStore';
-import { ChevronRight, X, Upload, File, Folder, Download } from 'lucide-react';
+import { ChevronRight, X, Upload, File, Folder, Download, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-
-interface UploadProgressEvent {
-  task_id: string;
-  connection_id: string;
-  current_file: string;
-  current_dir: string;
-  files_completed: number;
-  total_files: number;
-  bytes_transferred: number;
-  total_bytes: number;
-  speed_bytes_per_sec: number;
-}
 
 interface DualPaneProps {
   connectionId: string;
@@ -56,19 +43,29 @@ export function DualPane({
     selectedRemoteFiles,
     setSelectedLocalFiles,
     setSelectedRemoteFiles,
+    activeUploadTasks,
+    activeDownloadTasks,
+    removeActiveUploadTask,
+    removeActiveDownloadTask,
   } = useSftpStore();
 
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [uploadProgressMap, setUploadProgressMap] = useState<Map<string, UploadProgressEvent>>(new Map());
   // 优化：使用 CSS transition 来平滑隐藏/显示，而不是完全卸载组件
   const [showUploadPanel, setShowUploadPanel] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [showDownloadPanel, setShowDownloadPanel] = useState(false);
   
-  // 使用 ref 直接操作 DOM，避免 React 状态更新
-  const panelRef = useRef<HTMLDivElement>(null);
-  const dragStartRef = useRef({ x: 0, y: 0 });
-  const panelPositionRef = useRef({ x: 0, y: 0 });
+  // 上传面板拖动状态
+  const [isUploadDragging, setIsUploadDragging] = useState(false);
+  const uploadPanelRef = useRef<HTMLDivElement>(null);
+  const uploadDragStartRef = useRef({ x: 0, y: 0 });
+  const uploadPanelPositionRef = useRef({ x: 0, y: 0 });
+  
+  // 下载面板拖动状态
+  const [isDownloadDragging, setIsDownloadDragging] = useState(false);
+  const downloadPanelRef = useRef<HTMLDivElement>(null);
+  const downloadDragStartRef = useRef({ x: 0, y: 0 });
+  const downloadPanelPositionRef = useRef({ x: 0, y: 0 });
 
   const handleLocalPathChange = (path: string) => {
     setLocalPath(path);
@@ -78,64 +75,37 @@ export function DualPane({
     setRemotePath(path);
   };
 
-  // 监听上传进度事件
-  useEffect(() => {
-    const unlisten = listen<UploadProgressEvent>('sftp-upload-progress', (event) => {
-      const progress = event.payload;
-      if (progress.connection_id === connectionId) {
-        setUploadProgressMap(prev => {
-          const newMap = new Map(prev).set(progress.task_id, progress);
-          // 如果上传完成，从 map 中移除
-          if (progress.files_completed >= progress.total_files && progress.total_files > 0) {
-            setTimeout(() => {
-              setUploadProgressMap(prevMap => {
-                const nextMap = new Map(prevMap);
-                nextMap.delete(progress.task_id);
-                return nextMap;
-              });
-            }, 3000); // 3秒后移除
-          }
-          return newMap;
-        });
-      }
-    });
-
-    return () => {
-      unlisten.then(fn => fn());
-    };
-  }, [connectionId]);
-
-  // 处理拖动 - 直接操作 DOM，完全避免 React 状态更新
+  // 处理上传面板拖动 - 直接操作 DOM，完全避免 React 状态更新
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging || !panelRef.current) return;
+      if (!isUploadDragging || !uploadPanelRef.current) return;
 
       // 直接更新 DOM style，不经过 React
-      const deltaX = e.clientX - dragStartRef.current.x;
-      const deltaY = e.clientY - dragStartRef.current.y;
+      const deltaX = e.clientX - uploadDragStartRef.current.x;
+      const deltaY = e.clientY - uploadDragStartRef.current.y;
       
-      const newX = panelPositionRef.current.x + deltaX;
-      const newY = panelPositionRef.current.y + deltaY;
+      const newX = uploadPanelPositionRef.current.x + deltaX;
+      const newY = uploadPanelPositionRef.current.y + deltaY;
 
-      panelRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
+      uploadPanelRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
     };
 
     const handleMouseUp = () => {
-      if (panelRef.current) {
+      if (uploadPanelRef.current) {
         // 更新 ref 值以备下次拖动
-        const transform = panelRef.current.style.transform;
+        const transform = uploadPanelRef.current.style.transform;
         const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
         if (match) {
-          panelPositionRef.current = {
+          uploadPanelPositionRef.current = {
             x: parseFloat(match[1]),
             y: parseFloat(match[2])
           };
         }
       }
-      setIsDragging(false);
+      setIsUploadDragging(false);
     };
 
-    if (isDragging) {
+    if (isUploadDragging) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
@@ -144,17 +114,136 @@ export function DualPane({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isUploadDragging]);
+  
+  // 处理下载面板拖动 - 直接操作 DOM，完全避免 React 状态更新
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDownloadDragging || !downloadPanelRef.current) return;
+
+      // 直接更新 DOM style，不经过 React
+      const deltaX = e.clientX - downloadDragStartRef.current.x;
+      const deltaY = e.clientY - downloadDragStartRef.current.y;
+      
+      const newX = downloadPanelPositionRef.current.x + deltaX;
+      const newY = downloadPanelPositionRef.current.y + deltaY;
+
+      downloadPanelRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
+    };
+
+    const handleMouseUp = () => {
+      if (downloadPanelRef.current) {
+        // 更新 ref 值以备下次拖动
+        const transform = downloadPanelRef.current.style.transform;
+        const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        if (match) {
+          downloadPanelPositionRef.current = {
+            x: parseFloat(match[1]),
+            y: parseFloat(match[2])
+          };
+        }
+      }
+      setIsDownloadDragging(false);
+    };
+
+    if (isDownloadDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDownloadDragging]);
 
   const handleCancelUpload = async () => {
     try {
-      await invoke('sftp_cancel_upload', {
-        connectionId,
-      });
-      toast.info('上传已取消');
+      // 获取所有活跃的上传任务
+      const tasks = Array.from(activeUploadTasks.values());
+
+      if (tasks.length === 0) {
+        toast.info(t('sftp.noUploadTasks'));
+        return;
+      }
+
+      // 并发取消所有任务
+      await Promise.all(
+        tasks.map(task =>
+          invoke('sftp_cancel_upload', {
+            taskId: task.taskId,  // ✅ 使用正确的 taskId
+          })
+        )
+      );
+
+      // 清理任务状态
+      tasks.forEach(task => removeActiveUploadTask(task.taskId));
+
+      toast.success(t('sftp.uploadCancelled'));
     } catch (error) {
       console.error('Cancel upload failed:', error);
-      toast.error('取消上传失败');
+      toast.error(t('sftp.cancelUploadFailed'));
+    }
+  };
+
+  const handleCancelSingleUpload = async (taskId: string) => {
+    try {
+      await invoke('sftp_cancel_upload', {
+        taskId,  // ✅ 使用正确的 taskId
+      });
+
+      // 清理任务状态
+      removeActiveUploadTask(taskId);
+
+      toast.success(t('sftp.uploadCancelled'));
+    } catch (error) {
+      console.error('Cancel single upload failed:', error);
+      toast.error(t('sftp.cancelUploadFailed'));
+    }
+  };
+
+  const handleCancelDownload = async () => {
+    try {
+      // 获取所有活跃的下载任务
+      const tasks = Array.from(activeDownloadTasks.values());
+
+      if (tasks.length === 0) {
+        toast.info(t('sftp.noDownloadTasks'));
+        return;
+      }
+
+      // 并发取消所有任务
+      await Promise.all(
+        tasks.map(task =>
+          invoke('sftp_cancel_download', {
+            taskId: task.taskId,  // ✅ 使用正确的 taskId
+          })
+        )
+      );
+
+      // 清理任务状态
+      tasks.forEach(task => removeActiveDownloadTask(task.taskId));
+
+      toast.success(t('sftp.downloadCancelled'));
+    } catch (error) {
+      console.error('Cancel download failed:', error);
+      toast.error(t('sftp.cancelDownloadFailed'));
+    }
+  };
+
+  const handleCancelSingleDownload = async (taskId: string) => {
+    try {
+      await invoke('sftp_cancel_download', {
+        taskId,  // ✅ 使用正确的 taskId
+      });
+
+      // 清理任务状态
+      removeActiveDownloadTask(taskId);
+
+      toast.success(t('sftp.downloadCancelled'));
+    } catch (error) {
+      console.error('Cancel single download failed:', error);
+      toast.error(t('sftp.cancelDownloadFailed'));
     }
   };
 
@@ -170,20 +259,61 @@ export function DualPane({
     return `${formatFileSize(bytesPerSec)}/s`;
   };
 
-const handleMouseDown = (e: React.MouseEvent) => {
+  const formatTime = (ms: number): string => {
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  const formatElapsedTime = (startTime: number, completedTime: number): string => {
+    if (completedTime === 0) {
+      // 任务进行中，显示当前用时
+      const elapsed = Date.now() - startTime;
+      return formatTime(elapsed);
+    } else {
+      // 任务完成，显示总用时
+      const elapsed = completedTime - startTime;
+      return formatTime(elapsed);
+    }
+  };
+
+const handleUploadMouseDown = (e: React.MouseEvent) => {
     // 只在拖动区域响应
     const target = e.target as HTMLElement;
     if (!target.closest('.drag-area')) return;
 
     e.preventDefault();
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    setIsUploadDragging(true);
+    uploadDragStartRef.current = { x: e.clientX, y: e.clientY };
     // 读取当前 transform 值
-    if (panelRef.current) {
-      const transform = panelRef.current.style.transform;
+    if (uploadPanelRef.current) {
+      const transform = uploadPanelRef.current.style.transform;
       const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
       if (match) {
-        panelPositionRef.current = {
+        uploadPanelPositionRef.current = {
+          x: parseFloat(match[1]),
+          y: parseFloat(match[2])
+        };
+      }
+    }
+  };
+  
+  const handleDownloadMouseDown = (e: React.MouseEvent) => {
+    // 只在拖动区域响应
+    const target = e.target as HTMLElement;
+    if (!target.closest('.drag-area')) return;
+
+    e.preventDefault();
+    setIsDownloadDragging(true);
+    downloadDragStartRef.current = { x: e.clientX, y: e.clientY };
+    // 读取当前 transform 值
+    if (downloadPanelRef.current) {
+      const transform = downloadPanelRef.current.style.transform;
+      const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+      if (match) {
+        downloadPanelPositionRef.current = {
           x: parseFloat(match[1]),
           y: parseFloat(match[2])
         };
@@ -203,6 +333,7 @@ const handleMouseDown = (e: React.MouseEvent) => {
     }
 
     setUploading(true);
+    setShowUploadPanel(true); // 自动打开上传悬浮面板
     try {
       // 分离文件和目录
       const files: typeof selectedLocalFiles = [];
@@ -289,7 +420,13 @@ const handleMouseDown = (e: React.MouseEvent) => {
   const handleTransferToLocal = async () => {
     if (selectedRemoteFiles.length === 0) return;
 
+    console.log('Download button clicked');
+    console.log('Selected remote files:', selectedRemoteFiles);
+    console.log('Local path:', localPath);
+    console.log('Connection ID:', connectionId);
+
     setDownloading(true);
+    setShowDownloadPanel(true); // 自动打开下载悬浮面板
     try {
       for (const file of selectedRemoteFiles) {
         const localFilePath = localPath.endsWith('/')
@@ -311,6 +448,7 @@ const handleMouseDown = (e: React.MouseEvent) => {
             connectionId,
             remotePath: file.path,
             localPath: localFilePath,
+            window: getCurrentWindow(),
           });
         }
       }
@@ -332,16 +470,16 @@ const handleMouseDown = (e: React.MouseEvent) => {
     <div className="h-full flex relative">
       {/* 上传进度悬浮面板 - 即时显示/隐藏 */}
         <div
-          ref={panelRef}
+          ref={uploadPanelRef}
           className={`fixed z-[9999] w-96 max-h-96 overflow-y-auto ${
             showUploadPanel ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
           }`}
           style={{
             top: `${64}px`,
             left: `calc(100% - 400px)`,
-            transform: `translate(${panelPositionRef.current.x}px, ${panelPositionRef.current.y}px)`
+            transform: `translate(${uploadPanelPositionRef.current.x}px, ${uploadPanelPositionRef.current.y}px)`
           }}
-          onMouseDown={handleMouseDown}
+          onMouseDown={handleUploadMouseDown}
         >
           <Card className="shadow-2xl shadow-black/20 border-2 border-primary/40 backdrop-blur-sm bg-background/95">
             {/* 可拖动的标题栏 */}
@@ -349,72 +487,117 @@ const handleMouseDown = (e: React.MouseEvent) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Upload className="h-4 w-4 text-primary" />
-                  <span className="font-medium text-sm">上传进度</span>
+                  <span className="font-medium text-sm">{t('sftp.uploadProgress')}</span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowUploadPanel(false)}
-                  className="h-7 w-7 p-0"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/sftp/upload-records')}
+                    className="h-7 px-2 text-xs"
+                    title={t('sftp.viewUploadRecords')}
+                  >
+                    {t('sftp.viewRecords')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowUploadPanel(false)}
+                    className="h-7 w-7 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                拖动此处移动面板
+                {t('sftp.dragToMove')}
               </div>
             </div>
 
             {/* 面板内容 */}
             <div className="p-4">
-              {uploadProgressMap.size > 0 ? (
-                Array.from(uploadProgressMap.values()).map((progress) => (
-                  <div key={progress.task_id} className="mb-3 last:mb-0">
-                    {/* 文件计数进度 */}
-                    <Progress
-                      value={(progress.files_completed / progress.total_files) * 100}
-                      className="h-2 mb-2"
-                    />
+              {(() => {
+                console.log('[DualPane Upload Panel] Rendering upload panel, activeUploadTasks.size:', activeUploadTasks.size, 'tasks:', Array.from(activeUploadTasks.entries()));
+                return null;
+              })()}
+              {activeUploadTasks.size > 0 ? (
+                Array.from(activeUploadTasks.values()).map((task) => {
+                  const progress = (task.bytesTransferred / task.totalBytes) * 100;
+                  const isCompleted = task.status === 'completed';
 
-                    {/* 当前上传的文件 */}
-                    <div className="flex items-start gap-2 text-xs mb-2">
-                      {progress.current_file ? (
-                        <>
-                          <File className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="font-mono truncate" title={progress.current_file}>
-                              {progress.current_file.split(/[/\\]/).pop()}
-                            </div>
+                  // 计算用时时间
+                  const displayTime = formatElapsedTime(task.startTime, task.completedTime);
+
+                  return (
+                    <div key={task.taskId} className="group mb-3 last:mb-0 relative">
+                      {/* 文件计数进度 */}
+                      <Progress
+                        value={progress}
+                        className="h-2 mb-2"
+                      />
+
+                      {/* 当前上传的文件 */}
+                      <div className="flex items-start gap-2 text-xs mb-2">
+                        <File className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0 pr-8">
+                          <div className="font-mono truncate" title={task.filePath}>
+                            {isCompleted ? task.uploadName : task.fileName}
                           </div>
-                        </>
-                      ) : (
-                        <>
-                          <Folder className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="font-mono truncate" title={progress.current_dir}>
-                              {progress.current_dir.split(/[/\\]/).pop()}
-                            </div>
-                          </div>
-                        </>
+                        </div>
+                      </div>
+
+                      {/* 传输速度和统计信息 */}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span>{formatFileSize(task.bytesTransferred)} / {formatFileSize(task.totalBytes)}</span>
+                          {task.speed > 0 && !isCompleted && (
+                            <span className="text-primary">• {formatSpeed(task.speed)}</span>
+                          )}
+                        </div>
+                        <span>{progress.toFixed(1)}%</span>
+                      </div>
+
+                      {task.filesCompleted > 0 && task.totalFiles > 1 && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <Folder className="h-3 w-3" />
+                          <span>
+                            {task.filesCompleted} / {task.totalFiles} {t('sftp.files')}
+                          </span>
+                        </div>
                       )}
-                    </div>
 
-                    {/* 传输速度和统计信息 */}
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{formatSpeed(progress.speed_bytes_per_sec)}</span>
-                      <span>{progress.files_completed}/{progress.total_files} 文件</span>
+                      {/* 时间和取消按钮行 */}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{displayTime}</span>
+                        </div>
+                        
+                        {/* 取消按钮（悬停显示） */}
+                        {!isCompleted && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCancelSingleUpload(task.taskId)}
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title={t('sftp.cancelUpload')}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center text-sm text-muted-foreground py-8">
                   <Upload className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                  <p>暂无上传任务</p>
+                  <p>{t('sftp.noUploadTasks')}</p>
                 </div>
               )}
 
               {/* 取消按钮 */}
-              {uploadProgressMap.size > 0 && (
+              {activeUploadTasks.size > 0 && (
                 <div className="mt-4 pt-3 border-t">
                   <Button
                     variant="outline"
@@ -423,7 +606,153 @@ const handleMouseDown = (e: React.MouseEvent) => {
                     className="w-full"
                   >
                     <X className="h-3 w-3 mr-2" />
-                    取消所有上传
+                    {t('sftp.cancelAllUploads')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* 下载进度悬浮面板 - 即时显示/隐藏 */}
+        <div
+          ref={downloadPanelRef}
+          className={`fixed z-[9999] w-96 max-h-96 overflow-y-auto ${
+            showDownloadPanel ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          style={{
+            top: `${64}px`,
+            left: '20px',
+            transform: `translate(${downloadPanelPositionRef.current.x}px, ${downloadPanelPositionRef.current.y}px)`
+          }}
+          onMouseDown={handleDownloadMouseDown}
+        >
+          <Card className="shadow-2xl shadow-black/20 border-2 border-primary/40 backdrop-blur-sm bg-background/95">
+            {/* 可拖动的标题栏 */}
+            <div className="drag-area p-4 pb-3 border-b select-none bg-muted/30 hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Download className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-sm">{t('sftp.downloadProgress')}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/sftp/download-records')}
+                    className="h-7 px-2 text-xs"
+                    title={t('sftp.viewDownloadRecords')}
+                  >
+                    {t('sftp.viewRecords')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowDownloadPanel(false)}
+                    className="h-7 w-7 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {t('sftp.dragToMove')}
+              </div>
+            </div>
+
+{/* 面板内容 */}
+            <div className="p-4">
+              {(() => {
+                console.log('[DualPane Download Panel] Rendering download panel, activeDownloadTasks.size:', activeDownloadTasks.size, 'tasks:', Array.from(activeDownloadTasks.entries()));
+                return null;
+              })()}
+              {activeDownloadTasks.size > 0 ? (
+                Array.from(activeDownloadTasks.values()).map((task) => {
+                  const progress = (task.bytesTransferred / task.totalBytes) * 100;
+                  const isCompleted = task.status === 'completed';
+
+                  // 计算用时时间
+                  const displayTime = formatElapsedTime(task.startTime, task.completedTime);
+
+                  return (
+                    <div key={task.taskId} className="group mb-3 last:mb-0 relative">
+                      {/* 文件计数进度 */}
+                      <Progress
+                        value={progress}
+                        className="h-2 mb-2"
+                      />
+
+                      {/* 当前下载的文件 */}
+                      <div className="flex items-start gap-2 text-xs mb-2">
+                        <File className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0 pr-8">
+                          <div className="font-mono truncate" title={task.filePath}>
+                            {task.fileName}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 传输速度和统计信息 */}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span>{formatFileSize(task.bytesTransferred)} / {formatFileSize(task.totalBytes)}</span>
+                          {task.speed > 0 && !isCompleted && (
+                            <span className="text-primary">• {formatSpeed(task.speed)}</span>
+                          )}
+                        </div>
+                        <span>{progress.toFixed(1)}%</span>
+                      </div>
+
+                      {task.filesCompleted > 0 && task.totalFiles > 1 && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <Folder className="h-3 w-3" />
+                          <span>
+                            {task.filesCompleted} / {task.totalFiles} {t('sftp.files')}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 时间和取消按钮行 */}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{displayTime}</span>
+                        </div>
+                        
+                        {/* 取消按钮（悬停显示） */}
+                        {!isCompleted && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCancelSingleDownload(task.taskId)}
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title={t('sftp.cancelDownload')}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center text-sm text-muted-foreground py-8">
+                  <Download className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  <p>{t('sftp.noDownloadTasks')}</p>
+                </div>
+              )}
+
+              {/* 取消按钮 */}
+              {activeDownloadTasks.size > 0 && (
+                <div className="mt-4 pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancelDownload}
+                    className="w-full"
+                  >
+                    <X className="h-3 w-3 mr-2" />
+                    {t('sftp.cancelAllDownloads')}
                   </Button>
                 </div>
               )}
@@ -449,7 +778,6 @@ const handleMouseDown = (e: React.MouseEvent) => {
         {/* 上传进度按钮 */}
         <button
           onClick={() => setShowUploadPanel(!showUploadPanel)}
-          onDoubleClick={() => navigate('upload-records')}
           className={`
             p-2 rounded transition-all duration-200 relative
             ${showUploadPanel
@@ -457,12 +785,12 @@ const handleMouseDown = (e: React.MouseEvent) => {
               : 'bg-background text-foreground hover:bg-muted'
             }
           `}
-          title="查看上传进度（双击查看记录）"
+          title="查看上传进度"
         >
           <Upload className={`h-4 w-4 ${uploading ? 'animate-pulse' : ''}`} />
-          {uploadProgressMap.size > 0 && (
+          {activeUploadTasks.size > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
-              {uploadProgressMap.size}
+              {activeUploadTasks.size}
             </span>
           )}
         </button>
@@ -471,17 +799,22 @@ const handleMouseDown = (e: React.MouseEvent) => {
 
         {/* 下载进度按钮 */}
         <button
-          onClick={() => navigate('download-records')}
-                          onDoubleClick={() => navigate('download-records')}          className={`
+          onClick={() => setShowDownloadPanel(!showDownloadPanel)}
+          className={`
             p-2 rounded transition-all duration-200 relative
-            ${downloading
+            ${showDownloadPanel
               ? 'bg-foreground text-background hover:bg-foreground/90 shadow-md'
               : 'bg-background text-foreground hover:bg-muted'
             }
           `}
-          title="查看下载记录"
+          title="查看下载进度"
         >
           <Download className={`h-4 w-4 ${downloading ? 'animate-pulse' : ''}`} />
+          {activeDownloadTasks.size > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
+              {activeDownloadTasks.size}
+            </span>
+          )}
         </button>
 
         <div className="h-px w-6 bg-border my-1"></div>

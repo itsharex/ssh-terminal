@@ -6,12 +6,15 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Trash2, RefreshCw, Folder, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { toast } from 'sonner';
 import { playSound, SoundEffect } from '@/lib/sounds';
+import type { UploadStatusChangeEvent } from '@/store/sftpStore';
 
 interface UploadRecord {
   id: number;
@@ -42,6 +45,7 @@ interface PaginatedUploadRecords {
 }
 
 export function UploadRecords() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [records, setRecords] = useState<UploadRecord[]>([]);
   const [total, setTotal] = useState(0);
@@ -76,7 +80,7 @@ export function UploadRecords() {
       setTotal(result.total);
     } catch (error) {
       console.error('Failed to load upload records:', error);
-      toast.error('加载上传记录失败');
+      toast.error(t('sftp.records.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -86,44 +90,68 @@ export function UploadRecords() {
     loadRecords();
   }, [page]);
 
+  // 监听上传状态变更事件，自动刷新列表
+  useEffect(() => {
+    let unlistenFn: (() => void) | null = null;
+    
+    const setupListener = async () => {
+      try {
+        unlistenFn = await listen<UploadStatusChangeEvent>('sftp-upload-status-change', () => {
+          console.log('[UploadRecords] Upload status changed, refreshing records');
+          loadRecords();
+        });
+      } catch (error) {
+        console.error('[UploadRecords] Failed to setup status change listener:', error);
+      }
+    };
+    
+    setupListener();
+    
+    return () => {
+      if (unlistenFn) {
+        unlistenFn();
+      }
+    };
+  }, [page]);
+
   const handleDelete = async (id: number) => {
     playSound(SoundEffect.BUTTON_CLICK);
     try {
       await invoke('delete_upload_record', { id });
-      toast.success('删除成功');
+      toast.success(t('sftp.records.deleteSuccess'));
       playSound(SoundEffect.SUCCESS);
       loadRecords();
     } catch (error) {
       console.error('Failed to delete record:', error);
-      toast.error('删除失败');
+      toast.error(t('sftp.records.deleteFailed'));
     }
   };
 
   const handleClearAll = async () => {
     playSound(SoundEffect.BUTTON_CLICK);
-    if (!confirm('确定要清空所有上传记录吗？此操作不可恢复。')) {
+    if (!confirm(t('sftp.records.clearConfirm'))) {
       return;
     }
 
     try {
       await invoke('clear_upload_records');
-      toast.success('清空成功');
+      toast.success(t('sftp.records.clearSuccess'));
       playSound(SoundEffect.SUCCESS);
       loadRecords();
     } catch (error) {
       console.error('Failed to clear records:', error);
-      toast.error('清空失败');
+      toast.error(t('sftp.records.clearFailed'));
     }
   };
 
   const handleDeleteSelected = async () => {
     playSound(SoundEffect.BUTTON_CLICK);
     if (selectedIds.length === 0) {
-      toast.warning('请先选择要删除的记录');
+      toast.warning(t('sftp.records.selectToDelete'));
       return;
     }
 
-    if (!confirm(`确定要删除选中的 ${selectedIds.length} 条记录吗？`)) {
+    if (!confirm(t('sftp.records.deleteSelectedConfirm', { count: selectedIds.length }))) {
       return;
     }
 
@@ -131,13 +159,13 @@ export function UploadRecords() {
       for (const id of selectedIds) {
         await invoke('delete_upload_record', { id });
       }
-      toast.success(`删除成功 ${selectedIds.length} 条记录`);
+      toast.success(t('sftp.records.deleteSelectedSuccess', { count: selectedIds.length }));
       playSound(SoundEffect.SUCCESS);
       setSelectedIds([]);
       loadRecords();
     } catch (error) {
       console.error('Failed to delete records:', error);
-      toast.error('删除失败');
+      toast.error(t('sftp.records.deleteFailed'));
     }
   };
 
@@ -155,11 +183,11 @@ export function UploadRecords() {
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { text: string; className: string }> = {
-      pending: { text: '等待中', className: 'bg-yellow-100 text-yellow-800' },
-      uploading: { text: '上传中', className: 'bg-blue-100 text-blue-800' },
-      completed: { text: '已完成', className: 'bg-green-100 text-green-800' },
-      failed: { text: '失败', className: 'bg-red-100 text-red-800' },
-      cancelled: { text: '已取消', className: 'bg-gray-100 text-gray-800' },
+      pending: { text: t('sftp.records.statusBadge.pending'), className: 'bg-yellow-100 text-yellow-800' },
+      uploading: { text: t('sftp.records.statusBadge.uploading'), className: 'bg-blue-100 text-blue-800' },
+      completed: { text: t('sftp.records.statusBadge.completed'), className: 'bg-green-100 text-green-800' },
+      failed: { text: t('sftp.records.statusBadge.failed'), className: 'bg-red-100 text-red-800' },
+      cancelled: { text: t('sftp.records.statusBadge.cancelled'), className: 'bg-gray-100 text-gray-800' },
     };
     const s = statusMap[status] || { text: status, className: 'bg-gray-100 text-gray-800' };
     return <span className={`px-2 py-1 rounded-full text-xs ${s.className}`}>{s.text}</span>;
@@ -197,9 +225,9 @@ export function UploadRecords() {
             </Button>
 
             <div>
-              <h1 className="text-lg font-semibold">上传记录</h1>
+              <h1 className="text-lg font-semibold">{t('sftp.records.title')}</h1>
               <p className="text-xs text-muted-foreground">
-                共 {total} 条记录
+                {t('sftp.records.totalRecords', { count: total })}
               </p>
             </div>
           </div>
@@ -212,7 +240,7 @@ export function UploadRecords() {
                 onClick={handleDeleteSelected}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                删除选中 ({selectedIds.length})
+                {t('sftp.records.deleteSelected', { count: selectedIds.length })}
               </Button>
             )}
             <Button
@@ -221,7 +249,7 @@ export function UploadRecords() {
               onClick={handleClearAll}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              清空所有
+              {t('sftp.records.clearAll')}
             </Button>
             <Button
               variant="outline"
@@ -233,7 +261,7 @@ export function UploadRecords() {
               disabled={loading}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              刷新
+              {t('sftp.records.refresh')}
             </Button>
           </div>
         </div>
@@ -249,7 +277,7 @@ export function UploadRecords() {
           ) : records.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
               <Folder className="h-16 w-16 mb-4 opacity-50" />
-              <p>暂无上传记录</p>
+              <p>{t('sftp.records.noRecords')}</p>
             </div>
           ) : (
             <div className="divide-y">
@@ -263,13 +291,13 @@ export function UploadRecords() {
                     className="rounded"
                   />
                 </div>
-                <div className="col-span-2">任务 ID</div>
-                <div className="col-span-2">本地路径</div>
-                <div className="col-span-2">远程路径</div>
-                <div className="col-span-1">状态</div>
-                <div className="col-span-1 text-right">文件数</div>
-                <div className="col-span-1 text-right">大小</div>
-                <div className="col-span-1 text-right">时间</div>
+                <div className="col-span-2">{t('sftp.records.taskId')}</div>
+                <div className="col-span-2">{t('sftp.records.localPath')}</div>
+                <div className="col-span-2">{t('sftp.records.remotePath')}</div>
+                <div className="col-span-1">{t('sftp.records.status')}</div>
+                <div className="col-span-1 text-right">{t('sftp.records.totalFiles')}</div>
+                <div className="col-span-1 text-right">{t('sftp.records.totalSize')}</div>
+                <div className="col-span-1 text-right">{t('sftp.records.createdAt')}</div>
                 <div className="col-span-1"></div>
               </div>
 
@@ -327,7 +355,7 @@ export function UploadRecords() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-4">
             <p className="text-sm text-muted-foreground">
-              第 {page} 页，共 {totalPages} 页
+              {t('sftp.records.pageInfo', { current: page, total: totalPages })}
             </p>
             <div className="flex items-center gap-2">
               <Button
@@ -336,7 +364,7 @@ export function UploadRecords() {
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
-                上一页
+                {t('dialog.previous')}
               </Button>
               <Button
                 variant="outline"
@@ -344,7 +372,7 @@ export function UploadRecords() {
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
               >
-                下一页
+                {t('dialog.next')}
               </Button>
             </div>
           </div>

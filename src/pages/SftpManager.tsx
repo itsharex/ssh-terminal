@@ -7,11 +7,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Upload, Download, HardDrive, X, File, Folder } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Upload, Download, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
-import { Card } from '@/components/ui/card';
 import { useSessionStore } from '@/store/sessionStore';
 import { useSftpStore } from '@/store/sftpStore';
 import { toast } from 'sonner';
@@ -24,28 +22,33 @@ import { SoundEffect } from '@/lib/sounds';
 
 // 上传进度事件类型
 interface UploadProgressEvent {
-  task_id: string; // 上传任务的唯一 ID
-  connection_id: string;
-  current_file: string;
-  current_dir: string;
-  files_completed: number;
-  total_files: number;
-  bytes_transferred: number;
-  total_bytes: number;
-  speed_bytes_per_sec: number;
+  taskId: string; // 上传任务的唯一 ID
+  connectionId: string;
+  currentFile: string;
+  currentDir: string;
+  filesCompleted: number;
+  totalFiles: number;
+  bytesTransferred: number;
+  totalBytes: number;
+  speedBytesPerSec: number;
+  startTime: number; // 任务开始时间（Unix 时间戳，毫秒）
+  completedTime: number; // 当前时间（Unix 时间戳，毫秒），用于计算任务用时
+  uploadName: string; // 上传任务名称（单文件时是文件名，目录时是目录名）
 }
 
 // 下载进度事件类型
 interface DownloadProgressEvent {
-  task_id: string;
-  connection_id: string;
-  current_file: string;
-  current_dir: string;
-  files_completed: number;
-  total_files: number;
-  bytes_transferred: number;
-  total_bytes: number;
-  speed_bytes_per_sec: number;
+  taskId: string;
+  connectionId: string;
+  currentFile: string;
+  currentDir: string;
+  filesCompleted: number;
+  totalFiles: number;
+  bytesTransferred: number;
+  totalBytes: number;
+  speedBytesPerSec: number;
+  startTime: number; // 任务开始时间（Unix 时间戳，毫秒）
+  completedTime: number; // 当前时间（Unix 时间戳，毫秒），用于计算任务用时
 }
 
 export function SftpManager() {
@@ -61,6 +64,16 @@ export function SftpManager() {
     remotePath,
     setSelectedLocalFiles,
     setSelectedRemoteFiles,
+    activeUploadTasks,
+    activeDownloadTasks,
+    addActiveUploadTask,
+    updateActiveUploadTask,
+    removeActiveUploadTask,
+    addActiveDownloadTask,
+    updateActiveDownloadTask,
+    removeActiveDownloadTask,
+    listenUploadStatusChange,
+    listenDownloadStatusChange,
   } = useSftpStore();
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -68,15 +81,17 @@ export function SftpManager() {
   const [downloading, setDownloading] = useState(false);
   const [remoteRefreshKey, setRemoteRefreshKey] = useState(0);
   const [localRefreshKey, setLocalRefreshKey] = useState(0);
+  // @ts-ignore - Used in useEffect closures
   const [uploadProgressMap, setUploadProgressMap] = useState<Map<string, UploadProgressEvent>>(new Map());
+  // @ts-ignore - Used in useEffect closures
   const [downloadProgressMap, setDownloadProgressMap] = useState<Map<string, DownloadProgressEvent>>(new Map());
+  // @ts-ignore - Used in useEffect closures
   const [uploadCancellable, setUploadCancellable] = useState(false);
+  // @ts-ignore - Used in useEffect closures
   const [downloadCancellable, setDownloadCancellable] = useState(false);
+  
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _downloadProgressMap = downloadProgressMap;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _downloadCancellable = downloadCancellable;
+
 
   // 使用 ref 跟踪是否已经初始化过，避免重复初始化
   const isInitialized = useRef(false);
@@ -133,33 +148,175 @@ export function SftpManager() {
 
   // 监听上传进度事件
   useEffect(() => {
+    console.log('[SftpManager] Setting up upload progress listener for connection:', selectedConnectionId);
     const unlisten = listen<UploadProgressEvent>('sftp-upload-progress', (event) => {
       const progress = event.payload;
-      if (progress.connection_id === selectedConnectionId) {
-        setUploadProgressMap(prev => new Map(prev).set(progress.task_id, progress));
+      console.log('[SftpManager] Upload progress event received:', progress);
+      console.log('[SftpManager] Event connectionId:', progress.connectionId, 'Selected connection_id:', selectedConnectionId);
+
+      if (progress.connectionId === selectedConnectionId) {
+        console.log('[SftpManager] Connection ID matches, updating progress map');
+        setUploadProgressMap(prev => new Map(prev).set(progress.taskId, progress));
         setUploadCancellable(true);
+
+        // 更新临时任务存储
+        const existingTask = activeUploadTasks.get(progress.taskId);
+        console.log('[SftpManager] Existing task:', existingTask ? 'Yes' : 'No');
+
+        if (!existingTask) {
+          // 新任务，添加到临时存储
+          console.log('[SftpManager] Adding new upload task:', progress.taskId);
+          const fileName = progress.currentFile ? progress.currentFile.split(/[/\\]/).pop() || progress.currentFile : progress.currentDir.split(/[/\\]/).pop() || 'Unknown';
+          const filePath = progress.currentFile || progress.currentDir;
+
+          addActiveUploadTask({
+            taskId: progress.taskId,
+            fileName,
+            filePath,
+            bytesTransferred: progress.bytesTransferred,
+            totalBytes: progress.totalBytes,
+            speed: progress.speedBytesPerSec,
+            status: 'uploading',
+            startTime: progress.startTime,
+            completedTime: progress.completedTime,
+            filesCompleted: progress.filesCompleted,
+            totalFiles: progress.totalFiles,
+            uploadName: progress.uploadName || fileName,
+          });
+        } else {
+          // 更新现有任务
+          console.log('[SftpManager] Updating existing upload task:', progress.taskId);
+
+          updateActiveUploadTask(progress.taskId, {
+            bytesTransferred: progress.bytesTransferred,
+            speed: progress.speedBytesPerSec,
+            filesCompleted: progress.filesCompleted,
+            totalFiles: progress.totalFiles,
+            startTime: progress.startTime,
+            completedTime: progress.completedTime,
+          });
+        }
+      } else {
+        console.log('[SftpManager] Connection ID mismatch, ignoring event');
       }
     });
 
     return () => {
+      console.log('[SftpManager] Cleaning up upload progress listener');
       unlisten.then(fn => fn());
     };
-  }, [selectedConnectionId]);
+  }, [selectedConnectionId, addActiveUploadTask, updateActiveUploadTask, removeActiveUploadTask]);
 
   // 监听下载进度事件
   useEffect(() => {
+    console.log('[SftpManager] Setting up download progress listener for connection:', selectedConnectionId);
     const unlisten = listen<DownloadProgressEvent>('sftp-download-progress', (event) => {
       const progress = event.payload;
-      if (progress.connection_id === selectedConnectionId) {
-        setDownloadProgressMap(prev => new Map(prev).set(progress.task_id, progress));
-        setDownloadCancellable(true);
-      }
-    });
+      console.log('[SftpManager] Download progress event received:', progress);
+            console.log('[SftpManager] Event connectionId:', progress.connectionId, 'Selected connection_id:', selectedConnectionId);
+      
+            if (progress.connectionId === selectedConnectionId) {
+              console.log('[SftpManager] Connection ID matches, updating progress map');
+              setDownloadProgressMap(prev => new Map(prev).set(progress.taskId, progress));
+              setDownloadCancellable(true);
+      
+              // 更新临时任务存储
+              const existingTask = activeDownloadTasks.get(progress.taskId);
+              console.log('[SftpManager] Existing task:', existingTask ? 'Yes' : 'No');
+      
+              if (!existingTask) {
+                              // 新任务，添加到临时存储
+                              console.log('[SftpManager] Adding new download task:', progress.taskId);
+                              const fileName = progress.currentFile ? progress.currentFile.split(/[/\\]/).pop() || progress.currentFile : progress.currentDir.split(/[/\\]/).pop() || 'Unknown';
+                              const filePath = progress.currentFile || progress.currentDir;
+              
+                              addActiveDownloadTask({
+                                taskId: progress.taskId,
+                                fileName,
+                                filePath,
+                                bytesTransferred: progress.bytesTransferred,
+                                totalBytes: progress.totalBytes,
+                                speed: progress.speedBytesPerSec,
+                                status: 'downloading',
+                                startTime: progress.startTime,
+                                completedTime: progress.completedTime,
+                                filesCompleted: progress.filesCompleted,
+                                totalFiles: progress.totalFiles,
+                                uploadName: fileName, // 下载任务使用文件名作为 uploadName
+                              });
+                            } else {
+                              // 更新现有任务
+                              console.log('[SftpManager] Updating existing download task:', progress.taskId);
+              
+                              updateActiveDownloadTask(progress.taskId, {
+                                bytesTransferred: progress.bytesTransferred,
+                                speed: progress.speedBytesPerSec,
+                                filesCompleted: progress.filesCompleted,
+                                totalFiles: progress.totalFiles,
+                                startTime: progress.startTime,
+                                completedTime: progress.completedTime,
+                              });
+                            }            } else {
+              console.log('[SftpManager] Connection ID mismatch, ignoring event');
+            }    });
 
     return () => {
+      console.log('[SftpManager] Cleaning up download progress listener');
       unlisten.then(fn => fn());
     };
-  }, [selectedConnectionId]);
+  }, [selectedConnectionId, addActiveDownloadTask, updateActiveDownloadTask, removeActiveDownloadTask]);
+
+  // 监听上传状态变更事件
+  useEffect(() => {
+    if (!selectedConnectionId) return;
+    
+    console.log('[SftpManager] Setting up upload status change listener for connection:', selectedConnectionId);
+    
+    let unlistenFn: (() => void) | null = null;
+    
+    const setupListener = async () => {
+      try {
+        unlistenFn = await listenUploadStatusChange(selectedConnectionId);
+      } catch (error) {
+        console.error('[SftpManager] Failed to setup upload status change listener:', error);
+      }
+    };
+    
+    setupListener();
+    
+    return () => {
+      console.log('[SftpManager] Cleaning up upload status change listener');
+      if (unlistenFn) {
+        unlistenFn();
+      }
+    };
+  }, [selectedConnectionId, listenUploadStatusChange]);
+
+  // 监听下载状态变更事件
+  useEffect(() => {
+    if (!selectedConnectionId) return;
+    
+    console.log('[SftpManager] Setting up download status change listener for connection:', selectedConnectionId);
+    
+    let unlistenFn: (() => void) | null = null;
+    
+    const setupListener = async () => {
+      try {
+        unlistenFn = await listenDownloadStatusChange(selectedConnectionId);
+      } catch (error) {
+        console.error('[SftpManager] Failed to setup download status change listener:', error);
+      }
+    };
+    
+    setupListener();
+    
+    return () => {
+      console.log('[SftpManager] Cleaning up download status change listener');
+      if (unlistenFn) {
+        unlistenFn();
+      }
+    };
+  }, [selectedConnectionId, listenDownloadStatusChange]);
 
   const handleConnect = async (connectionId: string) => {
     playSound(SoundEffect.BUTTON_CLICK);
@@ -319,49 +476,8 @@ export function SftpManager() {
       setUploadCancellable(false);
     }
   };
-
-  const handleCancelUpload = async () => {
-    if (!selectedConnectionId) {
-      return;
-    }
-
-    try {
-      // 获取当前活动的任务 ID（从 uploadProgressMap 中获取第一个）
-      const activeTaskIds = Array.from(uploadProgressMap.keys());
-      if (activeTaskIds.length === 0) {
-        toast.warning('没有正在进行的上传任务');
-        return;
-      }
-
-      // 取消所有活动的上传任务
-      for (const taskId of activeTaskIds) {
-        await invoke('sftp_cancel_upload', {
-          taskId: taskId,
-        });
-      }
-
-      toast.info(t('sftp.status.uploadCancelled'));
-      playSound(SoundEffect.BUTTON_CLICK);
-    } catch (error) {
-      console.error('Cancel upload failed:', error);
-      toast.error(t('sftp.error.cancelUploadFailed', { error }));
-    }
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-  };
-
-  const formatSpeed = (bytesPerSec: number): string => {
-    return `${formatFileSize(bytesPerSec)}/s`;
-  };
-
-  const handleDownload = async () => {
-    playSound(SoundEffect.BUTTON_CLICK);
+  
+    const handleDownload = async () => {    playSound(SoundEffect.BUTTON_CLICK);
     if (!selectedConnectionId) {
       toast.error(t('sftp.error.noConnectionSelected'));
       return;
@@ -558,77 +674,6 @@ export function SftpManager() {
           </div>
         </div>
       </div>
-
-      {/* 上传进度显示 */}
-      {uploadProgressMap.size > 0 && (
-        <div className="mx-4 mt-2 space-y-2">
-          {Array.from(uploadProgressMap.values()).map((progress) => (
-            <Card key={progress.task_id} className="p-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Upload className="h-4 w-4 text-primary" />
-                    <span className="font-medium">{t('sftp.uploading')}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {progress.files_completed}/{progress.total_files} {t('sftp.files')}
-                    </span>
-                    {uploadCancellable && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCancelUpload}
-                        className="h-7 px-2"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* 文件计数进度 */}
-                <Progress
-                  value={(progress.files_completed / progress.total_files) * 100}
-                  className="h-2"
-                />
-
-                {/* 当前上传的文件 */}
-                <div className="flex items-start gap-2 text-sm">
-                  {progress.current_file ? (
-                    <>
-                      <File className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-mono text-xs truncate" title={progress.current_file}>
-                          {progress.current_file}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {formatFileSize(progress.bytes_transferred)} / {formatFileSize(progress.total_bytes)}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <Folder className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-mono text-xs truncate" title={progress.current_dir}>
-                          {progress.current_dir}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* 传输速度和统计信息 */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{formatSpeed(progress.speed_bytes_per_sec)}</span>
-                  <span>{((progress.files_completed / progress.total_files) * 100).toFixed(1)}%</span>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
 
       {/* 双面板文件管理器 */}
       {selectedConnectionId ? (

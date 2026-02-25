@@ -403,6 +403,9 @@ pub async fn sftp_upload_file(
         .map_err(|e| crate::error::SSHError::Io(format!("无法获取文件元数据: {}", e)))?
         .len();
 
+    // 记录任务开始时间
+    let start_time = chrono::Utc::now().timestamp_millis() as u64;
+
     // 发送开始进度事件
     let start_event = crate::sftp::UploadProgressEvent {
         task_id: task_id.clone(),
@@ -417,6 +420,12 @@ pub async fn sftp_upload_file(
         bytes_transferred: 0,
         total_bytes: file_size,
         speed_bytes_per_sec: 0,
+        start_time,
+        completed_time: start_time,
+        upload_name: local_path_obj.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_else(|| local_path.as_str())
+            .to_string(),
     };
     let _ = window.emit("sftp-upload-progress", &start_event);
 
@@ -428,7 +437,9 @@ pub async fn sftp_upload_file(
         .and_then(|p| p.to_str())
         .unwrap_or("")
         .to_string();
+    let start_time_for_callback = start_time;
 
+    let window_for_callback = window.clone();
     let result = client_guard.upload_file_stream(
         &local_path,
         &remote_path,
@@ -445,8 +456,15 @@ pub async fn sftp_upload_file(
                 bytes_transferred: transferred,
                 total_bytes: total,
                 speed_bytes_per_sec: 0,
+                start_time: start_time_for_callback,
+                completed_time: chrono::Utc::now().timestamp_millis() as u64,
+                upload_name: local_path_for_callback.rsplit('/')
+                    .next()
+                    .or_else(|| local_path_for_callback.rsplit('\\').next())
+                    .unwrap_or(local_path_for_callback.as_str())
+                    .to_string(),
             };
-            let _ = window.emit("sftp-upload-progress", &progress_event);
+            let _ = window_for_callback.emit("sftp-upload-progress", &progress_event);
         },
         false,
     ).await;
@@ -470,6 +488,18 @@ pub async fn sftp_upload_file(
                     transferred as i64,
                     1, // 单文件上传，files_completed = 1
                 );
+                
+                // 发送状态变更事件
+                let _ = window.emit("sftp-upload-status-change", crate::sftp::UploadStatusChangeEvent {
+                    task_id: task_id.clone(),
+                    connection_id: connection_id.clone(),
+                    status: "completed".to_string(),
+                    bytes_transferred: transferred as i64,
+                    files_completed: 1,
+                    total_files: 1,
+                    error_message: None,
+                    completed_at: Some(chrono::Utc::now().timestamp_millis()),
+                });
             }
 
             Ok(transferred)
@@ -485,6 +515,18 @@ pub async fn sftp_upload_file(
                     crate::database::repositories::UploadStatus::Failed,
                     Some(e.to_string()),
                 );
+                
+                // 发送状态变更事件
+                let _ = window.emit("sftp-upload-status-change", crate::sftp::UploadStatusChangeEvent {
+                    task_id: task_id.clone(),
+                    connection_id: connection_id.clone(),
+                    status: "failed".to_string(),
+                    bytes_transferred: 0,
+                    files_completed: 0,
+                    total_files: 1,
+                    error_message: Some(e.to_string()),
+                    completed_at: Some(chrono::Utc::now().timestamp_millis()),
+                });
             }
 
             Err(e)
@@ -586,6 +628,9 @@ pub async fn sftp_download_file(
         .unwrap_or("")
         .to_string();
 
+    // 记录任务开始时间
+    let start_time = chrono::Utc::now().timestamp_millis() as u64;
+
     // 发送开始进度事件
     let start_event = crate::sftp::DownloadProgressEvent {
         task_id: task_id.clone(),
@@ -597,6 +642,8 @@ pub async fn sftp_download_file(
         bytes_transferred: 0,
         total_bytes: 0, // 初始为0，会在第一次进度回调时更新
         speed_bytes_per_sec: 0,
+        start_time,
+        completed_time: start_time,
     };
     let _ = window.emit("sftp-download-progress", &start_event);
 
@@ -605,7 +652,9 @@ pub async fn sftp_download_file(
     let connection_id_for_callback = connection_id.clone();
     let file_name_for_callback = file_name.clone();
     let current_dir_for_callback = current_dir.clone();
+    let start_time_for_callback = start_time;
 
+    let window_for_callback = window.clone();
     let result = client_guard.download_file_stream(
         &remote_path,
         &local_path,
@@ -622,8 +671,10 @@ pub async fn sftp_download_file(
                 bytes_transferred: transferred,
                 total_bytes: total,
                 speed_bytes_per_sec: 0,
+                start_time: start_time_for_callback,
+                completed_time: chrono::Utc::now().timestamp_millis() as u64,
             };
-            let _ = window.emit("sftp-download-progress", &progress_event);
+            let _ = window_for_callback.emit("sftp-download-progress", &progress_event);
         }
     ).await;
 
@@ -646,6 +697,18 @@ pub async fn sftp_download_file(
                     transferred as i64,
                     1, // 单文件下载，files_completed = 1
                 );
+                
+                // 发送状态变更事件
+                let _ = window.emit("sftp-download-status-change", crate::sftp::DownloadStatusChangeEvent {
+                    task_id: task_id.clone(),
+                    connection_id: connection_id.clone(),
+                    status: "completed".to_string(),
+                    bytes_transferred: transferred as i64,
+                    files_completed: 1,
+                    total_files: 1,
+                    error_message: None,
+                    completed_at: Some(chrono::Utc::now().timestamp_millis()),
+                });
             }
 
             Ok(transferred)
@@ -661,6 +724,18 @@ pub async fn sftp_download_file(
                     crate::database::repositories::DownloadStatus::Failed,
                     Some(e.to_string()),
                 );
+                
+                // 发送状态变更事件
+                let _ = window.emit("sftp-download-status-change", crate::sftp::DownloadStatusChangeEvent {
+                    task_id: task_id.clone(),
+                    connection_id: connection_id.clone(),
+                    status: "failed".to_string(),
+                    bytes_transferred: 0,
+                    files_completed: 0,
+                    total_files: 1,
+                    error_message: Some(e.to_string()),
+                    completed_at: Some(chrono::Utc::now().timestamp_millis()),
+                });
             }
 
             Err(e)
@@ -777,6 +852,32 @@ pub async fn sftp_upload_directory(
         Ok(upload_result) => {
             tracing::info!("Upload directory completed: {:?}", upload_result);
 
+            // 发送最终完成事件
+            let completed_event = crate::sftp::UploadProgressEvent {
+                task_id: task_id.clone(),
+                connection_id: connection_id.clone(),
+                current_file: "".to_string(),
+                current_dir: remote_dir_path.clone(),
+                files_completed: upload_result.total_files,
+                total_files: upload_result.total_files,
+                bytes_transferred: upload_result.total_size,
+                total_bytes: upload_result.total_size,
+                speed_bytes_per_sec: 0,
+                start_time: chrono::Utc::now().timestamp_millis() as u64,
+                completed_time: chrono::Utc::now().timestamp_millis() as u64,
+                upload_name: Path::new(&local_dir_path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or_else(|| {
+                        local_dir_path.rsplit('/')
+                            .next()
+                            .or_else(|| local_dir_path.rsplit('\\').next())
+                            .unwrap_or(&local_dir_path)
+                    })
+                    .to_string(),
+            };
+            let _ = window.emit("sftp-upload-progress", &completed_event);
+
             // 标记上传完成（包含统计信息）
             let elapsed = chrono::Utc::now().timestamp() - now;
             if let Ok(conn) = pool.get() {
@@ -790,6 +891,18 @@ pub async fn sftp_upload_directory(
                     upload_result.total_dirs as i64,
                     upload_result.total_size as i64,
                 );
+
+                // 发送状态变更事件
+                let _ = window.emit("sftp-upload-status-change", crate::sftp::UploadStatusChangeEvent {
+                    task_id: task_id.clone(),
+                    connection_id: connection_id.clone(),
+                    status: "completed".to_string(),
+                    bytes_transferred: upload_result.total_size as i64,
+                    files_completed: upload_result.total_files as i64,
+                    total_files: upload_result.total_files as i64,
+                    error_message: None,
+                    completed_at: Some(chrono::Utc::now().timestamp_millis()),
+                });
             }
 
             Ok(upload_result)
@@ -805,6 +918,18 @@ pub async fn sftp_upload_directory(
                     crate::database::repositories::UploadStatus::Failed,
                     Some(e.to_string()),
                 );
+
+                // 发送状态变更事件
+                let _ = window.emit("sftp-upload-status-change", crate::sftp::UploadStatusChangeEvent {
+                    task_id: task_id.clone(),
+                    connection_id: connection_id.clone(),
+                    status: "failed".to_string(),
+                    bytes_transferred: 0,
+                    files_completed: 0,
+                    total_files: 0,
+                    error_message: Some(e.to_string()),
+                    completed_at: Some(chrono::Utc::now().timestamp_millis()),
+                });
             }
 
             Err(e)
@@ -819,10 +944,38 @@ pub async fn sftp_upload_directory(
 #[tauri::command]
 pub async fn sftp_cancel_upload(
     manager: State<'_, SftpManagerState>,
+    pool: State<'_, DbPool>,
     task_id: String,
+    window: tauri::Window,
 ) -> Result<()> {
     tracing::info!("Cancelling upload for task {}", task_id);
-    manager.cancel_task(&task_id).await
+    
+    // 取消任务
+    manager.cancel_task(&task_id).await?;
+    
+    // 更新数据库状态为 cancelled
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::UploadRecordsRepository::update_status(
+            &conn,
+            &task_id,
+            crate::database::repositories::UploadStatus::Cancelled,
+            Some("用户取消".to_string()),
+        );
+        
+        // 发送状态变更事件（使用默认值，因为无法获取具体记录信息）
+        let _ = window.emit("sftp-upload-status-change", crate::sftp::UploadStatusChangeEvent {
+            task_id: task_id.clone(),
+            connection_id: String::new(), // 无法获取
+            status: "cancelled".to_string(),
+            bytes_transferred: 0,
+            files_completed: 0,
+            total_files: 0,
+            error_message: Some("用户取消".to_string()),
+            completed_at: Some(chrono::Utc::now().timestamp_millis()),
+        });
+    }
+    
+    Ok(())
 }
 
 /// 下载目录及其所有子目录和文件
@@ -945,6 +1098,18 @@ pub async fn sftp_download_directory(
                     download_result.total_dirs as i64,
                     download_result.total_size as i64,
                 );
+
+                // 发送状态变更事件
+                let _ = window.emit("sftp-download-status-change", crate::sftp::DownloadStatusChangeEvent {
+                    task_id: task_id.clone(),
+                    connection_id: connection_id.clone(),
+                    status: "completed".to_string(),
+                    bytes_transferred: download_result.total_size as i64,
+                    files_completed: download_result.total_files as i64,
+                    total_files: download_result.total_files as i64,
+                    error_message: None,
+                    completed_at: Some(chrono::Utc::now().timestamp_millis()),
+                });
             }
 
             Ok(download_result)
@@ -960,6 +1125,18 @@ pub async fn sftp_download_directory(
                     crate::database::repositories::DownloadStatus::Failed,
                     Some(e.to_string()),
                 );
+
+                // 发送状态变更事件
+                let _ = window.emit("sftp-download-status-change", crate::sftp::DownloadStatusChangeEvent {
+                    task_id: task_id.clone(),
+                    connection_id: connection_id.clone(),
+                    status: "failed".to_string(),
+                    bytes_transferred: 0,
+                    files_completed: 0,
+                    total_files: 0,
+                    error_message: Some(e.to_string()),
+                    completed_at: Some(chrono::Utc::now().timestamp_millis()),
+                });
             }
 
             Err(e)
@@ -974,8 +1151,36 @@ pub async fn sftp_download_directory(
 #[tauri::command]
 pub async fn sftp_cancel_download(
     manager: State<'_, SftpManagerState>,
+    pool: State<'_, DbPool>,
     task_id: String,
+    window: tauri::Window,
 ) -> Result<()> {
     tracing::info!("Cancelling download for task {}", task_id);
-    manager.cancel_task(&task_id).await
+    
+    // 取消任务
+    manager.cancel_task(&task_id).await?;
+    
+    // 更新数据库状态为 cancelled
+    if let Ok(conn) = pool.get() {
+        let _ = crate::database::repositories::DownloadRecordsRepository::update_status(
+            &conn,
+            &task_id,
+            crate::database::repositories::DownloadStatus::Cancelled,
+            Some("用户取消".to_string()),
+        );
+        
+        // 发送状态变更事件（使用默认值，因为无法获取具体记录信息）
+        let _ = window.emit("sftp-download-status-change", crate::sftp::DownloadStatusChangeEvent {
+            task_id: task_id.clone(),
+            connection_id: String::new(), // 无法获取
+            status: "cancelled".to_string(),
+            bytes_transferred: 0,
+            files_completed: 0,
+            total_files: 0,
+            error_message: Some("用户取消".to_string()),
+            completed_at: Some(chrono::Utc::now().timestamp_millis()),
+        });
+    }
+    
+    Ok(())
 }

@@ -114,6 +114,9 @@ pub struct UploadProgressEvent {
     pub bytes_transferred: u64,
     pub total_bytes: u64,
     pub speed_bytes_per_sec: u64,
+    pub start_time: u64, // 任务开始时间（Unix 时间戳，毫秒）
+    pub completed_time: u64, // 当前时间（Unix 时间戳，毫秒），用于计算任务用时
+    pub upload_name: String, // 上传任务名称：单文件时为文件名，目录时为目录名
 }
 
 /// 目录下载结果
@@ -139,4 +142,36 @@ pub struct DownloadProgressEvent {
     pub bytes_transferred: u64,
     pub total_bytes: u64,
     pub speed_bytes_per_sec: u64,
+    pub start_time: u64, // 任务开始时间（Unix 时间戳，毫秒）
+    pub completed_time: u64, // 当前时间（Unix 时间戳，毫秒），用于计算任务用时
+}
+
+/// SFTP 上传状态变更事件
+/// 当数据库中的上传记录状态发生变化时发送此事件
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadStatusChangeEvent {
+    pub task_id: String,
+    pub connection_id: String,
+    pub status: String, // 'pending', 'uploading', 'completed', 'failed', 'cancelled'
+    pub bytes_transferred: i64,
+    pub files_completed: i64,
+    pub total_files: i64,
+    pub error_message: Option<String>,
+    pub completed_at: Option<i64>,
+}
+
+/// SFTP 下载状态变更事件
+/// 当数据库中的下载记录状态发生变化时发送此事件
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadStatusChangeEvent {
+    pub task_id: String,
+    pub connection_id: String,
+    pub status: String, // 'pending', 'downloading', 'completed', 'failed', 'cancelled'
+    pub bytes_transferred: i64,
+    pub files_completed: i64,
+    pub total_files: i64,
+    pub error_message: Option<String>,
+    pub completed_at: Option<i64>,
 }

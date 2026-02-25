@@ -3,7 +3,7 @@
 //! 管理上传记录的数据库操作
 
 use anyhow::Result;
-use r2d2_sqlite::rusqlite::Connection;
+use r2d2_sqlite::rusqlite::{self, Connection};
 use serde::{Deserialize, Serialize};
 
 /// 上传记录状态
@@ -93,24 +93,24 @@ impl UploadRecordsRepository {
                 completed_at, elapsed_ms, error_message,
                 created_at, updated_at
             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
-            [
+            rusqlite::params![
                 &record.task_id,
                 &record.connection_id,
                 &record.user_id,
                 &record.local_path,
                 &record.remote_path,
-                &record.total_files.to_string(),
-                &record.total_dirs.to_string(),
-                &record.total_size.to_string(),
+                record.total_files,
+                record.total_dirs,
+                record.total_size,
                 &record.status,
-                &record.bytes_transferred.to_string(),
-                &record.files_completed.to_string(),
-                &record.started_at.to_string(),
-                &record.completed_at.map(|v| v.to_string()).unwrap_or_default(),
-                &record.elapsed_ms.map(|v| v.to_string()).unwrap_or_default(),
-                record.error_message.as_ref().map(|s| s.as_str()).unwrap_or_default(),
-                &record.created_at.to_string(),
-                &record.updated_at.to_string(),
+                record.bytes_transferred,
+                record.files_completed,
+                record.started_at,
+                record.completed_at,
+                record.elapsed_ms,
+                record.error_message.as_ref().map(|s| s.as_str()),
+                record.created_at,
+                record.updated_at,
             ],
         )?;
 
@@ -122,7 +122,7 @@ impl UploadRecordsRepository {
         let now = chrono::Utc::now().timestamp();
         conn.execute(
             "UPDATE upload_records SET status = ?1, error_message = ?2, updated_at = ?3 WHERE task_id = ?4",
-            [status.as_str(), &error_message.unwrap_or_default(), &now.to_string(), task_id],
+            rusqlite::params![status.as_str(), error_message.as_ref().map(|s| s.as_str()), now, task_id],
         )?;
         Ok(())
     }
@@ -132,7 +132,7 @@ impl UploadRecordsRepository {
         let now = chrono::Utc::now().timestamp();
         conn.execute(
             "UPDATE upload_records SET bytes_transferred = ?1, files_completed = ?2, updated_at = ?3 WHERE task_id = ?4",
-            [&bytes_transferred.to_string(), &files_completed.to_string(), &now.to_string(), task_id],
+            rusqlite::params![bytes_transferred, files_completed, now, task_id],
         )?;
         Ok(())
     }
@@ -142,7 +142,7 @@ impl UploadRecordsRepository {
         let now = chrono::Utc::now().timestamp();
         conn.execute(
             "UPDATE upload_records SET status = 'completed', completed_at = ?1, elapsed_ms = ?2, bytes_transferred = ?3, files_completed = ?4, updated_at = ?5 WHERE task_id = ?6",
-            [&now.to_string(), &elapsed_ms.to_string(), &bytes_transferred.to_string(), &files_completed.to_string(), &now.to_string(), task_id],
+            rusqlite::params![now, elapsed_ms, bytes_transferred, files_completed, now, task_id],
         )?;
         Ok(())
     }
@@ -152,17 +152,7 @@ impl UploadRecordsRepository {
         let now = chrono::Utc::now().timestamp();
         conn.execute(
             "UPDATE upload_records SET status = 'completed', completed_at = ?1, elapsed_ms = ?2, bytes_transferred = ?3, files_completed = ?4, total_files = ?5, total_dirs = ?6, total_size = ?7, updated_at = ?8 WHERE task_id = ?9",
-            [
-                &now.to_string(),
-                &elapsed_ms.to_string(),
-                &bytes_transferred.to_string(),
-                &files_completed.to_string(),
-                &total_files.to_string(),
-                &total_dirs.to_string(),
-                &total_size.to_string(),
-                &now.to_string(),
-                task_id,
-            ],
+            rusqlite::params![now, elapsed_ms, bytes_transferred, files_completed, total_files, total_dirs, total_size, now, task_id],
         )?;
         Ok(())
     }
@@ -187,11 +177,7 @@ impl UploadRecordsRepository {
         )?;
 
         let records: Result<Vec<UploadRecord>, _> = stmt.query_map(
-        [
-            user_id,
-            &(page_size as i64).to_string(),
-            &(offset as i64).to_string(),
-        ],
+            rusqlite::params![user_id, page_size as i64, offset as i64],
         |row| {
             Ok(UploadRecord {
                 id: row.get(0)?,

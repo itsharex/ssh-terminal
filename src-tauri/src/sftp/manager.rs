@@ -242,17 +242,21 @@ impl SftpManager {
     /// - `task_id`: 任务 ID
     pub async fn cancel_task(&self, task_id: &str) -> Result<()> {
         info!("Cancelling task: {}", task_id);
-
+    
         let tokens = self.cancellation_tokens.lock().await;
         if let Some(token) = tokens.get(task_id) {
             token.cancel();
             info!("Cancellation token triggered for task: {}", task_id);
+            
+            // 触发取消后，清理令牌以避免内存泄漏
+            drop(tokens);  // 先释放读锁
+            self.cleanup_cancellation_token(task_id).await;  // 清理令牌
+            
             Ok(())
         } else {
             Err(SSHError::Io("没有正在进行的任务".to_string()))
         }
     }
-
     /// 清理取消令牌
     ///
     /// 在任务完成或取消后调用，清理相关的取消令牌
