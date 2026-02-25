@@ -89,6 +89,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           // 迁移失败不影响登录成功
         }
 
+        // 迁移匿名用户的下载记录到当前登录用户
+        try {
+          const migratedDownloads = await invoke<number>('db_download_records_migrate_to_user');
+          if (migratedDownloads > 0) {
+            console.log(`[authStore] Migrated ${migratedDownloads} download records from anonymous to user ${user.id}`);
+          }
+        } catch (migrateError) {
+          console.error('[authStore] Failed to migrate download records:', migrateError);
+          // 迁移失败不影响登录成功
+        }
+
+        // 迁移匿名用户的上传记录到当前登录用户
+        try {
+          const migratedUploads = await invoke<number>('db_upload_records_migrate_to_user');
+          if (migratedUploads > 0) {
+            console.log(`[authStore] Migrated ${migratedUploads} upload records from anonymous to user ${user.id}`);
+          }
+        } catch (migrateError) {
+          console.error('[authStore] Failed to migrate upload records:', migrateError);
+          // 迁移失败不影响登录成功
+        }
+
         await syncStore.syncNow();
         await sessionStore.reloadSessions();
         await authStore.getCurrentUser();
@@ -136,19 +158,41 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user: User = await createUserWithServerUrl(res);
       set({ isAuthenticated: true, currentUser: user, isLoading: false });
 
-      // 注册成功后迁移匿名用户的 SSH 会话并加载本地用户资料
+      // 注册成功后迁移匿名用户的数据并加载本地用户资料
       try {
         const userProfileStore = useUserProfileStore.getState();
         const authStore = get();
 
         // 迁移匿名用户的 SSH 会话到当前注册用户
         try {
-          const migratedCount = await invoke<number>('db_ssh_session_migrate_to_user');
-          if (migratedCount > 0) {
-            console.log(`[authStore] Migrated ${migratedCount} sessions from anonymous to user ${user.id}`);
+          const migratedSessions = await invoke<number>('db_ssh_session_migrate_to_user');
+          if (migratedSessions > 0) {
+            console.log(`[authStore] Migrated ${migratedSessions} sessions from anonymous to user ${user.id}`);
           }
         } catch (migrateError) {
           console.error('[authStore] Failed to migrate sessions:', migrateError);
+          // 迁移失败不影响注册成功
+        }
+
+        // 迁移匿名用户的下载记录到当前注册用户
+        try {
+          const migratedDownloads = await invoke<number>('db_download_records_migrate_to_user');
+          if (migratedDownloads > 0) {
+            console.log(`[authStore] Migrated ${migratedDownloads} download records from anonymous to user ${user.id}`);
+          }
+        } catch (migrateError) {
+          console.error('[authStore] Failed to migrate download records:', migrateError);
+          // 迁移失败不影响注册成功
+        }
+
+        // 迁移匿名用户的上传记录到当前注册用户
+        try {
+          const migratedUploads = await invoke<number>('db_upload_records_migrate_to_user');
+          if (migratedUploads > 0) {
+            console.log(`[authStore] Migrated ${migratedUploads} upload records from anonymous to user ${user.id}`);
+          }
+        } catch (migrateError) {
+          console.error('[authStore] Failed to migrate upload records:', migrateError);
           // 迁移失败不影响注册成功
         }
 

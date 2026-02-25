@@ -121,8 +121,13 @@ impl AIProvider for OllamaProvider {
         let ollama_response: OllamaResponse = response.json().await?;
 
         let content = &ollama_response.response;
-        let content_preview = if content.len() > 200 {
-            format!("{}... (truncated, {} chars total)", &content[..200], content.len())
+        let content_preview = if content.chars().count() > 200 {
+            // 使用字符边界安全的截取方法
+            let end_index = content.char_indices()
+                .nth(200)
+                .map(|(idx, _)| idx)
+                .unwrap_or(content.len());
+            format!("{}... (truncated, {} chars total)", &content[..end_index], content.len())
         } else {
             content.clone()
         };

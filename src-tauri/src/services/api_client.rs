@@ -470,13 +470,17 @@ impl ApiClient {
     /// 发送 POST 请求（不带认证）
     async fn post_public<T: Serialize, R: DeserializeOwned>(&self, path: &str, body: &T) -> Result<(R, u16, String)> {
         let url = self.build_url(path);
+        let language = self.get_language();
 
-        match self.client
+        let mut request = self.client
             .post(&url)
-            .header(header::CONTENT_TYPE, "application/json")
-            .json(body)
-            .send()
-            .await
+            .header(header::CONTENT_TYPE, "application/json");
+
+        if let Some(lang) = language {
+            request = request.header("Accept-Language", lang);
+        }
+
+        match request.json(body).send().await
         {
             Ok(response) => self.handle_response(response).await,
             Err(err) => {
@@ -600,13 +604,17 @@ impl ApiClient {
 
         // 调用刷新接口（公开接口，不需要 token）
         let url = self.build_url("auth/refresh");
+        let language = self.get_language();
 
-        let response = self.client
+        let mut request = self.client
             .post(&url)
-            .header(header::CONTENT_TYPE, "application/json")
-            .json(&serde_json::json!({ "refresh_token": refresh_token }))
-            .send()
-            .await?;
+            .header(header::CONTENT_TYPE, "application/json");
+
+        if let Some(lang) = language {
+            request = request.header("Accept-Language", lang);
+        }
+
+        let response = request.json(&serde_json::json!({ "refresh_token": refresh_token })).send().await?;
 
         if response.status().is_success() {
             let text = response.text().await?;
@@ -665,7 +673,7 @@ impl ApiClient {
     /// 发送验证码（返回服务器格式）
     pub async fn send_verify_code(&self, req: &SendVerifyCodeRequest) -> Result<(EmailResult, u16, String)> {
         tracing::info!("API: send_verify_code for {}", req.email);
-        self.post_public("auth/send-verify-code", req).await
+        self.post_public("api/email/send-verify-code-sync", req).await
     }
 
     /// 刷新访问令牌（返回服务器格式）

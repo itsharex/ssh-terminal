@@ -226,4 +226,45 @@ impl UploadRecordsRepository {
         conn.execute("DELETE FROM upload_records", [])?;
         Ok(())
     }
+
+    /// 批量更新上传记录的 user_id（用于从匿名用户迁移到登录用户）
+    /// 这个方法会：
+    /// 1. 查找所有属于 old_user_id 的上传记录
+    /// 2. 更新 user_id 和时间戳
+    /// 3. 标记为需要同步（如果表有 is_dirty 字段）
+    pub fn batch_update_user_id(conn: &Connection, old_user_id: &str, new_user_id: &str) -> Result<usize> {
+        let now = chrono::Utc::now().timestamp();
+
+        // 获取所有需要迁移的上传记录数量
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM upload_records WHERE user_id = ?1",
+            [old_user_id],
+            |row| row.get(0),
+        )?;
+
+        if count == 0 {
+            tracing::info!("No upload records found for user_id: {}", old_user_id);
+            return Ok(0);
+        }
+
+        tracing::info!("Migrating {} upload records from {} to {}", count, old_user_id, new_user_id);
+
+        // 批量更新所有记录
+        let updated_count = conn.execute(
+            "UPDATE upload_records SET
+                user_id = ?1,
+                updated_at = ?2
+            WHERE user_id = ?3",
+            (new_user_id, now, old_user_id),
+        )
+        .map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to update upload records in database: {}",
+                e
+            )
+        })?;
+
+        tracing::info!("Successfully migrated {} upload records", updated_count);
+        Ok(updated_count)
+    }
 }

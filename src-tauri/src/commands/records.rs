@@ -4,10 +4,13 @@
 
 use crate::database::DbPool;
 use crate::database::repositories::{
-    PaginatedDownloadRecords, PaginatedUploadRecords, UploadRecordsRepository, DownloadRecordsRepository
+    PaginatedDownloadRecords, PaginatedUploadRecords, UploadRecordsRepository, DownloadRecordsRepository, UserAuthRepository
 };
 use crate::error::Result;
 use tauri::State;
+
+/// 匿名用户的固定用户ID
+const ANONYMOUS_USER_ID: &str = "anonymous_local";
 
 /// 分页查询上传记录
 ///
@@ -85,4 +88,88 @@ pub async fn clear_download_records(pool: State<'_, DbPool>) -> Result<()> {
         .map_err(|e| crate::error::SSHError::Io(format!("获取数据库连接失败: {}", e)))?;
     DownloadRecordsRepository::clear_all(&conn)
         .map_err(|e| crate::error::SSHError::Io(format!("清空下载记录失败: {}", e)))
+}
+
+/// 将匿名用户的下载记录迁移到当前登录用户
+/// 此命令应该在注册或登录成功后调用（非 auto-login）
+#[tauri::command]
+pub async fn db_download_records_migrate_to_user(pool: State<'_, DbPool>) -> std::result::Result<usize, String> {
+    let conn = pool.get()
+        .map_err(|e| format!("Failed to get database connection: {}", e))?;
+
+    let auth_repo = UserAuthRepository::new(pool.inner().clone());
+
+    // 获取当前登录用户信息
+    let current_user = match auth_repo.find_current()
+        .map_err(|e| format!("Failed to get current user: {}", e))?
+    {
+        Some(user) => user,
+        None => return Err("No current user found".to_string()),
+    };
+
+    // 如果当前用户本身就是匿名用户，不需要迁移
+    if current_user.user_id == ANONYMOUS_USER_ID {
+        tracing::info!("Current user is anonymous, no migration needed");
+        return Ok(0);
+    }
+
+    // 执行迁移
+    let migrated_count = DownloadRecordsRepository::batch_update_user_id(
+        &conn,
+        ANONYMOUS_USER_ID,
+        &current_user.user_id,
+    )
+        .map_err(|e| format!("Failed to migrate download records: {}", e))?;
+
+    if migrated_count > 0 {
+        tracing::info!(
+            "Successfully migrated {} download records from anonymous to user {}",
+            migrated_count,
+            current_user.user_id
+        );
+    }
+
+    Ok(migrated_count)
+}
+
+/// 将匿名用户的上传记录迁移到当前登录用户
+/// 此命令应该在注册或登录成功后调用（非 auto-login）
+#[tauri::command]
+pub async fn db_upload_records_migrate_to_user(pool: State<'_, DbPool>) -> std::result::Result<usize, String> {
+    let conn = pool.get()
+        .map_err(|e| format!("Failed to get database connection: {}", e))?;
+
+    let auth_repo = UserAuthRepository::new(pool.inner().clone());
+
+    // 获取当前登录用户信息
+    let current_user = match auth_repo.find_current()
+        .map_err(|e| format!("Failed to get current user: {}", e))?
+    {
+        Some(user) => user,
+        None => return Err("No current user found".to_string()),
+    };
+
+    // 如果当前用户本身就是匿名用户，不需要迁移
+    if current_user.user_id == ANONYMOUS_USER_ID {
+        tracing::info!("Current user is anonymous, no migration needed");
+        return Ok(0);
+    }
+
+    // 执行迁移
+    let migrated_count = UploadRecordsRepository::batch_update_user_id(
+        &conn,
+        ANONYMOUS_USER_ID,
+        &current_user.user_id,
+    )
+        .map_err(|e| format!("Failed to migrate upload records: {}", e))?;
+
+    if migrated_count > 0 {
+        tracing::info!(
+            "Successfully migrated {} upload records from anonymous to user {}",
+            migrated_count,
+            current_user.user_id
+        );
+    }
+
+    Ok(migrated_count)
 }

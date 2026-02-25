@@ -267,6 +267,8 @@ pub fn run() {
             commands::list_download_records,
             commands::delete_download_record,
             commands::clear_download_records,
+            commands::db_download_records_migrate_to_user,
+            commands::db_upload_records_migrate_to_user,
             // 文件系统命令
             commands::fs_write_file,
             // 认证命令
