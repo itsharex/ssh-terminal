@@ -1021,7 +1021,9 @@
       "directoryNotExists": "目录不存在",
       "notDirectoryShort": "不是目录",
       "cannotOpenDirectory": "无法打开目录: {{error}}",
-      "cancelUploadFailed": "取消上传失败: {{error}}"
+      "cancelUploadFailed": "取消上传失败: {{error}}",
+      "failedToOpenFile": "无法打开文件: {{path}}",
+      "fileNotAllowed": "系统不允许打开该文件: {{path}}"
     },
     "dialog": {
       "newFolder": {

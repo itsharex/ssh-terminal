@@ -827,7 +827,9 @@
       "directoryNotExists": "Directory does not exist",
       "notDirectoryShort": "Not a directory",
       "cannotOpenDirectory": "Cannot open directory: {{error}}",
-      "cancelUploadFailed": "Cancel upload failed: {{error}}"
+      "cancelUploadFailed": "Cancel upload failed: {{error}}",
+      "failedToOpenFile": "Failed to open file: {{path}}",
+      "fileNotAllowed": "System does not allow opening this file: {{path}}"
     },
     "status": {
       "selected": "{{count}} items selected",

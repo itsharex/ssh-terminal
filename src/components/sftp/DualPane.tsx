@@ -322,11 +322,6 @@ const handleUploadMouseDown = (e: React.MouseEvent) => {
   };
 
   const handleTransferToRemote = async () => {
-    console.log('Upload button clicked');
-    console.log('Selected local files:', selectedLocalFiles);
-    console.log('Remote path:', remotePath);
-    console.log('Connection ID:', connectionId);
-
     if (selectedLocalFiles.length === 0) {
       toast.error(t('sftp.error.noFileSelected'));
       return;
@@ -347,16 +342,12 @@ const handleUploadMouseDown = (e: React.MouseEvent) => {
         }
       });
 
-      console.log(`Found ${files.length} files and ${directories.length} directories to upload`);
-
       // 上传文件
       const window = getCurrentWindow();
       for (const file of files) {
         const remoteFilePath = remotePath.endsWith('/')
           ? `${remotePath}${file.name}`
           : `${remotePath}/${file.name}`;
-
-        console.log('Uploading file:', file.path, '->', remoteFilePath);
 
         await invoke('sftp_upload_file', {
           connectionId,
@@ -381,8 +372,6 @@ const handleUploadMouseDown = (e: React.MouseEvent) => {
 
         // 为每个目录生成唯一的 task_id
         const taskId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-        console.log('Uploading directory:', dir.path, '->', remoteDirPath, 'task_id:', taskId);
 
         // 调用目录上传命令，获取返回结果
         const result = await invoke<{
@@ -419,11 +408,6 @@ const handleUploadMouseDown = (e: React.MouseEvent) => {
 
   const handleTransferToLocal = async () => {
     if (selectedRemoteFiles.length === 0) return;
-
-    console.log('Download button clicked');
-    console.log('Selected remote files:', selectedRemoteFiles);
-    console.log('Local path:', localPath);
-    console.log('Connection ID:', connectionId);
 
     setDownloading(true);
     setShowDownloadPanel(true); // 自动打开下载悬浮面板
@@ -517,7 +501,6 @@ const handleUploadMouseDown = (e: React.MouseEvent) => {
             {/* 面板内容 */}
             <div className="p-4">
               {(() => {
-                console.log('[DualPane Upload Panel] Rendering upload panel, activeUploadTasks.size:', activeUploadTasks.size, 'tasks:', Array.from(activeUploadTasks.entries()));
                 return null;
               })()}
               {activeUploadTasks.size > 0 ? (
@@ -663,7 +646,6 @@ const handleUploadMouseDown = (e: React.MouseEvent) => {
 {/* 面板内容 */}
             <div className="p-4">
               {(() => {
-                console.log('[DualPane Download Panel] Rendering download panel, activeDownloadTasks.size:', activeDownloadTasks.size, 'tasks:', Array.from(activeDownloadTasks.entries()));
                 return null;
               })()}
               {activeDownloadTasks.size > 0 ? (

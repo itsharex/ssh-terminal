@@ -74,8 +74,9 @@ export function SftpManager() {
     removeActiveDownloadTask,
     listenUploadStatusChange,
     listenDownloadStatusChange,
+    selectedConnectionId,
+    setSelectedConnectionId,
   } = useSftpStore();
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -103,20 +104,34 @@ export function SftpManager() {
       index === self.findIndex((c) => c.id === conn.id)
     );
 
-  // 初始化本地路径（只执行一次）
+  // 初始化本地路径（只执行一次，且仅当 localPath 为空时）
   useEffect(() => {
-    if (!isInitialized.current) {
+    if (!isInitialized.current && !localPath) {
       initializeLocalPath();
       isInitialized.current = true;
     }
-  }, []);
+  }, [localPath]);
 
   useEffect(() => {
-    // 如果有连接且未选择，自动选择第一个
-    if (availableConnections.length > 0 && !selectedConnectionId) {
-      setSelectedConnectionId(availableConnections[0].id);
+    // 检查是否需要自动选择连接
+    if (availableConnections.length > 0) {
+      // 检查当前选中的连接是否仍然可用
+      const isCurrentConnectionAvailable = selectedConnectionId
+        ? availableConnections.some(conn => conn.id === selectedConnectionId)
+        : false;
+
+      // 如果没有选中连接，或者选中的连接已不可用，自动选择第一个可用连接
+      if (!selectedConnectionId || !isCurrentConnectionAvailable) {
+        setSelectedConnectionId(availableConnections[0].id);
+      }
+    } else {
+      // 没有可用连接时，清除选中状态
+      // 只有当 selectedConnectionId 不为 null 时才更新，避免无限循环
+      if (selectedConnectionId !== null) {
+        setSelectedConnectionId(null);
+      }
     }
-  }, [availableConnections, selectedConnectionId]);
+  }, [availableConnections, selectedConnectionId, setSelectedConnectionId]);
 
   // 监听快捷键事件
   useEffect(() => {
@@ -148,24 +163,18 @@ export function SftpManager() {
 
   // 监听上传进度事件
   useEffect(() => {
-    console.log('[SftpManager] Setting up upload progress listener for connection:', selectedConnectionId);
     const unlisten = listen<UploadProgressEvent>('sftp-upload-progress', (event) => {
       const progress = event.payload;
-      console.log('[SftpManager] Upload progress event received:', progress);
-      console.log('[SftpManager] Event connectionId:', progress.connectionId, 'Selected connection_id:', selectedConnectionId);
 
       if (progress.connectionId === selectedConnectionId) {
-        console.log('[SftpManager] Connection ID matches, updating progress map');
         setUploadProgressMap(prev => new Map(prev).set(progress.taskId, progress));
         setUploadCancellable(true);
 
         // 更新临时任务存储
         const existingTask = activeUploadTasks.get(progress.taskId);
-        console.log('[SftpManager] Existing task:', existingTask ? 'Yes' : 'No');
 
         if (!existingTask) {
           // 新任务，添加到临时存储
-          console.log('[SftpManager] Adding new upload task:', progress.taskId);
           const fileName = progress.currentFile ? progress.currentFile.split(/[/\\]/).pop() || progress.currentFile : progress.currentDir.split(/[/\\]/).pop() || 'Unknown';
           const filePath = progress.currentFile || progress.currentDir;
 
@@ -185,8 +194,6 @@ export function SftpManager() {
           });
         } else {
           // 更新现有任务
-          console.log('[SftpManager] Updating existing upload task:', progress.taskId);
-
           updateActiveUploadTask(progress.taskId, {
             bytesTransferred: progress.bytesTransferred,
             speed: progress.speedBytesPerSec,
@@ -196,72 +203,60 @@ export function SftpManager() {
             completedTime: progress.completedTime,
           });
         }
-      } else {
-        console.log('[SftpManager] Connection ID mismatch, ignoring event');
       }
     });
 
     return () => {
-      console.log('[SftpManager] Cleaning up upload progress listener');
       unlisten.then(fn => fn());
     };
   }, [selectedConnectionId, addActiveUploadTask, updateActiveUploadTask, removeActiveUploadTask]);
 
   // 监听下载进度事件
   useEffect(() => {
-    console.log('[SftpManager] Setting up download progress listener for connection:', selectedConnectionId);
     const unlisten = listen<DownloadProgressEvent>('sftp-download-progress', (event) => {
       const progress = event.payload;
-      console.log('[SftpManager] Download progress event received:', progress);
-            console.log('[SftpManager] Event connectionId:', progress.connectionId, 'Selected connection_id:', selectedConnectionId);
       
-            if (progress.connectionId === selectedConnectionId) {
-              console.log('[SftpManager] Connection ID matches, updating progress map');
-              setDownloadProgressMap(prev => new Map(prev).set(progress.taskId, progress));
-              setDownloadCancellable(true);
-      
-              // 更新临时任务存储
-              const existingTask = activeDownloadTasks.get(progress.taskId);
-              console.log('[SftpManager] Existing task:', existingTask ? 'Yes' : 'No');
-      
-              if (!existingTask) {
-                              // 新任务，添加到临时存储
-                              console.log('[SftpManager] Adding new download task:', progress.taskId);
-                              const fileName = progress.currentFile ? progress.currentFile.split(/[/\\]/).pop() || progress.currentFile : progress.currentDir.split(/[/\\]/).pop() || 'Unknown';
-                              const filePath = progress.currentFile || progress.currentDir;
-              
-                              addActiveDownloadTask({
-                                taskId: progress.taskId,
-                                fileName,
-                                filePath,
-                                bytesTransferred: progress.bytesTransferred,
-                                totalBytes: progress.totalBytes,
-                                speed: progress.speedBytesPerSec,
-                                status: 'downloading',
-                                startTime: progress.startTime,
-                                completedTime: progress.completedTime,
-                                filesCompleted: progress.filesCompleted,
-                                totalFiles: progress.totalFiles,
-                                uploadName: fileName, // 下载任务使用文件名作为 uploadName
-                              });
-                            } else {
-                              // 更新现有任务
-                              console.log('[SftpManager] Updating existing download task:', progress.taskId);
-              
-                              updateActiveDownloadTask(progress.taskId, {
-                                bytesTransferred: progress.bytesTransferred,
-                                speed: progress.speedBytesPerSec,
-                                filesCompleted: progress.filesCompleted,
-                                totalFiles: progress.totalFiles,
-                                startTime: progress.startTime,
-                                completedTime: progress.completedTime,
-                              });
-                            }            } else {
-              console.log('[SftpManager] Connection ID mismatch, ignoring event');
-            }    });
+      if (progress.connectionId === selectedConnectionId) {
+        setDownloadProgressMap(prev => new Map(prev).set(progress.taskId, progress));
+        setDownloadCancellable(true);
+
+        // 更新临时任务存储
+        const existingTask = activeDownloadTasks.get(progress.taskId);
+
+        if (!existingTask) {
+          // 新任务，添加到临时存储
+          const fileName = progress.currentFile ? progress.currentFile.split(/[/\\]/).pop() || progress.currentFile : progress.currentDir.split(/[/\\]/).pop() || 'Unknown';
+          const filePath = progress.currentFile || progress.currentDir;
+
+          addActiveDownloadTask({
+            taskId: progress.taskId,
+            fileName,
+            filePath,
+            bytesTransferred: progress.bytesTransferred,
+            totalBytes: progress.totalBytes,
+            speed: progress.speedBytesPerSec,
+            status: 'downloading',
+            startTime: progress.startTime,
+            completedTime: progress.completedTime,
+            filesCompleted: progress.filesCompleted,
+            totalFiles: progress.totalFiles,
+            uploadName: fileName, // 下载任务使用文件名作为 uploadName
+          });
+        } else {
+          // 更新现有任务
+          updateActiveDownloadTask(progress.taskId, {
+            bytesTransferred: progress.bytesTransferred,
+            speed: progress.speedBytesPerSec,
+            filesCompleted: progress.filesCompleted,
+            totalFiles: progress.totalFiles,
+            startTime: progress.startTime,
+            completedTime: progress.completedTime,
+          });
+        }
+      }
+    });
 
     return () => {
-      console.log('[SftpManager] Cleaning up download progress listener');
       unlisten.then(fn => fn());
     };
   }, [selectedConnectionId, addActiveDownloadTask, updateActiveDownloadTask, removeActiveDownloadTask]);
@@ -270,15 +265,12 @@ export function SftpManager() {
   useEffect(() => {
     if (!selectedConnectionId) return;
 
-    console.log('[SftpManager] Setting up upload status change listener for connection:', selectedConnectionId);
-
     let unlistenFn: (() => void) | null = null;
 
     const setupListener = async () => {
       try {
         unlistenFn = await listenUploadStatusChange(selectedConnectionId, () => {
           // 上传完成或取消时，刷新远程面板
-          console.log('[SftpManager] Upload completed/cancelled, refreshing remote panel');
           setRemoteRefreshKey(prev => prev + 1);
         });
       } catch (error) {
@@ -289,7 +281,6 @@ export function SftpManager() {
     setupListener();
 
     return () => {
-      console.log('[SftpManager] Cleaning up upload status change listener');
       if (unlistenFn) {
         unlistenFn();
       }
@@ -300,15 +291,12 @@ export function SftpManager() {
   useEffect(() => {
     if (!selectedConnectionId) return;
 
-    console.log('[SftpManager] Setting up download status change listener for connection:', selectedConnectionId);
-
     let unlistenFn: (() => void) | null = null;
 
     const setupListener = async () => {
       try {
         unlistenFn = await listenDownloadStatusChange(selectedConnectionId, () => {
           // 下载完成或取消时，刷新本地面板
-          console.log('[SftpManager] Download completed/cancelled, refreshing local panel');
           setLocalRefreshKey(prev => prev + 1);
         });
       } catch (error) {
@@ -319,7 +307,6 @@ export function SftpManager() {
     setupListener();
 
     return () => {
-      console.log('[SftpManager] Cleaning up download status change listener');
       if (unlistenFn) {
         unlistenFn();
       }
@@ -420,8 +407,6 @@ export function SftpManager() {
           remoteFilePath = `${remotePath}/${file.name}`;
         }
 
-        console.log('Uploading file:', file.path, '->', remoteFilePath);
-
         await invoke('sftp_upload_file', {
           connectionId: selectedConnectionId,
           localPath: file.path,
@@ -445,8 +430,6 @@ export function SftpManager() {
 
         // 为每个目录生成唯一的 task_id
         const taskId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-        console.log('Uploading directory:', dir.path, '->', remoteDirPath, 'task_id:', taskId);
 
         // 调用目录上传命令，获取返回结果
         const result = await invoke<{
@@ -533,8 +516,6 @@ export function SftpManager() {
 
         // 为每个目录生成唯一的 task_id
         const taskId = `download-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-        console.log('Downloading directory:', dir.path, '->', localDirPath, 'task_id:', taskId);
 
         // 调用目录下载命令，获取返回结果
         const result = await invoke<{

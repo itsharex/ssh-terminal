@@ -70,6 +70,10 @@ interface SftpStore {
   selectedRemoteFiles: SftpFileInfo[];
   setSelectedRemoteFiles: (files: SftpFileInfo[]) => void;
 
+  // 选中的连接ID（持久化）
+  selectedConnectionId: string | null;
+  setSelectedConnectionId: (id: string | null) => void;
+
   // 初始化本地路径
   initializeLocalPath: () => Promise<void>;
 
@@ -135,6 +139,10 @@ export const useSftpStore = create<SftpStore>()(
       selectedRemoteFiles: [],
       setSelectedRemoteFiles: (files: SftpFileInfo[]) => set({ selectedRemoteFiles: files }),
 
+      // 选中的连接ID
+      selectedConnectionId: null,
+      setSelectedConnectionId: (id: string | null) => set({ selectedConnectionId: id }),
+
       // 初始化本地路径
       initializeLocalPath: async () => {
         try {
@@ -192,21 +200,12 @@ export const useSftpStore = create<SftpStore>()(
       },
 
       updateActiveUploadTask: (taskId: string, updates: Partial<ActiveTask>) => {
-        console.log('[sftpStore] updateActiveUploadTask called:', { taskId, updates });
         set((state) => {
           const newMap = new Map(state.activeUploadTasks);
           const existingTask = newMap.get(taskId);
           if (existingTask) {
             const updatedTask = { ...existingTask, ...updates };
-            console.log('[sftpStore] Task updated:', {
-              taskId,
-              before: existingTask,
-              updates,
-              after: updatedTask
-            });
             newMap.set(taskId, updatedTask);
-          } else {
-            console.log('[sftpStore] Task not found:', taskId);
           }
           return { activeUploadTasks: newMap };
         });
@@ -234,21 +233,12 @@ export const useSftpStore = create<SftpStore>()(
       },
 
       updateActiveDownloadTask: (taskId: string, updates: Partial<ActiveTask>) => {
-        console.log('[sftpStore] updateActiveDownloadTask called:', { taskId, updates });
         set((state) => {
           const newMap = new Map(state.activeDownloadTasks);
           const existingTask = newMap.get(taskId);
           if (existingTask) {
             const updatedTask = { ...existingTask, ...updates };
-            console.log('[sftpStore] Task updated:', {
-              taskId,
-              before: existingTask,
-              updates,
-              after: updatedTask
-            });
             newMap.set(taskId, updatedTask);
-          } else {
-            console.log('[sftpStore] Task not found:', taskId);
           }
           return { activeDownloadTasks: newMap };
         });
@@ -276,23 +266,17 @@ export const useSftpStore = create<SftpStore>()(
 
       // 监听上传状态变更事件
       listenUploadStatusChange: async (_connectionId: string, onCompletedOrCancelled?: () => void) => {
-        console.log('[sftpStore] Setting up upload status change listener for connection:', _connectionId);
         const { listen } = await import('@tauri-apps/api/event');
 
         const unlisten = await listen<UploadStatusChangeEvent>(
           'sftp-upload-status-change',
           (event) => {
-            console.log('[sftpStore] Upload status change event received:', event);
-            console.log('[sftpStore] Event payload:', event.payload);
-
             const { taskId, status, completedAt } = event.payload;
 
             // 更新临时任务状态
             const currentTask = useSftpStore.getState().activeUploadTasks.get(taskId);
-            console.log('[sftpStore] Current task found:', currentTask ? 'Yes' : 'No');
 
             if (currentTask) {
-              console.log('[sftpStore] Updating task status:', taskId, 'to:', status);
               useSftpStore.getState().updateActiveUploadTask(taskId, {
                 status: status as any,
                 completedTime: completedAt || 0, // completedAt 是完成时间戳，0 表示未完成
@@ -300,47 +284,35 @@ export const useSftpStore = create<SftpStore>()(
 
               // 如果任务完成或失败，3秒后移除
               if (status === 'completed' || status === 'failed' || status === 'cancelled') {
-                console.log('[sftpStore] Task', taskId, 'is', status + ', removing in 3 seconds');
                 setTimeout(() => {
                   useSftpStore.getState().removeActiveUploadTask(taskId);
                 }, 3000);
 
                 // 触发回调（用于刷新远程面板）
                 if (onCompletedOrCancelled) {
-                  console.log('[sftpStore] Calling onCompletedOrCancelled callback');
                   onCompletedOrCancelled();
                 }
               }
-            } else {
-              console.log('[sftpStore] Task not found in activeUploadTasks:', taskId);
-              console.log('[sftpStore] Current activeUploadTasks:', Array.from(useSftpStore.getState().activeUploadTasks.keys()));
             }
           }
         );
 
-        console.log('[sftpStore] Upload status change listener setup complete');
         return unlisten;
       },
 
       // 监听下载状态变更事件
       listenDownloadStatusChange: async (_connectionId: string, onCompletedOrCancelled?: () => void) => {
-        console.log('[sftpStore] Setting up download status change listener for connection:', _connectionId);
         const { listen } = await import('@tauri-apps/api/event');
 
         const unlisten = await listen<DownloadStatusChangeEvent>(
           'sftp-download-status-change',
           (event) => {
-            console.log('[sftpStore] Download status change event received:', event);
-            console.log('[sftpStore] Event payload:', event.payload);
-
             const { taskId, status, completedAt } = event.payload;
 
             // 更新临时任务状态
             const currentTask = useSftpStore.getState().activeDownloadTasks.get(taskId);
-            console.log('[sftpStore] Current task found:', currentTask ? 'Yes' : 'No');
 
             if (currentTask) {
-              console.log('[sftpStore] Updating task status:', taskId, 'to:', status);
               useSftpStore.getState().updateActiveDownloadTask(taskId, {
                 status: status as any,
                 completedTime: completedAt || 0, // completedAt 是完成时间戳，0 表示未完成
@@ -348,33 +320,26 @@ export const useSftpStore = create<SftpStore>()(
 
               // 如果任务完成或失败，3秒后移除
               if (status === 'completed' || status === 'failed' || status === 'cancelled') {
-                console.log('[sftpStore] Task', taskId, 'is', status + ', removing in 3 seconds');
                 setTimeout(() => {
                   useSftpStore.getState().removeActiveDownloadTask(taskId);
                 }, 3000);
 
                 // 触发回调（用于刷新本地面板）
                 if (onCompletedOrCancelled) {
-                  console.log('[sftpStore] Calling onCompletedOrCancelled callback');
                   onCompletedOrCancelled();
                 }
               }
-            } else {
-              console.log('[sftpStore] Task not found in activeDownloadTasks:', taskId);
-              console.log('[sftpStore] Current activeDownloadTasks:', Array.from(useSftpStore.getState().activeDownloadTasks.keys()));
             }
           }
         );
 
-        console.log('[sftpStore] Download status change listener setup complete');
         return unlisten;
       },
     }),
     {
       name: 'sftp-storage',
       partialize: (state) => ({
-        localPath: state.localPath,
-        remotePath: state.remotePath,
+        selectedConnectionId: state.selectedConnectionId,
       }),
     }
   )

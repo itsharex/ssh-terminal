@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
+// import { openPath } from '@tauri-apps/plugin-opener';
 import { FileList } from './FileList';
 import { ArrowUp, Home, RefreshCw, FolderPlus, Trash2, Edit2, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -57,11 +58,11 @@ export function FilePane({
 
   // 监听外部的 refreshKey 变化
   useEffect(() => {
-    if (refreshKey > 0) {
-      console.log('External refreshKey changed:', refreshKey);
+    // 只在 refreshKey 变化且大于当前内部 key 时才刷新
+    if (refreshKey > 0 && refreshKey !== internalRefreshKey) {
       setInternalRefreshKey(refreshKey);
     }
-  }, [refreshKey]);
+  }, [refreshKey, internalRefreshKey]);
   const joinPath = (basePath: string, fileName: string): string => {
     if (type === 'local') {
       // Windows 本地路径使用反斜杠
@@ -388,12 +389,9 @@ export function FilePane({
   };
 
   const handleFileDoubleClick = async (file: SftpFileInfo) => {
-    console.log('Double clicked file:', file);
-
     if (file.isDir) {
       // 进入目录
       const newPath = joinPath(path, file.name);
-      console.log('Navigating to:', newPath);
 
       // 验证路径是否可访问
       if (type === 'remote' && connectionId) {
@@ -420,10 +418,32 @@ export function FilePane({
         // 本地文件直接进入目录，不显示提示
         onPathChange(newPath);
       }
-    } else {
-      // TODO: 打开文件
-      console.log('Open file:', file);
     }
+    // else if (type === 'local') {
+    //   // 本地文件，打开
+    //   // 构建完整路径
+    //   let fullPath: string;
+    //   if (path.endsWith('/') || path.endsWith('\\')) {
+    //     fullPath = `${path}${file.name}`;
+    //   } else {
+    //     // 在 Windows 上使用反斜杠，在 Unix 上使用正斜杠
+    //     const separator = path.includes('\\') ? '\\' : '/';
+    //     fullPath = `${path}${separator}${file.name}`;
+    //   }
+
+    //   // 使用 Tauri 的 opener API 打开文件
+    //   openPath(fullPath).catch((error: Error) => {
+    //     console.error('Failed to open file:', fullPath, error);
+    //     
+    //     // 检查错误类型，提供更友好的提示
+    //     const errorMessage = error?.message || String(error);
+    //     if (errorMessage.includes('Not allowed')) {
+    //       toast.error(t('sftp.error.fileNotAllowed', { path: file.name }));
+    //     } else {
+    //       toast.error(t('sftp.error.failedToOpenFile', { path: file.name }));
+    //     }
+    //   });
+    // }
   };
 
   return (
