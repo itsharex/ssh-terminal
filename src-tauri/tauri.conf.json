@@ -43,7 +43,6 @@
         "publisher": "Aisi",
         "category": "DeveloperTool",
         "shortDescription": "SSH Terminal with AI Assistant",
-        "longDescription": "A cross-platform SSH terminal with AI assistant, SFTP file management, and cloud sync capabilities.",
-        "createUpdaterArtifacts": true
+        "longDescription": "A cross-platform SSH terminal with AI assistant, SFTP file management, and cloud sync capabilities."
     }
 }
