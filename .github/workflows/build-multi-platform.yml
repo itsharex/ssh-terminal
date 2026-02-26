@@ -71,6 +71,27 @@ jobs:
                   TAURI_BUNDLE_DEB: "true"
                   TAURI_BUNDLE_RPM: "true"
 
+            - name: Rename Linux AppImage with platform identifier
+              run: |
+                  cd src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage
+                  for file in *.AppImage; do
+                      mv "$file" "SSH.Terminal_${{ github.ref_name }}-linux-x86_64.AppImage"
+                  done
+
+            - name: Rename Linux DEB with platform identifier
+              run: |
+                  cd src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb
+                  for file in *.deb; do
+                      mv "$file" "SSH.Terminal_${{ github.ref_name }}-linux-x86_64.deb"
+                  done
+
+            - name: Rename Linux RPM with platform identifier
+              run: |
+                  cd src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm
+                  for file in *.rpm; do
+                      mv "$file" "SSH.Terminal_${{ github.ref_name }}-linux-x86_64.rpm"
+                  done
+
             - name: Upload Linux AppImage artifacts
               uses: actions/upload-artifact@v4
               with:
@@ -122,6 +143,13 @@ jobs:
                   TAURI_BUNDLE_DMG: "true"
                   TAURI_BUNDLE_MACOS: "true"
 
+            - name: Rename macOS DMG with platform identifier
+              run: |
+                  cd src-tauri/target/universal-apple-darwin/release/bundle/dmg
+                  for file in *.dmg; do
+                      mv "$file" "SSH.Terminal_${{ github.ref_name }}-macos-universal.dmg"
+                  done
+
             - name: Upload macOS DMG artifacts
               uses: actions/upload-artifact@v4
               with:
@@ -170,6 +198,20 @@ jobs:
               env:
                   TAURI_BUNDLE_NSIS: "true"
                   TAURI_BUNDLE_MSI: "true"
+
+            - name: Rename Windows NSIS with platform identifier
+              run: |
+                  cd src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis
+                  foreach ($file in Get-ChildItem *.exe) {
+                      Rename-Item -Path $file.Name -NewName ("SSH.Terminal_{0}-windows-x86_64-setup.exe" -f $env:GITHUB_REF_NAME)
+                  }
+
+            - name: Rename Windows MSI with platform identifier
+              run: |
+                  cd src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi
+                  foreach ($file in Get-ChildItem *.msi) {
+                      Rename-Item -Path $file.Name -NewName ("SSH.Terminal_{0}-windows-x86_64.msi" -f $env:GITHUB_REF_NAME)
+                  }
 
             - name: Upload Windows NSIS artifacts
               uses: actions/upload-artifact@v4
