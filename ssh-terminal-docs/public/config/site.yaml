@@ -118,7 +118,7 @@ footer:
         url: "https://github.com/shenjianZ/ssh-terminal"
         branch: "master"
     lastUpdated: "2026-02-28"
-    version: "v1.2.0"
+    version: "v1.2.1"
     groups:
         - title: "社区"
           items:

@@ -34,7 +34,7 @@ impl ServerInfoResult {
     pub fn new() -> Self {
         Self {
             name: "ssh-terminal-server".to_string(),
-            version: "1.2.0".to_string(),
+            version: "1.2.1".to_string(),
             status: "running".to_string(),
             timestamp: chrono::Utc::now().timestamp(),
         }
