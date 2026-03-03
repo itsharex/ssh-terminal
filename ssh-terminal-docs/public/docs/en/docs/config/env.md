@@ -17,7 +17,7 @@ SSH Terminal supports configuring application behavior through environment varia
 
 ```config
 # API Base URL
-API_BASE_URL=https://api.yourdomain.com
+VITE_API_BASE_URL=https://api.yourdomain.com
 ```
 
 ---
